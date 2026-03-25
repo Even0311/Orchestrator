@@ -12,7 +12,7 @@ from orch.db.database import (
     set_active_project,
     update_project_path,
 )
-from orch.db.database import ORCH_HOME
+from orch.config.settings import PROJECTS_DIR
 
 VISION_TEMPLATE = """\
 # {name} — Vision
@@ -82,7 +82,7 @@ def _slugify(name: str) -> str:
 
 
 def _make_state_dir(project_id: str) -> Path:
-    state_dir = ORCH_HOME / "projects" / project_id
+    state_dir = PROJECTS_DIR / project_id
     state_dir.mkdir(parents=True, exist_ok=True)
     (state_dir / "context").mkdir(exist_ok=True)
     (state_dir / "phases").mkdir(exist_ok=True)
