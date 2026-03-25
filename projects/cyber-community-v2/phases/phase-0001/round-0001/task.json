@@ -1,0 +1,37 @@
+{
+  "task_id": "round-0001",
+  "title": "Compile continuity status summary document",
+  "objective": "Create a structured markdown document that accurately summarizes the current backbone continuity state, explicitly categorizing T1/T2/T4 paths as active/inactive/partially active, documenting the 60-day audit findings (18 residuals: 12/6/0 distribution), and distinguishing between established contracts and temporary phase calibrations.",
+  "exact_scope": "IN: Create a new markdown file at `docs/continuity_status_phase25.md` containing: (1) 'Active Paths' section listing T1/public and T2/influencer continuity, (2) 'Inactive Paths' section listing T4/relational continuity with rationale, (3) 'Partially Active' section for world carryover distribution, (4) '60-Day Audit Results' section with metrics (total residuals, selection rate, effectiveness), (5) 'Contract Classification' section distinguishing 'Established Contracts' (cross-day persistence, bridge structure) from 'Phase Calibrations' (residual creation gates, distribution tuning). OUT: No modifications to Python code, no changes to existing bridge/residual logic, no updates to current_phase.md (reserved for P25-T4), no introduction of new T4 activation strategies.",
+  "likely_files": [
+    "docs/continuity_status_phase25.md"
+  ],
+  "constraints": [
+    "Must accurately reflect the 60-day audit data (18 total, 12 public / 6 influencer / 0 relational)",
+    "Must explicitly state T4 relational continuity is inactive due to missing negative base signal in builder, not gate tuning",
+    "Must not declare partially active items as fully established",
+    "Document must use headers for machine parseability by future orchestrator rounds"
+  ],
+  "acceptance_criteria": [
+    "File docs/continuity_status_phase25.md exists and contains at least 5 markdown headers (Active Paths, Inactive Paths, Partially Active, 60-Day Audit Results, Contract Classification)",
+    "Document explicitly lists 'T1/public' and 'T2/influencer' under active continuity paths",
+    "Document explicitly lists 'T4/relational' under inactive paths with explanation referencing missing negative base signal",
+    "Document contains the specific audit metrics: 18 total residuals, 12/6/0 distribution, 10% selection rate, 100% effectiveness rate",
+    "Document classifies 'cross-day residual persistence' and 'bridge structure' as established contracts, and 'residual creation gate tuning' as phase calibration"
+  ],
+  "verification_steps": [
+    "test -f docs/continuity_status_phase25.md || exit 1",
+    "grep -c '^##' docs/continuity_status_phase25.md | awk '{exit ($1 >= 5 ? 0 : 1)}'",
+    "grep -i 'active.*paths\\|active paths' docs/continuity_status_phase25.md | head -1",
+    "grep -i 'T1.*active\\|public.*active' docs/continuity_status_phase25.md | head -1",
+    "grep -i 'T4.*inactive\\|relational.*inactive' docs/continuity_status_phase25.md | head -1",
+    "grep -E '18.*residual|12.*6.*0|10%.*selection' docs/continuity_status_phase25.md | head -1"
+  ],
+  "non_goals": [
+    "Do not modify Python source code",
+    "Do not change residual gate parameters",
+    "Do not update current_phase.md or context/designer.md",
+    "Do not propose T4 activation patches or adversarial branches",
+    "Do not expand scope to T3/T5/T6/T7/T8 bridges"
+  ]
+}

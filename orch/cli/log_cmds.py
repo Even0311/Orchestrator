@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import click
@@ -8,7 +9,7 @@ from orch.db.database import get_active_project, get_connection, init_db
 @click.command("log")
 @click.argument("round_id", required=False)
 def log_cmd(round_id: str):
-    """Show round history, or a specific round's audit report."""
+    """Show round history, or a specific round's detail."""
     init_db()
     project = get_active_project()
     if not project:
@@ -33,7 +34,8 @@ def _show_round_list(project) -> None:
         return
 
     click.echo(f"Rounds for '{project['name']}':\n")
-    icons = {"passed": "✓", "escalated": "!", "resolved_by_human": "H", "pending": "…"}
+    icons = {"passed": "✓", "escalated": "!", "resolved_by_human": "H",
+             "rolled_back": "↩", "pending": "…"}
     for r in rows:
         icon = icons.get(r["status"], "?")
         click.echo(
@@ -44,22 +46,122 @@ def _show_round_list(project) -> None:
 
 def _show_round_detail(project, round_id: str) -> None:
     state_dir = Path(project["state_dir"])
+    round_dir = _find_round_dir(state_dir, round_id)
 
-    # Find the audit file
+    if round_dir:
+        _display_round_from_files(round_dir, round_id)
+    else:
+        _display_round_from_db(project, round_id)
+
+
+def _find_round_dir(state_dir: Path, round_id: str) -> Path | None:
     phases_dir = state_dir / "phases"
-    if phases_dir.exists():
-        for phase_dir in sorted(phases_dir.iterdir()):
-            audit_path = phase_dir / round_id / "audit.md"
-            if audit_path.exists():
-                click.echo(audit_path.read_text())
+    if not phases_dir.exists():
+        return None
+    for phase_dir in sorted(phases_dir.iterdir()):
+        candidate = phase_dir / round_id
+        if candidate.exists():
+            return candidate
+    return None
 
-                # Also show attempt files
-                for attempt_file in sorted((phase_dir / round_id).glob("attempt_*.md")):
-                    click.echo(f"\n{'─'*60}\n")
-                    click.echo(attempt_file.read_text())
-                return
 
-    # Fallback to DB
+def _display_round_from_files(round_dir: Path, round_id: str) -> None:
+    click.echo(f"\n{'='*60}")
+    click.echo(f"  Round: {round_id}")
+    click.echo(f"{'='*60}")
+
+    # ── Task package ──────────────────────────────────────────────────────────
+    task_json = round_dir / "task.json"
+    if task_json.exists():
+        t = json.loads(task_json.read_text())
+        click.echo(f"\nTask: {t.get('title', '(no title)')}")
+        click.echo(f"  Objective  : {t.get('objective', '')}")
+        click.echo(f"  Scope      : {t.get('exact_scope', '')}")
+        criteria = t.get("acceptance_criteria", [])
+        if criteria:
+            click.echo("  Criteria   :")
+            for c in criteria:
+                click.echo(f"    - {c}")
+    elif (round_dir / "task.md").exists():
+        click.echo("\n" + (round_dir / "task.md").read_text())
+
+    # ── Attempts ─────────────────────────────────────────────────────────────
+    attempt_count = max(
+        len(list(round_dir.glob("execution_report_attempt_*.json"))),
+        len(list(round_dir.glob("attempt_*.md"))),
+    )
+
+    for i in range(1, attempt_count + 1):
+        click.echo(f"\n{'─'*50}")
+        click.echo(f"Attempt {i}")
+
+        # Repaired task (attempt > 1)
+        repaired_json = round_dir / f"repaired_task_attempt_{i}.json"
+        if repaired_json.exists():
+            r = json.loads(repaired_json.read_text())
+            click.echo(f"\n  [Repaired Task] {r.get('title', '')}")
+            click.echo(f"  Objective: {r.get('objective', '')}")
+
+        # Execution report (git-verified evidence)
+        exec_json = round_dir / f"execution_report_attempt_{i}.json"
+        if exec_json.exists():
+            e = json.loads(exec_json.read_text())
+            git_ev = e.get("git_evidence", {})
+            ex_ev = e.get("executor_reported", {})
+
+            click.echo("\n  Evidence (git-verified):")
+            if git_ev.get("files_modified"):
+                click.echo(f"    Modified : {git_ev['files_modified']}")
+            if git_ev.get("files_added"):
+                click.echo(f"    New files: {git_ev['files_added']}")
+            if git_ev.get("files_deleted"):
+                click.echo(f"    Deleted  : {git_ev['files_deleted']}")
+            if git_ev.get("diff_stat"):
+                for line in git_ev["diff_stat"].splitlines()[:5]:
+                    click.echo(f"    {line}")
+            if not git_ev.get("has_changes") and not git_ev.get("error"):
+                click.echo("    (no git changes detected)")
+            if git_ev.get("error"):
+                click.echo(f"    (git unavailable: {git_ev['error']})")
+
+            if ex_ev.get("commands_run"):
+                click.echo(f"  Commands (self-reported): {ex_ev['commands_run']}")
+            if ex_ev.get("test_results"):
+                click.echo(f"  Tests    (self-reported): {ex_ev['test_results']}")
+        else:
+            # Fallback to old attempt_N.md
+            old_attempt = round_dir / f"attempt_{i}.md"
+            if old_attempt.exists():
+                click.echo(old_attempt.read_text())
+                continue
+
+        # Review result
+        review_json = round_dir / f"review_attempt_{i}.json"
+        if review_json.exists():
+            rv = json.loads(review_json.read_text())
+            r_icon = "✓" if rv.get("result") == "PASS" else "✗"
+            click.echo(
+                f"\n  Review: {r_icon} {rv.get('result')} "
+                f"(confidence: {rv.get('confidence', '?')})"
+            )
+            click.echo(f"  Rationale: {rv.get('rationale', '')}")
+            if rv.get("unmet_criteria"):
+                click.echo("  Unmet criteria:")
+                for c in rv["unmet_criteria"]:
+                    click.echo(f"    - {c}")
+            if rv.get("required_fixes"):
+                click.echo("  Required fixes:")
+                for f in rv["required_fixes"]:
+                    click.echo(f"    - {f}")
+
+    # ── Audit summary ─────────────────────────────────────────────────────────
+    audit = round_dir / "audit.md"
+    if audit.exists():
+        click.echo(f"\n{'─'*50}")
+        click.echo(audit.read_text())
+
+
+def _display_round_from_db(project, round_id: str) -> None:
     with get_connection() as conn:
         row = conn.execute(
             "SELECT * FROM rounds WHERE id = ? AND project_id = ?",
@@ -69,9 +171,11 @@ def _show_round_detail(project, round_id: str) -> None:
     if not row:
         raise click.ClickException(f"Round '{round_id}' not found.")
 
-    click.echo(f"Round: {row['id']}")
-    click.echo(f"Status: {row['status']}")
+    click.echo(f"Round   : {row['id']}")
+    click.echo(f"Status  : {row['status']}")
     click.echo(f"Attempts: {row['attempt_count']}")
-    click.echo(f"Cost: ${row['cost_usd']:.4f}")
+    click.echo(f"Cost    : ${row['cost_usd']:.4f}")
+    if row["task_description"]:
+        click.echo(f"Task    : {row['task_description'][:100]}")
     if row["escalation_reason"]:
         click.echo(f"\nEscalation reason:\n{row['escalation_reason']}")

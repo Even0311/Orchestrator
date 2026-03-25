@@ -4,7 +4,9 @@ from orch.db.database import get_active_project, get_connection, init_db
 
 
 @click.command("run")
-def run_cmd():
+@click.option("--once", is_flag=True, default=False,
+              help="Run a single round then stop (useful for manual inspection).")
+def run_cmd(once: bool):
     """Start the automation loop for the active project."""
     init_db()
     project = get_active_project()
@@ -12,7 +14,7 @@ def run_cmd():
         raise click.ClickException("No active project. Use: orch switch <name>")
 
     from orch.engine.orchestrator import run_project
-    run_project(project)
+    run_project(project, run_once=once)
 
 
 @click.command("status")

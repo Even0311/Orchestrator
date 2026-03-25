@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 
-from orch.agents.context import load_project_context
+from orch.agents.context import load_designer_context
 from orch.agents.designer import DesignerAgent
 from orch.agents.executor import ExecutorAgent
 from orch.agents.reviewer import ReviewerAgent
@@ -26,8 +26,11 @@ class EscalationEvent:
     timestamp: str
 
 
-def run_project(project_row) -> None:
-    """Main loop: runs rounds for the active project until escalation or completion."""
+def run_project(project_row, run_once: bool = False) -> None:
+    """Main loop: runs rounds for the active project until escalation or completion.
+
+    If run_once=True, stop after the first round regardless of outcome.
+    """
     config = load_config()
     project_id = project_row["id"]
     project_name = project_row["name"]
@@ -50,6 +53,12 @@ def run_project(project_row) -> None:
     )
     reviewer = ReviewerAgent(reviewer_provider, state_dir)
 
+    # Bootstrap mode: generate initial phase plan if current_phase.md is uninitialized
+    if _needs_bootstrap(state_dir):
+        click.echo(f"[{_ts()}] Bootstrap mode: generating initial phase plan from vision.md...")
+        _run_bootstrap(designer, state_dir, config)
+        click.echo(f"[{_ts()}] Bootstrap complete. Proceeding to first round.\n")
+
     # Get or create active phase
     phase_id = _ensure_active_phase(project_id, state_dir)
 
@@ -62,7 +71,7 @@ def run_project(project_row) -> None:
 
         click.echo(f"[{_ts()}] Starting {round_id}...")
 
-        # Get next instruction from Designer via current_phase.md
+        # Get next instruction from current_phase.md
         instruction = _get_next_instruction(state_dir, round_id)
 
         # Run the round
@@ -98,6 +107,10 @@ def run_project(project_row) -> None:
                 _notify_phase_complete(project_name, phase_id, config)
                 break
 
+            if run_once:
+                click.echo(f"[{_ts()}] --once: stopping after round {round_id}.")
+                break
+
             round_number += 1
 
         else:
@@ -117,6 +130,90 @@ def run_project(project_row) -> None:
     click.echo(f"\n[{_ts()}] Orchestrator stopped. Use 'orch review' to see pending escalations.")
 
 
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+
+def _needs_bootstrap(state_dir: Path) -> bool:
+    """Return True if current_phase.md has not yet been initialized by Designer."""
+    phase_path = state_dir / "current_phase.md"
+    if not phase_path.exists():
+        return True
+    content = phase_path.read_text()
+    # Check for template placeholder markers
+    return "bootstrap_needed" in content or "待规划" in content
+
+
+def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: OrchestratorConfig) -> None:
+    """Generate initial current_phase.md and context/designer.md from vision.md."""
+    vision_path = state_dir / "vision.md"
+    if not vision_path.exists():
+        raise click.ClickException(
+            "vision.md not found. Edit the vision file before running:\n"
+            f"  {vision_path}"
+        )
+
+    vision_content = vision_path.read_text()
+    if "<!-- " in vision_content and len(vision_content) < 500:
+        # Template still has only placeholder comments — user hasn't filled it
+        raise click.ClickException(
+            "vision.md appears to still be the template. "
+            "Please fill in your project vision before running.\n"
+            f"  {vision_path}"
+        )
+
+    result = designer.bootstrap_phase(vision_content)
+
+    if result.current_phase_md:
+        (state_dir / "current_phase.md").write_text(result.current_phase_md)
+        click.echo(f"  ✓ current_phase.md generated")
+
+    if result.designer_context_md:
+        (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
+        click.echo(f"  ✓ context/designer.md generated")
+
+    # Record bootstrap cost
+    if result.cost_usd:
+        click.echo(f"  Bootstrap cost: ${result.cost_usd:.4f}")
+
+
+# ── Document update ───────────────────────────────────────────────────────────
+
+def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundResult) -> None:
+    """Trigger Designer to update current_phase.md, context/designer.md, and optionally decisions.md."""
+    last_attempt = result.attempts[-1]
+    ev = last_attempt.executor_evidence
+
+    summary = (
+        f"Round {result.round_id} completed successfully.\n"
+        f"Task: {result.task.title} — {result.task.objective}\n\n"
+        f"Execution summary: {ev.summary}\n"
+        f"Files changed: {', '.join(ev.files_changed) or '(none)'}\n"
+        f"Commands run: {', '.join(ev.commands_run) or '(none)'}\n"
+        f"Test results: {ev.test_results or '(not run)'}\n"
+        f"Unresolved issues: {', '.join(ev.unresolved_issues) or '(none)'}"
+    )
+
+    update = designer.update_documents(summary)
+
+    # decisions.md: APPEND only (never rewrite — it is the immutable human audit log)
+    if update.decisions_entry and update.decisions_entry.strip():
+        decisions_path = state_dir / "decisions.md"
+        existing = decisions_path.read_text() if decisions_path.exists() else ""
+        decisions_path.write_text(existing.rstrip() + "\n\n" + update.decisions_entry.strip() + "\n")
+        click.echo(f"  ✓ decisions.md updated (appended)")
+
+    # current_phase.md: full rewrite by Designer
+    if update.current_phase_md:
+        (state_dir / "current_phase.md").write_text(update.current_phase_md)
+        click.echo(f"  ✓ current_phase.md updated")
+
+    # context/designer.md: full rewrite (bounded working memory)
+    if update.designer_context_md:
+        (state_dir / "context" / "designer.md").write_text(update.designer_context_md)
+        click.echo(f"  ✓ context/designer.md updated")
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def _get_next_instruction(state_dir: Path, round_id: str) -> str:
     """Read the next instruction from current_phase.md."""
     phase_path = state_dir / "current_phase.md"
@@ -130,27 +227,12 @@ def _get_next_instruction(state_dir: Path, round_id: str) -> str:
     return f"Review the project vision and plan the next implementation task. Round ID: {round_id}"
 
 
-def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundResult) -> None:
-    """Trigger Designer to update decisions.md and current_phase.md after a round."""
-    last_attempt = result.attempts[-1]
-    summary = (
-        f"Round {result.round_id} completed successfully.\n"
-        f"Task: {result.task.description}\n"
-        f"Output: {last_attempt.executor_output[:500]}"
-    )
-    update = designer.update_documents(summary)
-
-    (state_dir / "decisions.md").write_text(update.decisions_md)
-    (state_dir / "current_phase.md").write_text(update.current_phase_md)
-
-
 def _is_phase_complete(state_dir: Path) -> bool:
     """Check if current_phase.md indicates all tasks are done."""
     phase_path = state_dir / "current_phase.md"
     if not phase_path.exists():
         return False
     content = phase_path.read_text().lower()
-    # Phase is complete if Designer wrote completion indicators
     return any(marker in content for marker in ("phase complete", "all tasks done", "phase finished"))
 
 
@@ -164,7 +246,6 @@ def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
         if row:
             return row["id"]
 
-        # Create initial phase
         phase_id = "phase-0001"
         conn.execute(
             "INSERT INTO phases (id, project_id, name, status, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -197,7 +278,7 @@ def _save_round(project_id: str, phase_id: str, round_id: str, result: RoundResu
                 round_id, project_id, phase_id, status,
                 len(result.attempts),
                 result.task.description,
-                last_attempt.executor_output if last_attempt else "",
+                last_attempt.executor_output[:500] if last_attempt else "",
                 "PASS" if result.final_passed else "FAIL",
                 result.escalation_reason or None,
                 result.total_cost_usd,

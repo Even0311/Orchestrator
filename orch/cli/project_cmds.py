@@ -62,15 +62,46 @@ DECISIONS_TEMPLATE = """\
 """
 
 CURRENT_PHASE_TEMPLATE = """\
-# 当前阶段
+# Phase — bootstrap_needed
 
-**阶段名称：** 待规划
-**阶段目标：** 待 Designer 规划后填写
+## Phase Goal
+<!-- bootstrap_needed — run `orch run` to auto-generate from vision.md -->
 
-## 进度
-- [ ] 待规划
+## In Scope
+-
 
-## 风险
+## Task Queue
+- [ ] bootstrap_needed
+
+## Completed Tasks
+(none)
+
+## Current Status
+bootstrap_needed
+
+## Risks / Blockers
+-
+
+## Next Recommended Task
+bootstrap_needed
+"""
+
+DESIGNER_CONTEXT_TEMPLATE = """\
+# Designer Context
+
+## Active Constraints
+-
+
+## Working Assumptions
+-
+
+## Architecture Snapshot
+-
+
+## Known Risks
+-
+
+## Open Questions For Human
 -
 """
 
@@ -123,7 +154,7 @@ def new_cmd(name: str, path: str):
 
     (state_dir / "decisions.md").write_text(DECISIONS_TEMPLATE.format(name=name))
     (state_dir / "current_phase.md").write_text(CURRENT_PHASE_TEMPLATE)
-    (state_dir / "context" / "designer.md").write_text("# Designer Context\n\n<!-- Auto-updated after each round -->\n")
+    (state_dir / "context" / "designer.md").write_text(DESIGNER_CONTEXT_TEMPLATE)
     (state_dir / "context" / "executor.md").write_text("# Executor Context\n\n<!-- Auto-updated after each round -->\n")
 
     create_project(project_id, name, str(codebase_path), str(state_dir))
