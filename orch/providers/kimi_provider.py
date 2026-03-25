@@ -7,7 +7,7 @@ _OUTPUT_PER_MTK = 3.00
 
 
 class KimiProvider(LLMProvider):
-    """Kimi K2.5 via OpenAI-compatible API."""
+    """Kimi K2.5 via OpenAI-compatible API (api.moonshot.cn)."""
 
     DEFAULT_BASE_URL = "https://api.moonshot.cn/v1"
     DEFAULT_MODEL = "kimi-k2.5"
@@ -25,18 +25,31 @@ class KimiProvider(LLMProvider):
     def model_name(self) -> str:
         return self._model
 
-    def complete(self, system_prompt: str, messages: list[dict]) -> LLMResponse:
+    def complete(self, system_prompt: str, messages: list[dict],
+                 cache_key: str | None = None) -> LLMResponse:
         full_messages = [{"role": "system", "content": system_prompt}] + messages
-        response = self._client.chat.completions.create(
+
+        kwargs: dict = dict(
             model=self._model,
             messages=full_messages,
+            max_completion_tokens=8192,
+            # kimi-k2.5: temperature/top_p/presence_penalty are fixed, must NOT be passed
         )
-        content = response.choices[0].message.content
+
+        # prompt_cache_key improves cache hit rate (e.g. pass round_id)
+        if cache_key:
+            kwargs["extra_body"] = {"prompt_cache_key": cache_key}
+
+        response = self._client.chat.completions.create(**kwargs)
+
+        content = response.choices[0].message.content or ""
         input_tokens = response.usage.prompt_tokens if response.usage else 0
         output_tokens = response.usage.completion_tokens if response.usage else 0
-        # Assume cache miss for cost estimate (conservative)
+
+        # Conservative cost estimate (assume cache miss)
         cost = (input_tokens / 1_000_000 * _INPUT_CACHE_MISS_PER_MTK +
                 output_tokens / 1_000_000 * _OUTPUT_PER_MTK)
+
         return LLMResponse(
             content=content,
             input_tokens=input_tokens,
