@@ -1,5 +1,6 @@
 import click
 
+from orch.config.settings import load_env
 from orch.db.database import init_db
 from orch.cli.project_cmds import new_cmd, list_cmd, switch_cmd, set_path_cmd
 from orch.cli.config_cmds import config_group
@@ -11,6 +12,7 @@ from orch.cli.log_cmds import log_cmd
 @click.group()
 def cli():
     """Orchestrator — AI-assisted development workflow manager."""
+    load_env()
     init_db()
 
 

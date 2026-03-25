@@ -1,0 +1,12 @@
+# ~/.orch/.env
+# Copy this to ~/.orch/.env and fill in your keys.
+
+# Required for designer/reviewer = opus
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Required for designer/reviewer = chatgpt
+OPENAI_API_KEY=sk-...
+
+# Required for designer/reviewer = minimax
+MINIMAX_API_KEY=...
+MINIMAX_BASE_URL=https://api.minimax.chat/v1

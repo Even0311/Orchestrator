@@ -1,4 +1,0 @@
-cli
-models
-services
-utils

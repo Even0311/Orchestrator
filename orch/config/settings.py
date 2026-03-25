@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 
 ORCH_HOME = Path.home() / ".orch"
 CONFIG_PATH = ORCH_HOME / "config.yaml"
+ENV_PATH = ORCH_HOME / ".env"
 
 VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax")
 VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax")
@@ -29,16 +31,16 @@ class AgentConfig(BaseModel):
     executor_model: str = "sonnet"
 
 
-class ApiKeys(BaseModel):
-    anthropic: Optional[str] = None
-    openai: Optional[str] = None
-    minimax: Optional[str] = None
-
-
 class OrchestratorConfig(BaseModel):
     agents: AgentConfig = AgentConfig()
-    api_keys: ApiKeys = ApiKeys()
     notification: NotificationConfig = NotificationConfig()
+
+
+def load_env() -> None:
+    """Load ~/.orch/.env into environment variables."""
+    from dotenv import load_dotenv
+    if ENV_PATH.exists():
+        load_dotenv(ENV_PATH, override=False)
 
 
 def load_config() -> OrchestratorConfig:
@@ -60,11 +62,25 @@ def save_config(config: OrchestratorConfig) -> None:
         )
 
 
+def get_api_key(provider: str) -> Optional[str]:
+    """Read API key from environment. Provider: anthropic | openai | minimax."""
+    env_map = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "minimax": "MINIMAX_API_KEY",
+    }
+    return os.environ.get(env_map[provider])
+
+
+def get_minimax_base_url() -> str:
+    return os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.chat/v1")
+
+
 def set_config_value(key: str, value: str) -> str:
     """Set a config value by dot-notation key. Returns a description of the change."""
     config = load_config()
-
     parts = key.split(".")
+
     if parts[0] == "agents":
         if parts[1] == "designer":
             if value not in VALID_DESIGNER_MODELS:
@@ -81,33 +97,27 @@ def set_config_value(key: str, value: str) -> str:
         else:
             raise ValueError(f"Unknown agents key: {parts[1]}")
 
-    elif parts[0] == "api_keys":
-        if parts[1] == "anthropic":
-            config.api_keys.anthropic = value
-        elif parts[1] == "openai":
-            config.api_keys.openai = value
-        elif parts[1] == "minimax":
-            config.api_keys.minimax = value
-        else:
-            raise ValueError(f"Unknown api_keys key: {parts[1]}")
-
     elif parts[0] == "notification" and parts[1] == "email":
         if config.notification.email is None:
-            from orch.config.settings import EmailConfig
             config.notification.email = EmailConfig()
         email = config.notification.email
-        if parts[2] == "smtp_host":
-            email.smtp_host = value
-        elif parts[2] == "smtp_port":
-            email.smtp_port = int(value)
-        elif parts[2] == "from_addr":
-            email.from_addr = value
-        elif parts[2] == "to_addr":
-            email.to_addr = value
-        else:
+        field_map = {
+            "smtp_host": "smtp_host",
+            "smtp_port": "smtp_port",
+            "from_addr": "from_addr",
+            "to_addr": "to_addr",
+        }
+        if parts[2] not in field_map:
             raise ValueError(f"Unknown notification.email key: {parts[2]}")
+        if parts[2] == "smtp_port":
+            setattr(email, parts[2], int(value))
+        else:
+            setattr(email, parts[2], value)
     else:
-        raise ValueError(f"Unknown config key: {key}")
+        raise ValueError(
+            f"Unknown config key: {key}\n"
+            f"  API keys are set in {ENV_PATH} — see 'orch config show'"
+        )
 
     save_config(config)
     return f"{key} = {value}"
