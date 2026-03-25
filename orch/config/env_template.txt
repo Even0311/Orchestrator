@@ -2,11 +2,15 @@
 # Copy this to ~/.orch/.env and fill in your keys.
 
 # Required for designer/reviewer = opus
-ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_KEY=
 
 # Required for designer/reviewer = chatgpt
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=
 
 # Required for designer/reviewer = minimax
-MINIMAX_API_KEY=...
+MINIMAX_API_KEY=
 MINIMAX_BASE_URL=https://api.minimax.chat/v1
+
+# Required for designer/reviewer = kimi
+KIMI_API_KEY=
+KIMI_BASE_URL=https://api.moonshot.cn/v1

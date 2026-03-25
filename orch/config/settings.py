@@ -9,8 +9,8 @@ ORCH_HOME = Path.home() / ".orch"
 CONFIG_PATH = ORCH_HOME / "config.yaml"
 ENV_PATH = ORCH_HOME / ".env"
 
-VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax")
-VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax")
+VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
+VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
 VALID_EXECUTOR_MODELS = ("sonnet", "opus", "haiku")
 
 
@@ -66,14 +66,19 @@ def get_api_key(provider: str) -> Optional[str]:
     """Read API key from environment. Provider: anthropic | openai | minimax."""
     env_map = {
         "anthropic": "ANTHROPIC_API_KEY",
-        "openai": "OPENAI_API_KEY",
-        "minimax": "MINIMAX_API_KEY",
+        "openai":    "OPENAI_API_KEY",
+        "minimax":   "MINIMAX_API_KEY",
+        "kimi":      "KIMI_API_KEY",
     }
     return os.environ.get(env_map[provider])
 
 
 def get_minimax_base_url() -> str:
     return os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.chat/v1")
+
+
+def get_kimi_base_url() -> str:
+    return os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
 
 
 def set_config_value(key: str, value: str) -> str:

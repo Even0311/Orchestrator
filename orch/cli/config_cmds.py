@@ -59,6 +59,8 @@ def config_show():
         "OPENAI_API_KEY":    "required for designer/reviewer = chatgpt",
         "MINIMAX_API_KEY":   "required for designer/reviewer = minimax",
         "MINIMAX_BASE_URL":  "optional, default: https://api.minimax.chat/v1",
+        "KIMI_API_KEY":      "required for designer/reviewer = kimi",
+        "KIMI_BASE_URL":     "optional, default: https://api.moonshot.cn/v1",
     }
     for var, note in env_vars.items():
         val = os.environ.get(var)

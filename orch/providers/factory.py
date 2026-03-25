@@ -1,5 +1,5 @@
 from orch.providers.base import LLMProvider
-from orch.config.settings import OrchestratorConfig, get_api_key, get_minimax_base_url
+from orch.config.settings import OrchestratorConfig, get_api_key, get_minimax_base_url, get_kimi_base_url
 
 
 def get_provider(role: str, config: OrchestratorConfig) -> LLMProvider:
@@ -32,6 +32,15 @@ def get_provider(role: str, config: OrchestratorConfig) -> LLMProvider:
             )
         from orch.providers.minimax_provider import MiniMaxProvider
         return MiniMaxProvider(api_key=api_key, base_url=get_minimax_base_url())
+
+    elif model_key == "kimi":
+        api_key = get_api_key("kimi")
+        if not api_key:
+            raise ValueError(
+                "KIMI_API_KEY not set. Add it to ~/.orch/.env"
+            )
+        from orch.providers.kimi_provider import KimiProvider
+        return KimiProvider(api_key=api_key, base_url=get_kimi_base_url())
 
     else:
         raise ValueError(f"Unknown model key '{model_key}' for role '{role}'")
