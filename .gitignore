@@ -5,3 +5,4 @@ __pycache__/
 .orch/
 dist/
 build/
+.env

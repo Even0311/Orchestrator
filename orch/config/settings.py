@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 ORCH_HOME = Path.home() / ".orch"
 CONFIG_PATH = ORCH_HOME / "config.yaml"
-ENV_PATH = ORCH_HOME / ".env"
+# .env lives in the orchestrator project root (next to pyproject.toml)
+ENV_PATH = Path(__file__).parent.parent.parent / ".env"
 
 VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
 VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
