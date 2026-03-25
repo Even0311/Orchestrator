@@ -7,11 +7,12 @@ from pydantic import BaseModel
 
 ORCH_HOME = Path.home() / ".orch"
 CONFIG_PATH = ORCH_HOME / "config.yaml"
-# Orchestrator project root (where pyproject.toml lives)
-ORCH_ROOT = Path(__file__).parent.parent.parent
-# .env and projects/ live in the orchestrator project root (git tracked)
-ENV_PATH = ORCH_ROOT / ".env"
-PROJECTS_DIR = ORCH_ROOT / "projects"
+
+# Orchestrator repo root (next to pyproject.toml)
+REPO_ROOT = Path(__file__).parent.parent.parent
+ENV_PATH = REPO_ROOT / ".env"
+# Project state lives here — git tracked alongside tool code
+PROJECTS_DIR = REPO_ROOT / "projects"
 
 VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
 VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax", "kimi")

@@ -13,6 +13,7 @@ from orch.db.database import (
     update_project_path,
 )
 from orch.config.settings import PROJECTS_DIR
+from orch.utils.git_ops import is_git_repo, git_init
 
 VISION_TEMPLATE = """\
 # {name} — Vision
@@ -126,6 +127,12 @@ def new_cmd(name: str, path: str):
     (state_dir / "context" / "executor.md").write_text("# Executor Context\n\n<!-- Auto-updated after each round -->\n")
 
     create_project(project_id, name, str(codebase_path), str(state_dir))
+
+    # Ensure target project is a git repo
+    if not is_git_repo(codebase_path):
+        click.echo(f"  Initialising git repo in {codebase_path}...")
+        git_init(codebase_path)
+        click.echo(f"  ✓ git init done")
 
     # Auto-activate if first project
     all_projects = get_all_projects()

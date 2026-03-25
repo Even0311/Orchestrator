@@ -7,6 +7,7 @@ from orch.cli.config_cmds import config_group
 from orch.cli.run_cmds import run_cmd, status_cmd
 from orch.cli.review_cmds import review_cmd, decide_cmd
 from orch.cli.log_cmds import log_cmd
+from orch.cli.rollback_cmd import rollback_cmd
 
 
 @click.group()
@@ -26,3 +27,4 @@ cli.add_command(status_cmd)
 cli.add_command(review_cmd)
 cli.add_command(decide_cmd)
 cli.add_command(log_cmd)
+cli.add_command(rollback_cmd)

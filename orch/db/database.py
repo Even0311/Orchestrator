@@ -18,12 +18,12 @@ def init_db() -> None:
     with get_connection() as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS projects (
-                id          TEXT PRIMARY KEY,
-                name        TEXT UNIQUE NOT NULL,
+                id            TEXT PRIMARY KEY,
+                name          TEXT UNIQUE NOT NULL,
                 codebase_path TEXT NOT NULL,
-                state_dir   TEXT NOT NULL,
-                is_active   INTEGER DEFAULT 0,
-                created_at  TEXT NOT NULL
+                state_dir     TEXT NOT NULL,
+                is_active     INTEGER DEFAULT 0,
+                created_at    TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS phases (
@@ -37,22 +37,30 @@ def init_db() -> None:
             );
 
             CREATE TABLE IF NOT EXISTS rounds (
-                id                  TEXT PRIMARY KEY,
-                project_id          TEXT NOT NULL,
-                phase_id            TEXT,
-                status              TEXT NOT NULL DEFAULT 'pending',
-                attempt_count       INTEGER DEFAULT 0,
-                task_description    TEXT,
-                executor_result     TEXT,
-                reviewer_verdict    TEXT,
-                escalation_reason   TEXT,
-                cost_usd            REAL DEFAULT 0,
-                created_at          TEXT NOT NULL,
-                updated_at          TEXT,
+                id                   TEXT PRIMARY KEY,
+                project_id           TEXT NOT NULL,
+                phase_id             TEXT,
+                status               TEXT NOT NULL DEFAULT 'pending',
+                attempt_count        INTEGER DEFAULT 0,
+                task_description     TEXT,
+                executor_result      TEXT,
+                reviewer_verdict     TEXT,
+                escalation_reason    TEXT,
+                cost_usd             REAL DEFAULT 0,
+                orchestrator_commit  TEXT,
+                target_commit        TEXT,
+                created_at           TEXT NOT NULL,
+                updated_at           TEXT,
                 FOREIGN KEY (project_id) REFERENCES projects(id),
-                FOREIGN KEY (phase_id) REFERENCES phases(id)
+                FOREIGN KEY (phase_id)   REFERENCES phases(id)
             );
         """)
+        # Migrate: add commit columns if upgrading from older schema
+        for col in ("orchestrator_commit", "target_commit"):
+            try:
+                conn.execute(f"ALTER TABLE rounds ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
 
 def now_iso() -> str:
@@ -95,4 +103,26 @@ def update_project_path(project_id: str, new_path: str) -> None:
         conn.execute(
             "UPDATE projects SET codebase_path = ? WHERE id = ?",
             (new_path, project_id),
+        )
+
+
+def delete_project(project_id: str) -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM rounds WHERE project_id = ?", (project_id,))
+        conn.execute("DELETE FROM phases WHERE project_id = ?", (project_id,))
+        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+
+# ---------- Round operations ----------
+
+def get_round(round_id: str) -> sqlite3.Row | None:
+    with get_connection() as conn:
+        return conn.execute("SELECT * FROM rounds WHERE id = ?", (round_id,)).fetchone()
+
+
+def update_round_commits(round_id: str, orchestrator_commit: str, target_commit: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE rounds SET orchestrator_commit = ?, target_commit = ?, updated_at = ? WHERE id = ?",
+            (orchestrator_commit, target_commit, now_iso(), round_id),
         )

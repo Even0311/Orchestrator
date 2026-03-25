@@ -10,10 +10,11 @@ from orch.agents.context import load_project_context
 from orch.agents.designer import DesignerAgent
 from orch.agents.executor import ExecutorAgent
 from orch.agents.reviewer import ReviewerAgent
-from orch.config.settings import OrchestratorConfig, load_config
-from orch.db.database import get_connection, now_iso
+from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT
+from orch.db.database import get_connection, now_iso, update_round_commits
 from orch.engine.round_runner import RoundResult, run_round
 from orch.providers.factory import get_provider
+from orch.utils.git_ops import commit_projects_dir, commit_all, GitError
 
 
 @dataclass
@@ -83,6 +84,11 @@ def run_project(project_row) -> None:
             # Update project documents after successful round
             click.echo(f"[{_ts()}] Updating project documents...")
             _update_documents(designer, state_dir, result)
+
+            # Commit both repos
+            commit_msg = f"[orch] {round_id}: {result.task.description[:60]}"
+            orch_hash, target_hash = _commit_both(codebase_path, commit_msg, round_id)
+            update_round_commits(round_id, orch_hash, target_hash)
 
             # Check if phase is complete
             if _is_phase_complete(state_dir):
@@ -279,6 +285,26 @@ def _send_email(smtp_host: str, smtp_port: int, from_addr: str, to_addr: str,
     with smtplib.SMTP(smtp_host, smtp_port) as server:
         server.starttls()
         server.sendmail(from_addr, [to_addr], msg.as_string())
+
+
+def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str, str]:
+    """Commit orchestrator projects/ dir and target project. Returns (orch_hash, target_hash)."""
+    try:
+        orch_hash = commit_projects_dir(REPO_ROOT, message)
+    except GitError as e:
+        click.echo(f"  ⚠ Orchestrator commit failed: {e}", err=True)
+        orch_hash = ""
+
+    try:
+        target_hash = commit_all(codebase_path, message)
+    except GitError as e:
+        click.echo(f"  ⚠ Target project commit failed: {e}", err=True)
+        target_hash = ""
+
+    if orch_hash and target_hash:
+        click.echo(f"  ✓ Committed — orch:{orch_hash[:7]}  target:{target_hash[:7]}")
+
+    return orch_hash, target_hash
 
 
 def _ts() -> str:
