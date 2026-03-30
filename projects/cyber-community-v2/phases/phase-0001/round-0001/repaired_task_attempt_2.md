@@ -1,0 +1,47 @@
+# Task: Compile continuity status summary document — with git evidence verification
+
+**ID:** round-0001  
+**Objective:** Create a structured markdown document at docs/continuity_status_phase25.md that accurately summarizes the current backbone continuity state, explicitly categorizing T1/T2/T4 paths as active/inactive/partially active, documenting the 60-day audit findings (18 residuals: 12/6/0 distribution), and distinguishing between established contracts and temporary phase calibrations. The file must be explicitly git-added and verifiable via git status/diff commands.
+
+**Exact Scope:** IN: Create new markdown file at `docs/continuity_status_phase25.md` containing: (1) 'Active Paths' section listing T1/public and T2/influencer continuity, (2) 'Inactive Paths' section listing T4/relational continuity with rationale referencing missing negative base signal, (3) 'Partially Active' section for world carryover distribution, (4) '60-Day Audit Results' section with metrics (18 total, 12/6/0 distribution, 10% selection rate, 100% effectiveness), (5) 'Contract Classification' section distinguishing 'Established Contracts' from 'Phase Calibrations'. Must execute `git add` on the file so it appears as specific path in git status. OUT: No modifications to Python code, no changes to existing bridge/residual logic, no updates to current_phase.md, no new T4 activation strategies.
+
+## Likely Files
+- docs/continuity_status_phase25.md
+
+## Constraints
+- Must accurately reflect the 60-day audit data (18 total, 12 public / 6 influencer / 0 relational)
+- Must explicitly state T4 relational continuity is inactive due to missing negative base signal in builder, not gate tuning
+- Must not declare partially active items as fully established
+- Document must use headers for machine parseability by future orchestrator rounds
+- Must run all verification_steps before reporting done
+- File must be explicitly git-added and appear in git status as specific filename 'docs/continuity_status_phase25.md', not just parent directory 'docs/'
+- Must provide git diff --cached output showing file content to verify markdown headers and sections
+
+## Acceptance Criteria
+- File docs/continuity_status_phase25.md exists and contains at least 5 markdown headers (Active Paths, Inactive Paths, Partially Active, 60-Day Audit Results, Contract Classification)
+- Document explicitly lists 'T1/public' and 'T2/influencer' under active continuity paths
+- Document explicitly lists 'T4/relational' under inactive paths with explanation referencing missing negative base signal
+- Document contains the specific audit metrics: 18 total residuals, 12/6/0 distribution, 10% selection rate, 100% effectiveness rate
+- Document classifies 'cross-day residual persistence' and 'bridge structure' as established contracts, and 'residual creation gate tuning' as phase calibration
+- NEW: Git status --porcelain shows 'A docs/continuity_status_phase25.md' (specific file path staged, not just directory)
+- NEW: Git diff --cached output provided showing markdown headers and content sections
+
+## Verification Steps
+- test -f docs/continuity_status_phase25.md || exit 1
+- git add docs/continuity_status_phase25.md
+- git status --porcelain | grep -E '^A.*docs/continuity_status_phase25.md' || (echo 'ERROR: File not git-added as specific path' && exit 1)
+- git diff --cached --no-color docs/continuity_status_phase25.md
+- grep -c '^##' docs/continuity_status_phase25.md | awk '{exit ($1 >= 5 ? 0 : 1)}'
+- grep -i 'active.*paths\|active paths' docs/continuity_status_phase25.md | head -1
+- grep -iE 'T1.*public.*active|public.*continuity' docs/continuity_status_phase25.md | head -1
+- grep -iE 'T2.*influencer.*active|influencer.*continuity' docs/continuity_status_phase25.md | head -1
+- grep -iE 'T4.*inactive|relational.*inactive' docs/continuity_status_phase25.md | grep -i 'negative.*base.*signal'
+- grep -E '18.*residual|12.*/.*/.*0|10%.*selection.*100%.*effectiveness' docs/continuity_status_phase25.md
+- grep -iE 'established.*contract|phase.*calibration' docs/continuity_status_phase25.md | head -5
+
+## Non-Goals
+- Do not modify Python source code
+- Do not change residual gate parameters
+- Do not update current_phase.md or context/designer.md
+- Do not propose T4 activation patches or adversarial branches
+- Do not expand scope to T3/T5/T6/T7/T8 bridges

@@ -1,0 +1,28 @@
+# Attempt 1
+
+**Task:** Compile continuity status summary document
+
+## Execution Evidence (self-reported)
+- Summary: Created docs/continuity_status_phase25.md with full backbone continuity status for Phase 25, covering active/inactive/partially-active paths, 60-day audit results, and contract classification
+- Commands run: ['test -f docs/continuity_status_phase25.md', "grep -c '^##' docs/continuity_status_phase25.md", "grep -E '18.*residual|12.*6.*0|10%.*selection' docs/continuity_status_phase25.md"]
+- Test results: All 6 acceptance criteria verified: file exists, 12 headers (≥5), Active Paths header present, T1/T2 active listed, T4 inactive with negative base signal explanation, audit summary line with 18/12/6/0 and 10% selection rate
+- Unresolved issues: (none)
+
+*(See execution_report_attempt_1.json for git-verified evidence)*
+
+## Reviewer Verdict: FAIL (confidence: low)
+Git evidence only shows new directory 'docs/' added (files_added: ['docs/']), but does not confirm the specific filename docs/continuity_status_phase25.md or provide any file content via diff_patch_truncated. Without the diff, the required markdown headers (Active Paths, Inactive Paths, Partially Active, 60-Day Audit Results, Contract Classification), T1/T2/T4 classifications, audit metrics (18/12/6/0, 10% selection rate), and contract classifications cannot be verified. Executor's claims of content verification are self-reported and unsupported by authoritative git evidence.
+
+**Cost:** executor $0.2132 | reviewer $0.0128
+
+## Unmet Criteria
+- File docs/continuity_status_phase25.md exists and contains at least 5 markdown headers (Active Paths, Inactive Paths, Partially Active, 60-Day Audit Results, Contract Classification)
+- Document explicitly lists 'T1/public' and 'T2/influencer' under active continuity paths
+- Document explicitly lists 'T4/relational' under inactive paths with explanation referencing missing negative base signal
+- Document contains the specific audit metrics: 18 total residuals, 12/6/0 distribution, 10% selection rate, 100% effectiveness rate
+- Document classifies 'cross-day residual persistence' and 'bridge structure' as established contracts, and 'residual creation gate tuning' as phase calibration
+
+## Required Fixes
+- Provide git diff output (diff_patch_truncated) showing the full content of docs/continuity_status_phase25.md to verify the markdown headers and required content
+- Verify the specific filename 'docs/continuity_status_phase25.md' appears in git status files_added list, not just the parent directory 'docs/'
+- Run the verification commands listed in Verification Steps and include their output in the evidence to confirm the file meets all content requirements

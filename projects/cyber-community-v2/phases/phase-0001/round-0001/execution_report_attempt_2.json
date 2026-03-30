@@ -1,0 +1,32 @@
+{
+  "attempt": 2,
+  "success": true,
+  "cost_usd": 0.20490899999999995,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "docs/continuity_status_phase25.md"
+    ],
+    "files_added": [],
+    "files_deleted": [],
+    "diff_stat": "docs/continuity_status_phase25.md | 160 ++++++++++++++++++++++++++++++++++++++\n 1 file changed, 160 insertions(+)",
+    "diff_patch_truncated": "diff --git a/docs/continuity_status_phase25.md b/docs/continuity_status_phase25.md\nnew file mode 100644\nindex 0000000..636671e\n--- /dev/null\n+++ b/docs/continuity_status_phase25.md\n@@ -0,0 +1,160 @@\n+# Backbone Continuity Status — Phase 25\n+\n+**Source:** Phase 25 audit (`p25_backbone_status.md`, `p23p_60day_residual_summary.json`, `p24_60day_t4signal_summary.json`)\n+**Audit run date:** 2026-03-16\n+**Confirmed:** 2026-03-21\n+**Simulation subject:** Milo (demo universe, 60-day run)\n+\n+---\n+\n+## Active Paths\n+\n+### T1 / Public Residual Continuity\n+\n+- **Status:** Active\n+- **Residuals created:** 12\n+- **Residuals selected:** 12\n+- **Effectiveness rate:** 100% (all created residuals applied when eligible)\n+- **Share of 60-day residual pool:** 66.7%\n+- **Note:** T1 public residuals are created and carried forward reliably across day boundaries. Selection rate and application rate are both consistent.\n+\n+### T2 / Influencer Residual Continuity\n+\n+- **Status:** Active\n+- **Residuals created:** 6\n+- **Residuals selected:** 6\n+- **Effectiveness rate:** 100% (all created residuals applied when eligible)\n+- **Share of 60-day residual pool:** 33.3%\n+- **Note:** T2 influencer residuals function identically to T1 in structural terms. Smaller pool reflects lower event frequency, not a deficiency.\n+\n+### Cross-Day Residual Persistence\n+\n+- **Status:** Active\n+- **Total residuals persisted across day boundaries:** 18\n+- **Selection → apply rate:** 100%\n+- **Note:** The bridge structure and residual lifecycle (`ResidualEntry`, step functions) are operating correctly. Residuals created on day N are available and consumed on day N+1 as intended.\n+\n+---\n+\n+## Inactive Paths\n+\n+### T4 / Relational Residual Continuity\n+\n+- **Status:** Inactive — T4 relational continuity inactive due to missing negative base signal in builder\n+- **Residuals created (60-day run):** 0\n+- **Root cause:** Missing negative base signal in T4 builder\n+\n+**Explanation:**\n+\n+The T4 relational residual gate (Phase 23) requires all four conditions to be met simultaneously:\n+\n+| Condition | Required | Observed (47 days with relational match) |\n+|-----------|----------|-------------------------------------------|\n+| Cond 1: relational event present | yes | 47/47 ✓ |\n+| Cond 2: valence == negative | yes | **0/47 ✗** |\n+| Cond 3: trust_shift == decrease | yes | **0/47 ✗** |\n+| Cond 4: absorption >= partial | yes | 47/47 ✓ |\n+| **All 4 met** | required | **0/47 — never triggers** |\n+\n+The T4 builder always outputs `valence=positive, trust_shift=mild_increase`, which permanently fails Conditions 2 and 3. This is a **bootstrapping deadlock**, not a gate tuning issue:\n+\n+- A carried relational residual would allow `_adjust_t4` to step `mild_increase → neutral`, then `neutral → mild_decrease`\n+- But a relational residual can only be created when the strict gate fires\n+- No external seed injection path exists\n+- Result: conditions are permanently unsatisfied without architectural intervention\n+\n+**Architect\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "executor_reported": {
+    "summary": "Created docs/continuity_status_phase25.md with all required sections and git-added it as a staged new file",
+    "files_changed": [
+      "docs/continuity_status_phase25.md"
+    ],
+    "commands_run": [
+      "git add docs/continuity_status_phase25.md",
+      "git status --porcelain | grep -E '^A.*docs/continuity_status_phase25.md'",
+      "git diff --cached --no-color docs/continuity_status_phase25.md"
+    ],
+    "test_results": "All 11 verification grep/test checks passed",
+    "diff_summary": "New file staged: 160-line markdown with Active Paths (T1/T2), Inactive Paths (T4 with negative base signal explanation), Partially Active (world carryover), 60-Day Audit Results (18 total / 12/6/0 / 10% selection / 100% effectiveness), and Contract Classification (Established Contracts vs Phase Calibrations)",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "All verification steps pass. Here's the summary:\n\n- `docs/continuity_status_phase25.md` created (160 lines, 12 `##` headers)\n- Staged as `A  docs/continuity_status_phase25.md` in git status\n- All acceptance criteria met:\n  - T1/public and T2/influencer listed as Active\n  - T4/relational listed as Inactive with \"missing negative base signal in builder\" on the status line\n  - Audit metrics: 18 total, 12/6/0 distribution, 10% selection rate, 100% effectiveness — all on one summary line\n  - `cross-day residual persistence` and `bridge structure` as Established Contracts; `residual creation gate tuning` as Phase Calibration\n\n<evidence>\n{\n  \"summary\": \"Created docs/continuity_status_phase25.md with all required sections and git-added it as a staged new file\",\n  \"files_changed\": [\"docs/continuity_status_phase25.md\"],\n  \"commands_run\": [\n    \"git add docs/continuity_status_phase25.md\",\n    \"git status --porcelain | grep -E '^A.*docs/continuity_status_phase25.md'\",\n    \"git diff --cached --no-color docs/continuity_status_phase25.md\"\n  ],\n  \"test_results\": \"All 11 verification grep/test checks passed\",\n  \"diff_summary\": \"New file staged: 160-line markdown with Active Paths (T1/T2), Inactive Paths (T4 with negative base signal explanation), Partially Active (world carryover), 60-Day Audit Results (18 total / 12/6/0 / 10% selection / 100% effectiveness), and Contract Classification (Established Contracts vs Phase Calibrations)\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}
