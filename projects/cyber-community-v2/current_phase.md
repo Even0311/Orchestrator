@@ -42,21 +42,6 @@
 
 ## Task Queue
 
-### P25-T1 — 整理当前 continuity 状态结论
-输出一份准确、短而完整的当前 continuity 状态总结，至少明确：
-- 哪些 continuity path 已 active
-- 哪些仍 inactive
-- 哪些属于 partially active
-- 当前 60-day 审计实际证明了什么
-- 当前哪些内容是 established contract，哪些只是阶段性校准结果
-
-目标产物：
-- 可直接被 orchestrator / designer 消费的当前阶段状态总结
-
-Priority: High
-
----
-
 ### P25-T2 — 固化 T4 冻结边界
 明确记录当前 T4 relational residual activation 的冻结边界：
 - strict negative T4 residual activation 在当前 deterministic backbone 下结构性不可达
@@ -117,36 +102,13 @@ Priority: High
 - Phase 23 patch 后已确认 strict T4 relational residual activation 重新回到 0
 - Phase 24 audit 已确认：当前 deterministic T4 builder 结构上没有 negative base signal 分支
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
+- [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建，明确分类 T1/T2 active、T4 inactive，60-day 审计数据（18 total, 12/6/0 split），区分 contract 与 calibration artifacts
 
 ---
 
 ## Current Status
 
-当前系统最准确的状态是：
-
-- T1/public residual continuity：**active**
-- T2/influencer residual continuity：**active**
-- cross-day residual persistence：**active**
-- world carryover long-horizon distribution：**partially active，但已可工作**
-- T4/relational residual continuity：**inactive**
-
-当前 backbone 已经是一个**可工作的中间态**：
-
-- residual continuity 已真实激活
-- 但主要集中在 T1/T2
-- 当前不具备真实 relational negative carry
-
-当前 60-day 事实快照：
-
-- total residuals created: 18
-- public / influencer / relational: 12 / 6 / 0
-- T1 selections: 12
-- T2 selections: 6
-- T4 selections: 0
-- days with adjustment: 12 / 60
-- days with no adjustment: 48 / 60
-- selection rate: 10%
-- effectiveness rate: 100%
+P25-T1 已完成 — Phase 25 continuity 状态总结文档已创建并验证，准确分类 T1/T2 为 active、T4 为 inactive，区分 established contracts 与 calibration artifacts，为阶段收口提供基础材料。
 
 ---
 
@@ -184,15 +146,12 @@ Priority: High
 
 ## Next Recommended Task
 
-### P25-T1 — 整理当前 continuity 状态结论
+### P25-T2 — 固化 T4 冻结边界
 
 这是当前最推荐的下一步，因为：
 
-- 当前最需要的不是再 patch 代码
-- 而是先把“已经成立什么、冻结什么、延后什么”明确写死
-- 只有这个边界稳定后，下一阶段设计问题才不会重新发散或跑偏
+- P25-T1 已完成状态文档，现在需要明确记录 T4 的冻结边界
+- 必须明确记录 strict negative T4 residual activation 在当前 deterministic backbone 下结构性不可达
+- 防止后续 round 重新误把 T4 当成可 patch 目标
 
-这一任务也最适合作为 orchestrator 的下一轮起点，因为它：
-- 范围清晰
-- 不依赖新实现
-- 可以直接支撑后续 designer / reviewer 工作
+这一任务范围清晰，不涉及实现改动，只涉及边界文档化，适合作为 orchestrator 下一轮起点。
