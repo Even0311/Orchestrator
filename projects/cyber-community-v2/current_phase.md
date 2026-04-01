@@ -56,7 +56,7 @@ Priority: High
 
 ---
 
-### P25-T3 — 对齐下一阶段入口与已批准 roadmap
+### [x] P25-T3 — 对齐下一阶段入口与已批准 roadmap
 确保 Phase 25 closure 材料与 roadmap.md 的 Phase 26B 入口对齐。
 
 具体内容：
@@ -107,12 +107,13 @@ Priority: High
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
 - [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建，明确分类 T1/T2 为 active、T4 为 inactive，60-day 审计数据（18 total, 12/6/0 split），区分 contract 与 calibration artifacts
 - [x] P25-T2 — 固化 T4 冻结边界：docs/phase25_t4_freeze_boundary.md 已创建，明确记录 strict negative activation 在当前 deterministic backbone 下结构性不可达，riskScore-only adversarial branch 已被否决，same-target carry path 结构性存在但行为不活跃
+- [x] P25-T3 — 对齐下一阶段入口与已批准 roadmap：docs/phase25_roadmap_alignment.md 已创建，文档化 26A/26B 关系（inert schema seam vs activation slice），明确区分旧 T4 freeze（deterministic path 结构性不可达）与 roadmap 批准的 26B reopening（通过 social event），确认 Phase 25 closure 为进入 26B 的前置条件
 
 ---
 
 ## Current Status
 
-P25-T2 已完成 — T4 关系残余冻结边界文档已创建，明确记录 strict negative activation 在当前 deterministic backbone 下结构性不可达，riskScore-only adversarial branch 已被否决，same-target carry path 结构性存在但行为不活跃，防止后续误将 T4 视为可 patch 目标。
+P25-T3 已完成 — Phase 25 closure 材料已与 roadmap.md Phase 26B 入口对齐，26A/26B 关系已文档化（inert schema seam vs activation slice），T4 freeze 与 26B reopening 的边界条件已明确区分。当前准备进入最后清理任务 P25-T4。
 
 ---
 
@@ -151,13 +152,13 @@ P25-T2 已完成 — T4 关系残余冻结边界文档已创建，明确记录 s
 
 ## Next Recommended Task
 
-### P25-T3 — 对齐下一阶段入口与已批准 roadmap
+### P25-T4 — 清理为 orchestrator round-ready 的阶段材料
 
 这是当前最推荐的下一步，因为：
 
-- P25-T1 和 P25-T2 已完成状态与边界文档
-- 现在需要确保 Phase 25 closure 材料与 roadmap.md 的 Phase 26B 入口正确对齐
-- 必须明确区分旧 T4 freeze（deterministic path 下结构性不可达）与 roadmap 批准的 26B reopening（通过 social event）
-- 确保下一阶段指向与 roadmap 完全一致，防止方向漂移
+- P25-T1、P25-T2、P25-T3 已完成所有状态文档化与 roadmap 对齐工作
+- 现在需要对阶段材料进行最终清理，确保适合结构化 round workflow
+- 确保 Task Queue 粒度适合拆 round，Current Status / Risks 足够清晰
+- 完成此任务后 Phase 25 即可正式关闭，进入 roadmap 批准的 Phase 26B
 
-这一任务范围清晰，不涉及实现改动，只涉及文档对齐与阶段过渡准备，适合作为 orchestrator 下一轮起点。
+这一任务是 Phase 25 的最后收口步骤，完成后即可启动 Phase 26B（Minimal T4 Event-Aware Activation）。
