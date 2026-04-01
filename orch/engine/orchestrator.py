@@ -70,7 +70,8 @@ def run_project(project_row, run_once: bool = False) -> None:
         round_id = f"round-{round_number:04d}"
         round_dir = state_dir / "phases" / phase_id / round_id
 
-        click.echo(f"[{_ts()}] Starting {round_id}...")
+        click.echo(f"\n{'─'*60}")
+        click.echo(f"[{_ts()}] Starting {round_id}")
 
         # Update CLAUDE.md in target project for Claude Code native context
         try:
@@ -109,10 +110,11 @@ def run_project(project_row, run_once: bool = False) -> None:
             click.echo(f"  ⚠ .orch/ cleanup failed: {e}", err=True)
 
         if result.final_passed:
-            click.echo(f"[{_ts()}] {round_id} PASSED (cost: ${result.total_cost_usd:.4f})")
+            click.echo(f"\n  [{_ts()}] {click.style(f'{round_id} PASSED', fg='green', bold=True)} "
+                       f"({len(result.attempts)} attempt(s), ${result.total_cost_usd:.4f})")
 
             # Update project documents after successful round
-            click.echo(f"[{_ts()}] Updating project documents...")
+            click.echo(f"  [{_ts()}] Updating project documents...")
             _update_documents(designer, state_dir, result)
 
             # Commit both repos

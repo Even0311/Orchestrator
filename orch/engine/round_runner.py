@@ -1,15 +1,29 @@
 """Executes a single Round: Designer → Executor → [Designer repair →] Executor → Reviewer."""
 import json
 import shutil
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+import click
 
 from orch.agents.designer import DesignerAgent, TaskDefinition
 from orch.agents.executor import ExecutorAgent, ExecutorEvidence, ExecutorResult
 from orch.agents.reviewer import ReviewerAgent, ReviewResult
 from orch.utils.evidence_collector import GitEvidence
 from orch.utils.verification_runner import VerificationResults, run_verification_steps
+
+
+def _ts() -> str:
+    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+
+
+def _elapsed(start: float) -> str:
+    secs = time.time() - start
+    if secs < 60:
+        return f"{secs:.0f}s"
+    return f"{secs / 60:.1f}m"
 
 
 @dataclass
@@ -83,7 +97,12 @@ def run_round(
     round_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Designer plans the initial task
+    click.echo(f"  [{_ts()}] Designer planning task...", nl=False)
+    t0 = time.time()
     task = designer.plan_next_task(instruction, round_id)
+    click.echo(f" done ({_elapsed(t0)}, ${task.cost_usd:.4f})")
+    click.echo(f"           Task: {task.title}")
+
     result = RoundResult(
         round_id=round_id,
         task=task,
@@ -97,20 +116,39 @@ def run_round(
 
     # Step 2: Executor + Reviewer loop (up to max_attempts)
     for attempt_num in range(1, max_attempts + 1):
+        attempt_label = f"Attempt {attempt_num}/{max_attempts}"
+        click.echo(f"\n  [{_ts()}] --- {attempt_label} ---")
+
         # Inject task as file in target project so Claude Code can re-read mid-work
         if codebase_path:
             _inject_task_file(codebase_path, current_task)
 
+        click.echo(f"  [{_ts()}] Executor running...", nl=False)
+        t0 = time.time()
         prompt = _build_executor_prompt(current_task, use_file_ref=codebase_path is not None)
         exec_result = executor.run(prompt)
+        click.echo(f" done ({_elapsed(t0)}, ${exec_result.cost_usd:.4f})")
+
+        if exec_result.is_token_exhausted:
+            click.echo(f"           !! Token limit hit — executor may be incomplete")
+        if exec_result.evidence.summary:
+            click.echo(f"           Summary: {exec_result.evidence.summary[:120]}")
 
         # Run mechanical verification (Designer's verification_steps)
         verification = None
         if codebase_path and current_task.verification_steps:
+            click.echo(f"  [{_ts()}] Mechanical verification ({len(current_task.verification_steps)} steps)...", nl=False)
+            t0 = time.time()
             verification = run_verification_steps(
                 steps=current_task.verification_steps,
                 cwd=codebase_path,
             )
+            tag = click.style("ALL PASS", fg="green") if verification.all_passed else click.style(verification.summary, fg="red")
+            click.echo(f" {tag} ({_elapsed(t0)})")
+            if not verification.all_passed:
+                for s in verification.steps:
+                    if not s.passed:
+                        click.echo(f"           FAIL: {s.command}")
 
         # Save execution report (git-verified + mechanical verification + self-reported)
         _write_execution_report(
@@ -119,11 +157,20 @@ def run_round(
         )
 
         # Reviewer evaluates using full exec_result + mechanical verification
+        click.echo(f"  [{_ts()}] Reviewer evaluating...", nl=False)
+        t0 = time.time()
         review_verdict = reviewer.review(
             task=current_task,
             exec_result=exec_result,
             verification_results=verification,
         )
+        verdict_color = "green" if review_verdict.passed else "red"
+        verdict_text = click.style(review_verdict.result, fg=verdict_color, bold=True)
+        click.echo(f" {verdict_text} ({_elapsed(t0)}, ${review_verdict.cost_usd:.4f})")
+        click.echo(f"           Confidence: {review_verdict.confidence}")
+        if not review_verdict.passed and review_verdict.unmet_criteria:
+            for c in review_verdict.unmet_criteria[:3]:
+                click.echo(f"           Unmet: {c[:100]}")
 
         # Save review result
         _write_review_files(round_dir, attempt_num, review_verdict)
@@ -158,12 +205,17 @@ def run_round(
         # Not passed — decide what to do next
         if attempt_num < max_attempts:
             # Designer repair step: produce targeted fix task based on review failures
+            click.echo(f"  [{_ts()}] Designer repairing task...", nl=False)
+            t0 = time.time()
             repaired = designer.repair_task(current_task, review_verdict, exec_result.evidence)
+            click.echo(f" done ({_elapsed(t0)}, ${repaired.cost_usd:.4f})")
+            click.echo(f"           Repaired: {repaired.title}")
             result.repair_cost_usd += repaired.cost_usd
             current_task = repaired
             _write_task_files(round_dir, repaired, prefix=f"repaired_task_attempt_{attempt_num + 1}")
         else:
             # Max attempts reached — escalate
+            click.echo(f"\n  [{_ts()}] Max attempts reached — escalating")
             result.escalated = True
             result.escalation_reason = _build_escalation_reason(result)
 
