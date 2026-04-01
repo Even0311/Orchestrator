@@ -37,16 +37,37 @@ filled in by the human. Work from them — do not restart from scratch.
 
 11. Each criterion must be binary and observable: it either passes or fails without subjective
     judgment. No criteria like "code is clean" or "implementation is good".
-12. Each criterion must be verifiable by the Reviewer without the Executor's cooperation:
-    git diff, file existence, or a runnable command with observable output.
+12. Each criterion must be verifiable by a corresponding `verification_step` (a shell command
+    whose exit code 0 proves the criterion is met). The orchestrator executes these automatically
+    after the Executor runs — they are not documentation, they are tests.
 13. Minimum 2 criteria, maximum 6. If you need more than 6, the task is too large — split it.
 14. Criteria must map to the task objective. Do not add unrelated quality gates.
+
+## Criteria-Verification Mapping
+
+Every acceptance criterion MUST have at least one corresponding entry in `verification_steps`.
+The verification_step is a shell command whose exit code 0 proves the criterion is met.
+The orchestrator WILL execute these commands after the Executor finishes. They are not
+documentation — they are automated tests that produce objective pass/fail evidence.
+
+If you cannot write a shell command that verifies a criterion, the criterion is too vague.
+Rewrite it to be machine-verifiable.
+
+    BAD criterion: "Document contains clear explanation of T4 inactivity"
+    GOOD criterion: "File docs/status.md contains the string 'T4' followed by 'inactive'"
+    GOOD verification_step: grep -qi 'T4.*inactive' docs/status.md
+
+For content criteria (specific text must appear in a file), the acceptance criterion states
+WHAT must be true, and the verification_step is a grep/test command that proves it.
 
 ## Verification Steps Rules
 
 15. `verification_steps` must be runnable shell commands, not descriptions.
     Good: `python -m pytest tests/test_add.py -v`
     Bad: "run the tests"
+    For grep commands: ALWAYS use `-i` (case-insensitive) unless exact casing matters.
+    Good: `grep -qi 'T1.*active' docs/status.md`
+    Bad: `grep -q 'T1.*active' docs/status.md` (will miss "Active", "ACTIVE")
 16. At least one step must directly test the core acceptance criterion.
 17. Steps must be runnable from the root of the target codebase.
 18. If no automated test exists yet, include a one-liner Python assertion:

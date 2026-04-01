@@ -14,6 +14,7 @@ from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT
 from orch.db.database import get_connection, now_iso, update_round_commits
 from orch.engine.round_runner import RoundResult, run_round
 from orch.providers.factory import get_provider
+from orch.utils.claudemd_manager import generate_claudemd
 from orch.utils.git_ops import commit_projects_dir, commit_all, GitError
 
 
@@ -71,6 +72,12 @@ def run_project(project_row, run_once: bool = False) -> None:
 
         click.echo(f"[{_ts()}] Starting {round_id}...")
 
+        # Update CLAUDE.md in target project for Claude Code native context
+        try:
+            generate_claudemd(state_dir, codebase_path)
+        except Exception as e:
+            click.echo(f"  ⚠ CLAUDE.md generation failed: {e}", err=True)
+
         # Get next instruction from current_phase.md
         instruction = _get_next_instruction(state_dir, round_id)
 
@@ -82,6 +89,7 @@ def run_project(project_row, run_once: bool = False) -> None:
             executor=executor,
             reviewer=reviewer,
             round_dir=round_dir,
+            codebase_path=codebase_path,
         )
 
         # Persist round to DB

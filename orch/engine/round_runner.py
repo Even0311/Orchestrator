@@ -8,6 +8,7 @@ from orch.agents.designer import DesignerAgent, TaskDefinition
 from orch.agents.executor import ExecutorAgent, ExecutorEvidence, ExecutorResult
 from orch.agents.reviewer import ReviewerAgent, ReviewResult
 from orch.utils.evidence_collector import GitEvidence
+from orch.utils.verification_runner import VerificationResults, run_verification_steps
 
 
 @dataclass
@@ -26,6 +27,7 @@ class AttemptRecord:
     reviewer_required_fixes: list[str]
     reviewer_human_review_needed: bool
     reviewer_cost_usd: float
+    verification_results: VerificationResults | None = None
     is_token_exhausted: bool = False
 
     # Backward compat
@@ -72,6 +74,7 @@ def run_round(
     executor: ExecutorAgent,
     reviewer: ReviewerAgent,
     round_dir: Path,
+    codebase_path: Path | None = None,
     max_attempts: int = 2,
 ) -> RoundResult:
     """Run a complete round. Returns the result regardless of pass/fail."""
@@ -96,16 +99,25 @@ def run_round(
         prompt = _build_executor_prompt(current_task)
         exec_result = executor.run(prompt)
 
-        # Save execution report (git-verified + self-reported)
+        # Run mechanical verification (Designer's verification_steps)
+        verification = None
+        if codebase_path and current_task.verification_steps:
+            verification = run_verification_steps(
+                steps=current_task.verification_steps,
+                cwd=codebase_path,
+            )
+
+        # Save execution report (git-verified + mechanical verification + self-reported)
         _write_execution_report(
             round_dir / f"execution_report_attempt_{attempt_num}.json",
-            attempt_num, exec_result,
+            attempt_num, exec_result, verification,
         )
 
-        # Reviewer evaluates using full exec_result (git evidence + self-report)
+        # Reviewer evaluates using full exec_result + mechanical verification
         review_verdict = reviewer.review(
             task=current_task,
             exec_result=exec_result,
+            verification_results=verification,
         )
 
         # Save review result
@@ -126,6 +138,7 @@ def run_round(
             reviewer_required_fixes=review_verdict.required_fixes,
             reviewer_human_review_needed=review_verdict.human_review_needed,
             reviewer_cost_usd=review_verdict.cost_usd,
+            verification_results=verification,
             is_token_exhausted=exec_result.is_token_exhausted,
         )
         result.attempts.append(attempt)
@@ -222,7 +235,10 @@ def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> Non
     (round_dir / f"{prefix}.md").write_text(md)
 
 
-def _write_execution_report(path: Path, attempt_num: int, exec_result: ExecutorResult) -> None:
+def _write_execution_report(
+    path: Path, attempt_num: int, exec_result: ExecutorResult,
+    verification: VerificationResults | None = None,
+) -> None:
     ev = exec_result.evidence
     git_ev = exec_result.git_evidence
     data = {
@@ -240,6 +256,8 @@ def _write_execution_report(path: Path, attempt_num: int, exec_result: ExecutorR
             "has_changes": git_ev.has_changes,
             "error": git_ev.error,
         },
+        # Mechanical verification — orchestrator-run verification_steps
+        "mechanical_verification": None,
         # Self-reported by Executor — supplementary
         "executor_reported": {
             "summary": ev.summary,
@@ -251,6 +269,21 @@ def _write_execution_report(path: Path, attempt_num: int, exec_result: ExecutorR
         },
         "full_output_truncated": exec_result.output[:2000],
     }
+    if verification:
+        data["mechanical_verification"] = {
+            "summary": verification.summary,
+            "all_passed": verification.all_passed,
+            "steps": [
+                {
+                    "command": s.command,
+                    "exit_code": s.exit_code,
+                    "passed": s.passed,
+                    "stdout": s.stdout,
+                    "stderr": s.stderr,
+                }
+                for s in verification.steps
+            ],
+        }
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 

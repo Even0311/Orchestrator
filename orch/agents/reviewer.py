@@ -47,13 +47,14 @@ class ReviewerAgent:
         self,
         task: "object",        # TaskDefinition
         exec_result: "object", # ExecutorResult (carries both git_evidence and self-reported evidence)
+        verification_results: "object | None" = None,  # VerificationResults from mechanical verification
     ) -> ReviewResult:
-        """Review execution result using git evidence (primary) and self-report (supplementary)."""
+        """Review execution result using mechanical verification + git evidence + self-report."""
         context = load_reviewer_context(self._state_dir)
         system_prompt = build_reviewer_system_prompt(context)
 
         task_section = _format_task(task)
-        evidence_section = _format_evidence(exec_result)
+        evidence_section = _format_evidence(exec_result, verification_results)
 
         messages = [
             {
@@ -62,7 +63,8 @@ class ReviewerAgent:
                     f"{task_section}\n\n"
                     f"{evidence_section}\n\n"
                     "Review the evidence against each acceptance criterion. "
-                    "Trust Git-Verified evidence over Executor Self-Reported claims. "
+                    "Check mechanical verification results FIRST — if a verification step passed, "
+                    "the corresponding criterion is MET. "
                     "Return your verdict as JSON."
                 ),
             }
@@ -102,12 +104,20 @@ def _format_task(task: "object") -> str:
     )
 
 
-def _format_evidence(exec_result: "object") -> str:
-    """Format evidence with git-verified section first (authoritative), self-report second."""
+def _format_evidence(exec_result: "object", verification_results: "object | None" = None) -> str:
+    """Format evidence: mechanical verification first, then git-verified, then self-report."""
     git_ev = getattr(exec_result, "git_evidence", None)
     self_ev = getattr(exec_result, "evidence", None)
 
     lines = ["## Execution Evidence"]
+
+    # ── Mechanical Verification (highest authority) ───────────────────────────
+    if verification_results:
+        from orch.utils.verification_runner import format_verification_results
+        lines.append("")
+        lines.append(format_verification_results(verification_results))
+    else:
+        lines.append("\n### Mechanical Verification\n(not run — no verification steps provided)")
 
     # ── Git-Verified (authoritative) ──────────────────────────────────────────
     lines.append("\n### Git-Verified (collected externally by orchestrator)")
