@@ -1,95 +1,38 @@
 # Current Phase
 
 ## Phase Goal
-
-在不继续强推当前 deterministic backbone 不支持的能力前提下，完成当前 continuity 技术线的阶段收口，明确哪些能力已经成立、哪些能力应冻结、哪些问题应留给下一阶段设计处理。
-
-本阶段不以扩展 runtime 能力为目标。  
-本阶段的目标是：
-
-- 准确确认当前 backbone continuity 的真实状态
-- 固化当前已成立的 contract
-- 冻结当前不应继续 patch 的路径
-- 为下一阶段设计问题准备清晰入口
-
----
+Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## In Scope
-
-- 归纳当前 backbone continuity 状态
-- 明确 T1 / T2 / T4 continuity 的当前判定
-- 保留当前可工作的 T1/T2 residual continuity 路径
-- 保留当前 world carryover calibration 结果
-- 明确冻结当前 deterministic backbone 下的 T4 residual patching
-- 收敛下一阶段真正该讨论的问题
-- 生成适合 orchestrator round workflow 的阶段材料
-
----
+- Activate `build_signal_from_t4_relationship_tick()` to read `world.social_event`
+- Allow only a very narrow trigger shape
+- Allow only a minimal negative relational output shape
+- Rely on existing downstream gates to decide whether relational residual is created
+- Verify that the seam can produce a real T4 negative path without broad architecture changes
 
 ## Out of Scope
-
-- 不扩 bridge coverage 到 T3 / T5 / T6 / T7 / T8
-- 不接入 live LLM appraisal
-- 不进入 variable-tick orchestration
-- 不再继续放宽 T1/T2 residual creation gate
-- 不再尝试 T4 adversarial residual 分支
-- 不通过人工负向分支强推 relational continuity
-- 不做 background / APB / Warmth Buffer 主流水线接入
-- 不做 MemoryResurface / rumination
-- 不做前端 / 体验 / 视觉工作
-
----
+- No live LLM
+- No broad event taxonomy expansion
+- No routing based on `social_event.target_id`
+- No generator rewrite to actively produce rich social events
+- No settlement/substrate redesign
+- No bridge redesign
+- No strong negative outputs
+- No attempt to solve all relational realism problems in one phase
 
 ## Task Queue
 
-### [x] P25-T2 — 固化 T4 冻结边界
-明确记录当前 T4 relational residual activation 的冻结边界：
-- strict negative T4 residual activation 在当前 deterministic backbone 下结构性不可达
-- riskScore-only adversarial activation 已被否决
-- 当前 T4 same-target carry path 结构上存在，但行为上不活跃
-
-目标产物：
-- freeze 边界写入当前 phase/context 材料
-- 不涉及实现改动
-
-Priority: High
-
----
-
-### [x] P25-T3 — 对齐下一阶段入口与已批准 roadmap
-确保 Phase 25 closure 材料与 roadmap.md 的 Phase 26B 入口对齐。
-
-具体内容：
-- 文档化 26A / 26B 的关系（26A 已完成 inert schema seam，26B 是 activation slice）
-- 区分旧 T4 freeze（deterministic path 下结构性不可达）与 roadmap 批准的 26B reopening（通过 social event）
-- 明确 Phase 25 closure 是进入 26B 的前置条件
-- 确保 current_phase.md 和 context/designer.md 的下一阶段指向与 roadmap 一致
-
-目标产物：
-- 更新后的阶段收口材料，指向 roadmap.md Phase 26B
-- 不涉及实现改动，不涉及开放式设计探索
-
-Priority: Medium
-
----
-
-### P25-T4 — 清理为 orchestrator round-ready 的阶段材料
-确保当前阶段文件适合结构化 round workflow：
-- Task Queue 粒度适合拆 round
-- 不混入过多历史流水账
-- Current Status / Risks / Next Recommended Task 足够清晰
-- 能让 orchestrator 直接挑出下一轮任务
-
-目标产物：
-- 稳定的 current_phase.md
-- 稳定的 context/designer.md
-
-Priority: High
-
----
+- [ ] P26B-T1: Implement narrow social event reading path in T4 builder
+- [ ] P26B-T2: Define and implement minimal negative relational output shape
+- [ ] P26B-T3: Verify downstream gate observability and auditability
+- [ ] P26B-T4: Confirm T4 seam activation stability and exit conditions
 
 ## Completed Tasks
 
+- [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建
+- [x] P25-T2 — 固化 T4 冻结边界：docs/phase25_t4_freeze_boundary.md 已创建
+- [x] P25-T3 — 对齐下一阶段入口与已批准 roadmap：docs/phase25_roadmap_alignment.md 已创建
+- [x] P25-T4 — 清理为 orchestrator round-ready 的阶段材料
 - deterministic MVP backbone 已建立
 - deterministic backbone first-pass audit / stabilization 已完成
 - AppraisalSignal v1 已冻结并实现
@@ -105,60 +48,24 @@ Priority: High
 - Phase 23 patch 后已确认 strict T4 relational residual activation 重新回到 0
 - Phase 24 audit 已确认：当前 deterministic T4 builder 结构上没有 negative base signal 分支
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
-- [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建，明确分类 T1/T2 为 active、T4 为 inactive，60-day 审计数据（18 total, 12/6/0 split），区分 contract 与 calibration artifacts
-- [x] P25-T2 — 固化 T4 冻结边界：docs/phase25_t4_freeze_boundary.md 已创建，明确记录 strict negative activation 在当前 deterministic backbone 下结构性不可达，riskScore-only adversarial branch 已被否决，same-target carry path 结构性存在但行为不活跃
-- [x] P25-T3 — 对齐下一阶段入口与已批准 roadmap：docs/phase25_roadmap_alignment.md 已创建，文档化 26A/26B 关系（inert schema seam vs activation slice），明确区分旧 T4 freeze（deterministic path 结构性不可达）与 roadmap 批准的 26B reopening（通过 social event），确认 Phase 25 closure 为进入 26B 的前置条件
-
----
 
 ## Current Status
 
-P25-T3 已完成 — Phase 25 closure 材料已与 roadmap.md Phase 26B 入口对齐，26A/26B 关系已文档化（inert schema seam vs activation slice），T4 freeze 与 26B reopening 的边界条件已明确区分。当前准备进入最后清理任务 P25-T4。
-
----
+Phase 25 officially closed; Phase 26B initiated. Ready to implement first narrow T4 event-aware activation path through social event reading.
 
 ## Risks / Blockers
 
-### R1 — 容易误判 T4 问题为 gate 问题
-当前 T4 不活，不是因为 gate 稍微再调一下就能开，而是因为 base builder 本身没有 negative 分支。  
-如果误判为“再 patch 一点就行”，很容易重新走回不自然的 adversarial branch。  
-**状态：已缓解** — P25-T2 已完成冻结边界文档化。
+### R1 — Scope creep beyond narrow activation
+Risk of expanding T4 logic beyond the approved minimal social event path into broad relational modeling. Must constrain to narrow trigger shapes only.
 
----
+### R2 — Downstream gate instability
+Activating T4 may unpredictably interact with existing T1/T2 residual creation gates. Requires careful audit of same-day composition.
 
-### R2 — continuity 目前仍明显由 T1/T2 主导
-当前 residual continuity 已经成立，但主要来源仍是：
-- public/world
-- influencer
-
-如果后续讨论不小心夸大，会误说成“整体 relational continuity 已成立”。
-
----
-
-### R3 — 可能重新发散到大架构或体验线
-当前阶段最重要的是收口和定边界。  
-如果不控制，很容易重新跳去：
-- multi-agent runtime 大发散
-- live LLM appraisal 大发散
-- 体验线/UI 讨论
-这会让当前 phase 失焦。
-
----
-
-### R4 — orchestrator 可能拿到过宽任务
-如果 current_phase 里的任务写得太泛，Designer/Orchestrator 可能又生成“大而散”的 round，导致当前阶段重新扩张。
-
----
+### R3 — Confusing activation with full continuity
+Phase 26B only establishes the activation seam; full T4 relational continuity remains future work. Avoid premature claims about relational continuity being "solved".
 
 ## Next Recommended Task
 
-### P25-T4 — 清理为 orchestrator round-ready 的阶段材料
+### P26B-T1: Implement narrow social event reading path in T4 builder
 
-这是当前最推荐的下一步，因为：
-
-- P25-T1、P25-T2、P25-T3 已完成所有状态文档化与 roadmap 对齐工作
-- 现在需要对阶段材料进行最终清理，确保适合结构化 round workflow
-- 确保 Task Queue 粒度适合拆 round，Current Status / Risks 足够清晰
-- 完成此任务后 Phase 25 即可正式关闭，进入 roadmap 批准的 Phase 26B
-
-这一任务是 Phase 25 的最后收口步骤，完成后即可启动 Phase 26B（Minimal T4 Event-Aware Activation）。
+Begin by modifying `build_signal_from_t4_relationship_tick()` to check for qualifying social events in `world.social_event` using the narrow trigger conditions approved for Phase 26B. This is the foundation for all subsequent 26B work.

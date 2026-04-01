@@ -1,0 +1,32 @@
+# Task: Finalize Phase 25 Closure Documentation
+
+**ID:** round-0006  
+**Objective:** Update current_phase.md and context/designer.md to mark Phase 25 as officially closed, ensure Task Queue reflects completion of all Phase 25 tasks, and establish clear structural pointers to Phase 26B for orchestrator workflow continuity.
+
+**Exact Scope:** IN: Edit current_phase.md to mark P25-T4 as completed [x], update Current Status section to explicitly state Phase 25 is closed/complete, and ensure the Next Recommended Task points to Phase 26B entry; Edit context/designer.md to update Working Assumptions section to reflect Phase 25 closure and readiness for Phase 26B. OUT: No modifications to roadmap.md, no implementation of Phase 26B features, no changes to technical decisions or freeze boundaries established in P25-T1/T2/T3, no source code changes.
+
+## Likely Files
+- current_phase.md (exists)
+- context/designer.md (exists)
+
+## Constraints
+- Must preserve existing T4 freeze boundary documentation and roadmap alignment decisions from P25-T2/T3
+- Must not introduce new technical requirements beyond Phase 25 closure
+
+## Acceptance Criteria
+- current_phase.md contains '[x] P25-T4' indicating task completion
+- current_phase.md Current Status section contains the phrase 'Phase 25 closed' or 'Phase 25 complete'
+- current_phase.md contains explicit reference to 'Phase 26B' as the next phase
+- context/designer.md Working Assumptions section contains text indicating Phase 25 is closed and Phase 26B is the next phase
+
+## Verification Steps
+- grep -qi '\[x\].*P25-T4' current_phase.md
+- grep -qi 'Phase 25.*\(closed\|complete\)' current_phase.md
+- grep -qi 'Phase 26B' current_phase.md
+- grep -qi 'Phase 25.*\(closed\|complete\).*Phase 26B\|Phase 26B.*next.*phase' context/designer.md
+
+## Non-Goals
+- Do not implement Phase 26B logic or features
+- Do not modify roadmap.md
+- Do not refactor source code
+- Do not change T1/T2 continuity contracts
