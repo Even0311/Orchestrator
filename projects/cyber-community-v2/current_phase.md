@@ -42,7 +42,7 @@
 
 ## Task Queue
 
-### P25-T2 — 固化 T4 冻结边界
+### [x] P25-T2 — 固化 T4 冻结边界
 明确记录当前 T4 relational residual activation 的冻结边界：
 - strict negative T4 residual activation 在当前 deterministic backbone 下结构性不可达
 - riskScore-only adversarial activation 已被否决
@@ -105,13 +105,14 @@ Priority: High
 - Phase 23 patch 后已确认 strict T4 relational residual activation 重新回到 0
 - Phase 24 audit 已确认：当前 deterministic T4 builder 结构上没有 negative base signal 分支
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
-- [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建，明确分类 T1/T2 active、T4 inactive，60-day 审计数据（18 total, 12/6/0 split），区分 contract 与 calibration artifacts
+- [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建，明确分类 T1/T2 为 active、T4 为 inactive，60-day 审计数据（18 total, 12/6/0 split），区分 contract 与 calibration artifacts
+- [x] P25-T2 — 固化 T4 冻结边界：docs/phase25_t4_freeze_boundary.md 已创建，明确记录 strict negative activation 在当前 deterministic backbone 下结构性不可达，riskScore-only adversarial branch 已被否决，same-target carry path 结构性存在但行为不活跃
 
 ---
 
 ## Current Status
 
-P25-T1 已完成 — Phase 25 continuity 状态总结文档已创建并验证，准确分类 T1/T2 为 active、T4 为 inactive，区分 established contracts 与 calibration artifacts，为阶段收口提供基础材料。
+P25-T2 已完成 — T4 关系残余冻结边界文档已创建，明确记录 strict negative activation 在当前 deterministic backbone 下结构性不可达，riskScore-only adversarial branch 已被否决，same-target carry path 结构性存在但行为不活跃，防止后续误将 T4 视为可 patch 目标。
 
 ---
 
@@ -119,7 +120,8 @@ P25-T1 已完成 — Phase 25 continuity 状态总结文档已创建并验证，
 
 ### R1 — 容易误判 T4 问题为 gate 问题
 当前 T4 不活，不是因为 gate 稍微再调一下就能开，而是因为 base builder 本身没有 negative 分支。  
-如果误判为“再 patch 一点就行”，很容易重新走回不自然的 adversarial branch。
+如果误判为“再 patch 一点就行”，很容易重新走回不自然的 adversarial branch。  
+**状态：已缓解** — P25-T2 已完成冻结边界文档化。
 
 ---
 
@@ -149,12 +151,13 @@ P25-T1 已完成 — Phase 25 continuity 状态总结文档已创建并验证，
 
 ## Next Recommended Task
 
-### P25-T2 — 固化 T4 冻结边界
+### P25-T3 — 对齐下一阶段入口与已批准 roadmap
 
 这是当前最推荐的下一步，因为：
 
-- P25-T1 已完成状态文档，现在需要明确记录 T4 的冻结边界
-- 必须明确记录 strict negative T4 residual activation 在当前 deterministic backbone 下结构性不可达
-- 防止后续 round 重新误把 T4 当成可 patch 目标
+- P25-T1 和 P25-T2 已完成状态与边界文档
+- 现在需要确保 Phase 25 closure 材料与 roadmap.md 的 Phase 26B 入口正确对齐
+- 必须明确区分旧 T4 freeze（deterministic path 下结构性不可达）与 roadmap 批准的 26B reopening（通过 social event）
+- 确保下一阶段指向与 roadmap 完全一致，防止方向漂移
 
-这一任务范围清晰，不涉及实现改动，只涉及边界文档化，适合作为 orchestrator 下一轮起点。
+这一任务范围清晰，不涉及实现改动，只涉及文档对齐与阶段过渡准备，适合作为 orchestrator 下一轮起点。

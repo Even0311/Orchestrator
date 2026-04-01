@@ -1,0 +1,39 @@
+{
+  "task_id": "round-0004",
+  "title": "Document T4 Relational Residual Freeze Boundary",
+  "objective": "Create documentation explicitly recording the freeze boundary for T4 relational residual activation: that strict negative activation is structurally unreachable under the current deterministic backbone, that riskScore-only adversarial activation has been rejected, and that the same-target carry path exists structurally but remains behaviorally inactive.",
+  "exact_scope": "IN: Create docs/phase25_t4_freeze_boundary.md documenting the three freeze boundary conditions; update current_phase.md and context/designer.md to reference this freeze boundary and prevent future patch attempts. OUT: No code changes to T4 builder, gate logic, or any runtime implementation; no calibration adjustments; no new activation logic.",
+  "likely_files": [
+    "docs/phase25_t4_freeze_boundary.md",
+    "current_phase.md",
+    "context/designer.md"
+  ],
+  "constraints": [
+    "No implementation changes to codebase",
+    "Must not modify T4 builder or gate calibration",
+    "Must align with roadmap.md Phase 26B distinction (current freeze vs. future social-event reopening)",
+    "human review needed: confirm documentation file location and cross-reference format"
+  ],
+  "acceptance_criteria": [
+    "File docs/phase25_t4_freeze_boundary.md exists and is non-empty",
+    "docs/phase25_t4_freeze_boundary.md contains explicit statement that strict negative T4 residual activation is structurally unreachable under current deterministic backbone",
+    "docs/phase25_t4_freeze_boundary.md contains explicit statement that riskScore-only adversarial activation has been rejected",
+    "docs/phase25_t4_freeze_boundary.md contains explicit statement that T4 same-target carry path exists structurally but is behaviorally inactive",
+    "current_phase.md references the T4 freeze boundary documentation",
+    "context/designer.md references the T4 freeze boundary documentation"
+  ],
+  "verification_steps": [
+    "test -f docs/phase25_t4_freeze_boundary.md",
+    "grep -qi 'structurally unreachable\\|structurally 不可达\\|structural.*unreachable' docs/phase25_t4_freeze_boundary.md",
+    "grep -qi 'riskScore.*adversarial.*reject\\|riskScore.*否决\\|adversarial.*rejected' docs/phase25_t4_freeze_boundary.md",
+    "grep -qi 'same-target.*behaviorally inactive\\|behaviorally inactive\\|结构.*存在.*行为.*不活跃' docs/phase25_t4_freeze_boundary.md",
+    "grep -qi 't4.*freeze\\|freeze.*boundary\\|phase25_t4_freeze_boundary' current_phase.md",
+    "grep -qi 't4.*freeze\\|freeze.*boundary\\|phase25_t4_freeze_boundary' context/designer.md"
+  ],
+  "non_goals": [
+    "Do not modify T4 builder implementation or gate logic",
+    "Do not implement Phase 26B social-event activation",
+    "Do not expand bridge coverage to T3/T5/T6/T7/T8",
+    "Do not adjust residual creation thresholds or calibration"
+  ]
+}

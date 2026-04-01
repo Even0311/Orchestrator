@@ -27,7 +27,8 @@ Designer may not invent new phases or skip ahead.
 - T1/public continuity 已 active，T2/influencer continuity 已 active，T4/relational continuity 当前 inactive
 - current T4 inactivity 的主因是 base builder 缺少 negative branch，不是 gate 细节问题
 - Phase 25 continuity 状态已文档化（docs/phase25_continuity_status.md），contract 与 calibration artifacts 已区分
-- 当前正处于 T4 冻结边界固化阶段（P25-T2）
+- T4 冻结边界已文档化（docs/phase25_t4_freeze_boundary.md），明确 strict negative activation 结构性不可达
+- 当前正处于 Phase 25 closure 最后阶段，准备进入 Phase 26B
 
 ---
 
@@ -38,22 +39,20 @@ Designer may not invent new phases or skip ahead.
 - 当前 bridge coverage: T1 / T2 / T4
 - 当前真实 continuity 覆盖：T1/T2 active，T4 inactive
 - world carryover distribution 已做过一轮 long-horizon calibration，当前已不再只集中在 early window
-- 状态文档已生成，为阶段收口提供材料
+- T4 freeze boundary 已文档化，防止误 patch
 
 ---
 
 ## Known Risks
 
-- 容易误把 T4 问题继续当成 patch 问题处理（P25-T2 旨在明确冻结边界以防止此风险）
-- 容易误把当前 continuity 描述得过宽，尤其误说 relational continuity 已成立
-- 容易把下一阶段问题直接写成实现任务，而不是先收敛设计入口
-- 容易让 task queue 变得过大，无法自然拆成 round
+- 误把当前 continuity 描述得过宽，尤其误说 relational continuity 已成立（T4 仍 inactive）
+- 把下一阶段问题直接写成实现任务，而不是先收敛设计入口
+- 让 task queue 变得过大，无法自然拆成 round
+- 混淆旧 T4 freeze 与 26B reopening 的边界条件
 
 ---
 
 ## Resolved Strategic Decisions
-
-以下问题已由 roadmap.md 解决，不再是开放问题：
 
 - Phase 25 closure 后，下一阶段是 Phase 26B（roadmap 已批准）
 - T4 reopening 路径已确定：Phase 26B 通过 social event-aware activation，不是 gate tuning
