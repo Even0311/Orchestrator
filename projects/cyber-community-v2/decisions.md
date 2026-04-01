@@ -575,8 +575,68 @@ Phase 24 audit 已证明：
 
 ---
 
-## 14. 一句话总结
+## 14. Phase 26A/26B 决策
 
-> 当前项目已经明确决定：以 deterministic single-agent backbone 作为最终多主体数字社会系统的迁移母体；以“LLM appraisal + engine settlement”作为长期方向；以 selective tick intake、结构化 appraisal signal、bounded settlement、cross-day residual carryover 作为基础 contract。  
-> 当前 T1/T2 continuity 已成立，cross-day persistence 已成立，world-side carryover 已完成第一轮长周期校准。  
-> 当前 T4 relational continuity 尚未成立，且已明确不应通过人工 adversarial branch 硬推；这一能力应 defer 到未来 richer social event source 或 live appraisal source 出现之后再重开。
+## 决策 14.1
+**Phase 26A 已完成，建立了 SocialEventSpec inert schema seam。**
+
+### 已决定
+SocialEventSpec schema 已存在并挂载到 ArcPhase / WorldSnapshot。
+当前为 schema-only、behaviorally inert。这是 26B 的基础。
+
+### 为什么这么决定
+T4 relational continuity 的解冻需要一个事件输入源。
+先建 schema 再激活行为，符合项目"先建 contract 再激活能力"的原则。
+
+---
+
+## 决策 14.2
+**Phase 26B 已批准为 T4 的唯一解冻路径：minimal event-aware activation。**
+
+### 已决定
+T4 的旧 deterministic path 仍然 frozen。
+26B 通过让 T4 builder 读取 social event 来建立一条窄的、可审计的负向 relational activation path。
+这是 roadmap 批准的唯一 T4 解冻方式。
+
+### 为什么这么决定
+旧 T4 freeze 的根因是 base builder 缺少 negative branch（结构问题，不是 gate 问题）。
+通过 social event 提供 negative input source，而不是继续调 gate 或制造 adversarial branch。
+
+---
+
+## 15. Stage 1 Deferred-Tick 决策
+
+## 决策 15.1
+**Stage 1 bridge/appraisal-seam 范围限定为 T1/T2/T4。**
+
+### 已决定
+T3/T5/T6/T7/T8 的 deterministic bridge 扩展在 Stage 1 期间 deferred。
+Designer 不可自行提议 deferred tick 的 bridge 工作。
+
+### 为什么这么决定
+Stage 1 的目标是安全引入 LLM appraisal，不是横向扩展 bridge coverage。
+3 个 tick（世界/社交/关系）已足够提取有意义的 appraisal seam。
+
+---
+
+## 决策 15.2
+**Appraisal schema 宽、live authority 窄（"B for schema, A for live authority"）。**
+
+### 已决定
+- Phase 29：appraisal input schema 按 8 tick 设计，容纳所有 tick 类型
+- Phase 31：first live LLM appraisal authority 仅限 T1/T2/T4
+- T3/T5/T6/T7/T8 可被 schema 表示，但在 Stage 1 内不具备 live authoritative coverage
+- 是否进入 live path 留给 Stage 2 决策
+
+### 为什么这么决定
+Schema 宽避免未来返工，authority 窄避免失控。
+先在 3 个已验证的 tick 上证明 LLM appraisal 安全，再考虑扩展。
+
+---
+
+## 16. 一句话总结
+
+> 当前项目已经明确决定：以 deterministic single-agent backbone 作为最终多主体数字社会系统的迁移母体；以”LLM appraisal + engine settlement”作为长期方向；以 selective tick intake、结构化 appraisal signal、bounded settlement、cross-day residual carryover 作为基础 contract。
+> 当前 T1/T2 continuity 已成立，cross-day persistence 已成立，world-side carryover 已完成第一轮长周期校准。
+> T4 relational continuity 在旧 deterministic path 下 frozen；已批准 Phase 26B 通过 social event-aware activation 作为唯一解冻路径。
+> Stage 1 appraisal schema 按 8 tick 设计，但 first live LLM authority 仅限 T1/T2/T4；deferred ticks 进入 live path 留给 Stage 2。

@@ -1,13 +1,23 @@
 # Designer Context
 
+## Phase Transition Rule
+
+When the current phase is closing or a next phase is being proposed,
+Designer **must** read `roadmap.md` before proposing a phase transition.
+Next-phase proposals must follow the approved roadmap sequence.
+Designer may not invent new phases or skip ahead.
+
+---
+
 ## Active Constraints
 
 - 当前阶段不要再扩 runtime 能力
-- 不要继续 patch T4 residual gate
+- 不要继续 patch T4 residual gate（T4 的唯一批准解冻路径是 Phase 26B，通过 social event）
 - 不要重新引入 riskScore-only adversarial branch
 - 不要让 Claude 做 phase/product 决策
 - 不要把项目带偏到 chatbot / dashboard / 体验线
 - 当前输出应服务于 orchestrator round workflow，而不是长篇总结
+- Stage 1 期间，deferred tick（T3/T5/T6/T7/T8）的 bridge 扩展不由 Designer 自行决定
 
 ---
 
@@ -41,8 +51,11 @@
 
 ---
 
-## Open Questions For Human
+## Resolved Strategic Decisions
 
-- 下一阶段是先做正式阶段总结 / contract freeze，还是直接进入 future T4 negative social input source 的设计收敛？（P25-T1 已完成阶段总结文档，当前进入 contract freeze 的 T4 边界固化）
-- 如果要重开 T4 negative path，是否先限定为“输入源设计问题”，而不是“residual gate 设计问题”？
-- 当前是否把 T4 relational continuity 明确标记为 deferred，而不是继续保留为 active candidate？
+以下问题已由 roadmap.md 解决，不再是开放问题：
+
+- Phase 25 closure 后，下一阶段是 Phase 26B（roadmap 已批准）
+- T4 reopening 路径已确定：Phase 26B 通过 social event-aware activation，不是 gate tuning
+- T4 relational continuity 在旧 deterministic path 下已标记为 frozen；26B 是唯一批准的解冻路径
+- Stage 1 deferred ticks（T3/T5/T6/T7/T8）不由 Designer 决定是否扩展 bridge

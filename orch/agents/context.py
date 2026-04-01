@@ -11,14 +11,18 @@ def _load_prompt(name: str) -> str:
 
 
 def load_designer_context(state_dir: Path) -> dict[str, str]:
-    """Load context for Designer: vision + current_phase + designer working memory.
+    """Load context for Designer: vision + roadmap + current_phase + designer working memory.
 
     decisions.md is intentionally EXCLUDED — it is human-only audit history and
     must never be fed to any AI agent.
+
+    roadmap.md is read-only strategic sequencing — Designer must follow it for
+    phase transitions but may not modify it.
     """
     docs = {}
     files = [
         ("vision.md", state_dir / "vision.md"),
+        ("road_map.md", state_dir / "road_map.md"),
         ("current_phase.md", state_dir / "current_phase.md"),
         ("context/designer.md", state_dir / "context" / "designer.md"),
     ]
@@ -127,8 +131,8 @@ def build_bootstrap_system_prompt(vision_content: str) -> str:
         "## Known Risks",
         "- item",
         "",
-        "## Open Questions For Human",
-        "- item",
+        "## Resolved Strategic Decisions",
+        "- item (or 'none yet' if bootstrapping)",
         "",
         "=== PROJECT VISION ===",
         vision_content,

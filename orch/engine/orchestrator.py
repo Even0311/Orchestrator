@@ -12,7 +12,7 @@ from orch.agents.executor import ExecutorAgent
 from orch.agents.reviewer import ReviewerAgent
 from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT
 from orch.db.database import get_connection, now_iso, update_round_commits
-from orch.engine.round_runner import RoundResult, run_round
+from orch.engine.round_runner import RoundResult, run_round, inject_recent_rounds, cleanup_round_docs
 from orch.providers.factory import get_provider
 from orch.utils.claudemd_manager import generate_claudemd
 from orch.utils.git_ops import commit_projects_dir, commit_all, GitError
@@ -78,6 +78,13 @@ def run_project(project_row, run_once: bool = False) -> None:
         except Exception as e:
             click.echo(f"  ⚠ CLAUDE.md generation failed: {e}", err=True)
 
+        # Inject recent rounds summary for Claude Code context
+        try:
+            recent = _build_recent_rounds_summary(project_id)
+            inject_recent_rounds(codebase_path, recent)
+        except Exception as e:
+            click.echo(f"  ⚠ recent_rounds injection failed: {e}", err=True)
+
         # Get next instruction from current_phase.md
         instruction = _get_next_instruction(state_dir, round_id)
 
@@ -94,6 +101,12 @@ def run_project(project_row, run_once: bool = False) -> None:
 
         # Persist round to DB
         _save_round(project_id, phase_id, round_id, result)
+
+        # Clean up injected .orch/ docs from target project
+        try:
+            cleanup_round_docs(codebase_path)
+        except Exception as e:
+            click.echo(f"  ⚠ .orch/ cleanup failed: {e}", err=True)
 
         if result.final_passed:
             click.echo(f"[{_ts()}] {round_id} PASSED (cost: ${result.total_cost_usd:.4f})")
@@ -221,6 +234,30 @@ def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundRes
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
+    """Build a short summary of recent rounds for Claude Code context."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, status, task_description, cost_usd FROM rounds "
+            "WHERE project_id = ? ORDER BY created_at DESC LIMIT ?",
+            (project_id, limit),
+        ).fetchall()
+
+    if not rows:
+        return "# Recent Rounds\n\nNo previous rounds.\n"
+
+    lines = ["# Recent Rounds", "", "Most recent first:", ""]
+    for row in rows:
+        status = row["status"].upper()
+        desc = (row["task_description"] or "")[:80]
+        lines.append(f"- **{row['id']}** [{status}] — {desc}")
+
+    lines.append("")
+    lines.append("Do not redo work that was already completed in a previous round.")
+    lines.append("")
+    return "\n".join(lines)
+
 
 def _get_next_instruction(state_dir: Path, round_id: str) -> str:
     """Read the next instruction from current_phase.md."""

@@ -48,16 +48,20 @@ Rewrite completely. This is working memory, not a history log.
 
 Required:
 - Keep under 300 words total
+- Preserve the `## Phase Transition Rule` section at the top if it exists — do not remove it
 - Update `## Architecture Snapshot` if the round changed the architecture
 - Update `## Active Constraints` if new constraints were discovered or old ones resolved
 - Update `## Working Assumptions` if assumptions were confirmed or invalidated
-- Update `## Open Questions For Human` if new questions arose or old ones were answered
-- Remove questions that were resolved this round
+- Update `## Resolved Strategic Decisions` only if a decision was newly resolved or invalidated
+- If all tasks are complete and the phase is closing, note the next phase from road_map.md
+  in `## Resolved Strategic Decisions`
 
 Do NOT:
 - Log what happened this round (that belongs in decisions.md)
 - Copy content from vision.md into this document
 - Pad with generic statements — every line must be actionable working memory
+- Remove the Phase Transition Rule or Resolved Strategic Decisions sections
+- Propose phase transitions that conflict with road_map.md
 
 ## Output Format
 

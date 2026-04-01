@@ -1,5 +1,6 @@
 """Executes a single Round: Designer → Executor → [Designer repair →] Executor → Reviewer."""
 import json
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,7 +97,11 @@ def run_round(
 
     # Step 2: Executor + Reviewer loop (up to max_attempts)
     for attempt_num in range(1, max_attempts + 1):
-        prompt = _build_executor_prompt(current_task)
+        # Inject task as file in target project so Claude Code can re-read mid-work
+        if codebase_path:
+            _inject_task_file(codebase_path, current_task)
+
+        prompt = _build_executor_prompt(current_task, use_file_ref=codebase_path is not None)
         exec_result = executor.run(prompt)
 
         # Run mechanical verification (Designer's verification_steps)
@@ -170,7 +175,18 @@ def run_round(
 
 # ── Prompt builder ────────────────────────────────────────────────────────────
 
-def _build_executor_prompt(task: TaskDefinition) -> str:
+def _build_executor_prompt(task: TaskDefinition, use_file_ref: bool = False) -> str:
+    if use_file_ref:
+        # Slim prompt — task details are in .orch/current_task.md, CLAUDE.md has project context
+        return (
+            f"Execute the task defined in .orch/current_task.md\n\n"
+            f"Read that file first for the full task definition, acceptance criteria, "
+            f"and verification steps.\n\n"
+            f"Also check .orch/recent_rounds.md if it exists — it shows what was already "
+            f"done in recent rounds, so you don't redo completed work."
+        )
+
+    # Fallback: full prompt (when codebase_path is not set)
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
     verification = "\n".join(f"- {v}" for v in task.verification_steps)
     non_goals = "\n".join(f"- {g}" for g in task.non_goals)
@@ -358,6 +374,51 @@ def _write_audit_file(path: Path, result: RoundResult) -> None:
     if result.escalated:
         content += f"## Escalation Reason\n```\n{result.escalation_reason}\n```\n"
     path.write_text(content)
+
+
+def _inject_task_file(codebase_path: Path, task: TaskDefinition) -> None:
+    """Write .orch/current_task.md in the target project for Claude Code to read."""
+    orch_dir = codebase_path / ".orch"
+    orch_dir.mkdir(exist_ok=True)
+
+    criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
+    verification = "\n".join(f"- {v}" for v in task.verification_steps)
+    non_goals = "\n".join(f"- {g}" for g in task.non_goals)
+    constraints = "\n".join(f"- {c}" for c in task.constraints)
+    likely_files = "\n".join(f"- {f}" for f in task.likely_files)
+
+    parts = [
+        f"# Task: {task.title}",
+        f"\n**ID:** {task.task_id}",
+        f"\n## Objective\n{task.objective}",
+        f"\n## Exact Scope\n{task.exact_scope}",
+    ]
+    if likely_files:
+        parts.append(f"\n## Likely Files\n{likely_files}")
+    if constraints:
+        parts.append(f"\n## Constraints\n{constraints}")
+    if criteria:
+        parts.append(f"\n## Acceptance Criteria\n{criteria}")
+    if verification:
+        parts.append(f"\n## Verification Steps\n{verification}")
+    if non_goals:
+        parts.append(f"\n## Non-Goals (Do NOT do these)\n{non_goals}")
+
+    (orch_dir / "current_task.md").write_text("\n".join(parts) + "\n")
+
+
+def inject_recent_rounds(codebase_path: Path, rounds_summary: str) -> None:
+    """Write .orch/recent_rounds.md in the target project. Called by orchestrator."""
+    orch_dir = codebase_path / ".orch"
+    orch_dir.mkdir(exist_ok=True)
+    (orch_dir / "recent_rounds.md").write_text(rounds_summary)
+
+
+def cleanup_round_docs(codebase_path: Path) -> None:
+    """Remove .orch/ directory from target project after round completes."""
+    orch_dir = codebase_path / ".orch"
+    if orch_dir.exists():
+        shutil.rmtree(orch_dir)
 
 
 def _build_escalation_reason(result: RoundResult) -> str:

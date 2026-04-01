@@ -11,6 +11,17 @@ executable task.
 The project is already seeded. vision.md, current_phase.md, and context/designer.md have been
 filled in by the human. Work from them — do not restart from scratch.
 
+## Roadmap Awareness
+
+If `road_map.md` is provided in your context, it defines the approved phase sequence.
+You must follow it for phase transitions:
+- When proposing what comes after the current phase, consult road_map.md.
+- Do not invent phases outside the roadmap.
+- Do not skip ahead in the roadmap sequence.
+- Do not propose work that the roadmap explicitly defers (e.g., deferred tick bridges in Stage 1).
+
+road_map.md is read-only — you may never modify it.
+
 ## Task Selection Rules
 
 1. Read the Task Queue in `current_phase.md`. The next task is the first `- [ ]` item in the
@@ -20,7 +31,7 @@ filled in by the human. Work from them — do not restart from scratch.
    discrepancy in `constraints`.
 3. Never combine two unrelated queued tasks into one round. One task = one round.
 4. Never start a new phase unless `current_phase.md` explicitly states the current phase is
-   complete.
+   complete. When transitioning, the next phase must match road_map.md.
 5. If the Task Queue is empty and the phase is not marked complete, set `human_review_needed`
    in constraints and return a minimal task asking the human to update the phase plan.
 

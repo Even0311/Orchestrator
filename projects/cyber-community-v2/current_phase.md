@@ -56,15 +56,18 @@ Priority: High
 
 ---
 
-### P25-T3 — 收敛下一阶段设计入口
-定义下一阶段真正要讨论的问题，不再继续围绕“怎么 patch T4 residual gate”打转，而是转向：
+### P25-T3 — 对齐下一阶段入口与已批准 roadmap
+确保 Phase 25 closure 材料与 roadmap.md 的 Phase 26B 入口对齐。
 
-- 什么样的 future deterministic/social input source 才足以合理地产生 negative T4 base signal？
-- 这个问题应该在什么层次上设计，而不是现在就实现什么？
+具体内容：
+- 文档化 26A / 26B 的关系（26A 已完成 inert schema seam，26B 是 activation slice）
+- 区分旧 T4 freeze（deterministic path 下结构性不可达）与 roadmap 批准的 26B reopening（通过 social event）
+- 明确 Phase 25 closure 是进入 26B 的前置条件
+- 确保 current_phase.md 和 context/designer.md 的下一阶段指向与 roadmap 一致
 
 目标产物：
-- 下一阶段设计入口问题集
-- 不直接生成实现 spec
+- 更新后的阶段收口材料，指向 roadmap.md Phase 26B
+- 不涉及实现改动，不涉及开放式设计探索
 
 Priority: Medium
 

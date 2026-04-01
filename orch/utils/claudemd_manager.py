@@ -1,69 +1,67 @@
-"""Manages CLAUDE.md in the target project for Claude Code native context loading."""
+"""Manages the dynamic section of CLAUDE.md in the target project.
+
+CLAUDE.md has two parts:
+- Stable sections (project def, tech stack, architecture, hard rules, etc.)
+  Written once by human or initial generation. Rarely changes.
+- Dynamic section (current phase goal, working assumptions)
+  Updated by orchestrator each round via markers.
+
+This module only updates the dynamic section. The stable sections are preserved.
+"""
 from pathlib import Path
 
-MARKER = "<!-- managed by orchestrator — do not edit this section manually -->"
+DYNAMIC_START = "<!-- managed by orchestrator — stable sections above, dynamic sections below -->"
+DYNAMIC_END = "<!-- end orchestrator dynamic section -->"
 
 
 def generate_claudemd(state_dir: Path, codebase_path: Path) -> None:
-    """Generate or update CLAUDE.md in the target project from orchestrator state docs.
+    """Update only the dynamic section of CLAUDE.md in the target project.
 
-    Extracts stable project context (architecture, conventions, current phase) and
-    writes it to CLAUDE.md so Claude Code loads it natively. This separates "what
-    the project is" (CLAUDE.md) from "what to do this round" (executor prompt).
+    If CLAUDE.md doesn't exist or has no dynamic markers, the dynamic section
+    is appended. If markers exist, the content between them is replaced.
 
-    If CLAUDE.md already exists with non-orchestrator content, the orchestrator
-    section is appended/updated using markers.
+    Performs a diff check: skips the write if content hasn't changed.
     """
-    orchestrator_section = _build_section(state_dir)
+    dynamic_section = _build_dynamic_section(state_dir)
     claudemd_path = codebase_path / "CLAUDE.md"
 
     if claudemd_path.exists():
         existing = claudemd_path.read_text()
-        if MARKER in existing:
-            # Replace existing orchestrator section
-            before, _ = existing.split(MARKER, 1)
-            # Find the end marker if present
-            end_marker = "<!-- end orchestrator section -->"
-            if end_marker in existing:
-                _, after = existing.rsplit(end_marker, 1)
-            else:
-                after = ""
-            new_content = before.rstrip() + "\n\n" + orchestrator_section + after
+
+        if DYNAMIC_START in existing:
+            # Replace dynamic section between markers
+            before = existing.split(DYNAMIC_START, 1)[0].rstrip()
+            after = ""
+            if DYNAMIC_END in existing:
+                after = existing.rsplit(DYNAMIC_END, 1)[1]
+
+            new_content = before + "\n\n" + dynamic_section + after
         else:
-            # Append orchestrator section to existing content
-            new_content = existing.rstrip() + "\n\n" + orchestrator_section
+            # No markers yet — append dynamic section
+            new_content = existing.rstrip() + "\n\n" + dynamic_section
+
+        new_content = new_content.strip() + "\n"
+
+        # Diff check: skip write if unchanged
+        if new_content == existing:
+            return
+
+        claudemd_path.write_text(new_content)
     else:
-        new_content = orchestrator_section
+        # No CLAUDE.md at all — write just the dynamic section
+        # (stable sections should be generated separately)
+        claudemd_path.write_text(dynamic_section.strip() + "\n")
 
-    claudemd_path.write_text(new_content.strip() + "\n")
 
+def _build_dynamic_section(state_dir: Path) -> str:
+    """Build the orchestrator-managed dynamic section of CLAUDE.md."""
+    parts = [DYNAMIC_START, ""]
 
-def _build_section(state_dir: Path) -> str:
-    """Build the orchestrator-managed section of CLAUDE.md."""
-    parts = [MARKER, ""]
-
-    # Architecture and conventions from designer context
-    designer_ctx_path = state_dir / "context" / "designer.md"
-    if designer_ctx_path.exists():
-        designer_ctx = designer_ctx_path.read_text()
-        architecture = _extract_section(designer_ctx, "Architecture Snapshot")
-        constraints = _extract_section(designer_ctx, "Active Constraints")
-
-        if architecture:
-            parts.append("## Architecture")
-            parts.append(architecture)
-            parts.append("")
-        if constraints:
-            parts.append("## Conventions & Constraints")
-            parts.append(constraints)
-            parts.append("")
-
-    # Current phase summary (goal only, not task queue)
+    # Current phase summary (goal only, not full task queue)
     phase_path = state_dir / "current_phase.md"
     if phase_path.exists():
         phase_content = phase_path.read_text()
         phase_goal = _extract_section(phase_content, "Phase Goal")
-        # Also grab the phase title from the first heading
         phase_title = ""
         for line in phase_content.splitlines():
             if line.startswith("# "):
@@ -79,14 +77,25 @@ def _build_section(state_dir: Path) -> str:
             parts.append("")
 
     # Working assumptions from designer context
+    designer_ctx_path = state_dir / "context" / "designer.md"
     if designer_ctx_path.exists():
+        designer_ctx = designer_ctx_path.read_text()
         assumptions = _extract_section(designer_ctx, "Working Assumptions")
         if assumptions:
             parts.append("## Working Assumptions")
             parts.append(assumptions)
             parts.append("")
 
-    parts.append("<!-- end orchestrator section -->")
+    # Next phase pointer from roadmap (if current phase is closing)
+    roadmap_path = state_dir / "road_map.md"
+    if roadmap_path.exists() and phase_path.exists():
+        phase_content = phase_path.read_text().lower()
+        if "phase complete" in phase_content or "all tasks done" in phase_content:
+            parts.append("## Next Phase")
+            parts.append("Current phase is complete. See orchestrator roadmap for next phase.")
+            parts.append("")
+
+    parts.append(DYNAMIC_END)
     return "\n".join(parts)
 
 
