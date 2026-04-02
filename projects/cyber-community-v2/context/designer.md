@@ -15,30 +15,27 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 
-- T4 social event detection seam is verified operational (P26B-T1 complete)
-- T4 will emit only minimal negative relational shapes (P26B-T2 focus)
-- Downstream gates remain unchanged; they decide residual creation
-- Existing T1/T2 continuity must remain stable during T4 output implementation
+- T4 minimal negative output shape implemented (P26B-T2 complete): valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1
+- Downstream gate behavior now the critical verification target (P26B-T3)
+- T1/T2 continuity remains stable (verified by 205 tests)
 - World carryover distribution remains as calibrated
 
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder verified to read world.social_event via narrow seam (18 tests passing)
-- Bridge coverage: T1/T2 active, T4 now narrow-active (detection phase complete)
+- T4 builder complete: narrow social event detection → minimal negative relational output emission pipeline operational
+- Bridge coverage: T1/T2 active, T4 now narrow-active with full output contract
 - Settlement substrate unchanged
-- Phase 26B progressing to output shape definition (P26B-T2)
+- Phase 26B progressing to downstream gate audit (P26B-T3)
 
 ## Known Risks
 
-- Over-expanding T4 output shapes beyond minimal negative relational contract
-- Accidentally destabilizing T1/T2 continuity during T4 output implementation
-- Confusing Phase 26B narrow reopening with full T4 relational continuity
-- Prematurely optimizing output intensity before seam is fully verified
+- Downstream gate interactions between T4 and existing T1/T2 paths (same-day composition)
+- Over-interpreting minimal output shape as full relational continuity
+- Phase 26B scope creep beyond audit into tuning
 
 ## Resolved Strategic Decisions
 
 - Phase 25 officially closed; Phase 26B entered per roadmap
 - T4 reopening approved via Phase 26B social event path (not gate tuning)
 - Scope strictly limited to minimal activation seam verification
-- Stage 1 deferred ticks remain out of scope

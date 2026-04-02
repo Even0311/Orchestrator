@@ -22,12 +22,12 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Task Queue
 
-- [ ] P26B-T2: Define and implement minimal negative relational output shape
 - [ ] P26B-T3: Verify downstream gate observability and auditability
 - [ ] P26B-T4: Confirm T4 seam activation stability and exit conditions
 
 ## Completed Tasks
 
+- [x] P26B-T2: Define and implement minimal negative relational output shape
 - [x] P26B-T1: Implement narrow social event reading path in T4 builder
 - [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建
 - [x] P25-T2 — 固化 T4 冻结边界：docs/phase25_t4_freeze_boundary.md 已创建
@@ -51,7 +51,7 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Current Status
 
-P26B-T1 complete. Narrow social event reading path in T4 builder verified operational; implementation confirmed with 18 passing tests for T4 social event detection.
+P26B-T2 complete. T4 minimal negative relational output shape implemented with valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1; full detection-to-output pipeline operational with 205 tests passing.
 
 ## Risks / Blockers
 
@@ -66,6 +66,6 @@ Phase 26B only establishes the activation seam; full T4 relational continuity re
 
 ## Next Recommended Task
 
-### P26B-T2: Define and implement minimal negative relational output shape
+### P26B-T3: Verify downstream gate observability and auditability
 
-Define the specific signal structure and field values for T4's minimal negative relational output. Implement the output shape in `build_signal_from_t4_relationship_tick()` when qualifying social events are detected, ensuring it conforms to the narrow activation contract approved for Phase 26B.
+Audit how T4-generated AppraisalSignals interact with existing downstream gates (residual creation, wake chain triggers, same-day composition with T1/T2). Verify that gate behavior remains observable, auditable, and stable when T4 signals enter the settlement pipeline.

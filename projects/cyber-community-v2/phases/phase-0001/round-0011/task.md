@@ -1,0 +1,29 @@
+# Task: Implement T4 minimal negative relational output shape
+
+**ID:** round-0011  
+**Objective:** Define and implement the specific AppraisalSignal structure for minimal negative relational output in build_signal_from_t4_relationship_tick() when narrow social event triggers are detected, ensuring the output conforms to Phase 26B's narrow activation contract.
+
+**Exact Scope:** IN: Implement minimal negative relational output shape in build_signal_from_t4_relationship_tick() for approved narrow social event triggers; define exact field values (low-intensity negative valence, relationship context) for the minimal negative signal; ensure signal production activates only for qualifying events. OUT: Settlement/substrate modifications; bridge architecture changes; strong negative outputs; multiple output variations; routing based on social_event.target_id; broad event taxonomy expansion; modifications to T1/T2 builder logic.
+
+## Constraints
+- Must not break existing T1/T2 continuity or residual creation behavior
+- Output must remain minimal (low intensity) negative only, no strong negative signals
+- Must rely on existing downstream gates for residual creation decisions without modifying gate logic
+- Activation limited to narrow social event triggers verified in P26B-T1
+
+## Acceptance Criteria
+- When a qualifying narrow social event is present, build_signal_from_t4_relationship_tick() produces an AppraisalSignal with minimal negative relational characteristics
+- The minimal negative output shape specifies low-intensity negative valence appropriate for minor relational friction
+- Existing T1/T2 continuity behavior remains stable and unchanged by T4 output activation
+- The implementation activates only for approved narrow trigger shapes and ignores non-qualifying event types
+
+## Required Tests
+- Test that T4 builder returns minimal negative relational signal when narrow social event trigger is present
+- Test that T4 builder returns null or neutral signal when no qualifying social event is present
+- Test that T4 minimal negative output does not destabilize same-day composition with T1/T2 signals
+
+## Non-Goals
+- Do not refactor settlement substrate or bridge architecture
+- Do not add strong negative outputs or high-intensity relational signals
+- Do not expand event taxonomy beyond narrow approved triggers
+- Do not modify T1/T2 builders or their existing continuity paths
