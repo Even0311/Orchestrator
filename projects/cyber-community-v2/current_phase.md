@@ -20,13 +20,13 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Task Queue
 
-- [ ] P27-T3: Audit downstream residual creation behavior
 - [ ] P27-T4: Audit _adjust_t4() path stability and interpretability
 - [ ] P27-T5: Calibrate thresholds and guards if needed
 - [ ] P27-T6: Produce explicit contract notes for valid T4 behavior
 
 ## Completed Tasks
 
+- [x] P27-T3: Audit downstream residual creation behavior — Observability instrumentation implemented for downstream propagation, wake chain depth tracking, and cascade pattern detection
 - [x] P27-T2: Audit T4 negative activation frequency — Observability instrumentation implemented and verified (259 tests passed)
 - [x] P27-T1: Audit same-day T2/T4 composition safety — Added CompositionAuditRecord and composition_audit_out parameter to simulate_day_bridged for observability-only T2/T4 same-day collision detection (247 tests passed)
 - [x] P26B-T4: Confirm T4 seam activation stability and exit conditions
@@ -55,16 +55,16 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Current Status
 
-P27-T2 complete: T4 negative activation frequency observability instrumentation implemented and verified stable with 259 tests. Quantitative assessment capability now established for measuring activation rates under narrow event-aware conditions.
+P27-T3 complete: downstream residual creation observability instrumentation implemented, including wake chain depth tracking and cascade pattern detection capabilities.
 
 ## Risks / Blockers
 
-### R1 — Downstream residual creation patterns unknown
-P27-T3 may reveal unexpected residual creation cascades or wake chain interactions that require threshold adjustment before proceeding to calibration.
+### R1 — _adjust_t4() stability unknown
+P27-T4 analysis may reveal instability in threshold adjustments or non-interpretable output shapes requiring recalibration before finalizing T4 contracts.
 
 ### R2 — Production wake chain behavior untested
 Wake chain depth bounds verified in test environment; production load patterns may differ and require additional guards.
 
 ## Next Recommended Task
 
-P27-T3: Audit downstream residual creation behavior
+P27-T4: Audit _adjust_t4() path stability and interpretability

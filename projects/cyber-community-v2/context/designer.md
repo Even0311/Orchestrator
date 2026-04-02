@@ -7,10 +7,9 @@ When the current phase is closing or a next phase is being proposed, Designer **
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder: narrow event-aware activation seam active
-- Composition audit: CompositionAuditRecord dataclass and composition_audit_out parameter added to simulate_day_bridged for T2/T4 collision detection
-- Frequency audit: Observability instrumentation for T4 negative activation rates now implemented
-- Bridge coverage: T1/T2 active, T4 narrow-active with composition and frequency observability
+- T4 builder: narrow event-aware activation seam active with composition and frequency observability
+- Downstream audit: wake chain depth tracking and cascade pattern detection instrumentation now active
+- Bridge coverage: T1/T2 active, T4 narrow-active with full audit instrumentation (composition, frequency, downstream)
 - Settlement substrate unchanged
 
 ## Active Constraints
@@ -23,17 +22,17 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 
-- Phase 27 active: P27-T1 and P27-T2 complete (composition and frequency audit instrumentation verified, 506 total tests passed)
-- T2/T4 collision detection and T4 activation frequency now both instrumented for observability
-- Ready for downstream residual creation audit (P27-T3)
+- Phase 27 active: P27-T1, P27-T2, and P27-T3 complete (composition, frequency, and downstream audit instrumentation all verified)
+- T2/T4 collision detection, T4 activation frequency, and downstream residual propagation now all instrumented for observability
+- Ready for _adjust_t4() path stability audit (P27-T4)
 
 ## Known Risks
 
-- P27-T3 downstream audit may reveal unexpected residual cascades requiring immediate recalibration
-- Production load wake chain patterns may differ from test scenarios
+- P27-T4 audit may reveal threshold adjustment instabilities or non-interpretable output shapes requiring immediate recalibration
+- Production load wake chain patterns may differ from test scenarios despite instrumentation
 
 ## Resolved Strategic Decisions
 
 - Phase 26B officially closed; Phase 27 now active
-- T4 minimal activation seam established with full observability (composition + frequency)
+- T4 minimal activation seam established with full observability (composition + frequency + downstream)
 - Roadmap sequence preserved: Phase 27 (T4 Activation Audit and Composition Safety) progressing through audit tasks

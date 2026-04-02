@@ -1,0 +1,34 @@
+{
+  "attempt": 2,
+  "success": false,
+  "cost_usd": 0.0,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md",
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_t4_residual_creation_audit.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md                       |  7 ++--\n back/app/engines/tick_bridge.py | 71 +++++++++++++++++++++++++++++++++++++++++\n 2 files changed, 74 insertions(+), 4 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex 860cc5f..a72db7b 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,9 +138,8 @@ Current Phase\n Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.\n \n ## Working Assumptions\n-- Phase 27 active: P27-T1 composition audit complete (247 tests passed)\n-- T2/T4 collision detection now instrumented for observability\n-- Same-day composition safety verified in test environment\n-- Ready for activation frequency audit (P27-T2)\n+- Phase 27 active: P27-T1 and P27-T2 complete (composition and frequency audit instrumentation verified, 506 total tests passed)\n+- T2/T4 collision detection and T4 activation frequency now both instrumented for observability\n+- Ready for downstream residual creation audit (P27-T3)\n \n <!-- end orchestrator dynamic section -->\ndiff --git a/back/app/engines/tick_bridge.py b/back/app/engines/tick_bridge.py\nindex 8544a84..f7ccccd 100644\n--- a/back/app/engines/tick_bridge.py\n+++ b/back/app/engines/tick_bridge.py\n@@ -220,6 +220,46 @@ class T4ActivationAuditRecord:\n     absorption: Optional[str]              # signal absorption value (None if no signal)\n \n \n+@dataclass\n+class T4ResidualCreationAuditRecord:\n+    \"\"\"\n+    Audit record capturing downstream residual creation behavior from T4 signal emission.\n+\n+    Emitted by simulate_day_bridged when t4_residual_audit_out is provided.\n+    Tracks residual creation provenance (T1 / T2 / T4), wake chain depth,\n+    and cumulative residual count per day so that T4-induced residual cascades\n+    are observable before calibration.\n+\n+    Observability-only: does not alter any deterministic logic.\n+\n+    Fields:\n+      world_day                  — day number passed to simulate_day_bridged.\n+      t4_activated               — True if T4 took the negative event-aware path.\n+      t4_residual_created        — True if T4 signal produced a new residual this day.\n+      t4_residual_provenance     — \"t4_wake_chain\" if created via Phase 23 gate;\n+                                   \"none\" if no T4 residual was created.\n+      t1_residual_created        — True if T1 signal produced a new residual this day.\n+      t2_residual_created        — True if T2 signal produced a new residual this day.\n+      wake_chain_depth           — 0 if no T4 residual was created; 1 if a T4\n+                                   residual was created (single-day cascade depth).\n+      new_residuals_total        — total new residuals created this day across all ticks.\n+      t4_residual_stress_per_day — stress_per_day value of the T4 residual, or None.\n+      t4_residual_mood_per_day   — mood_per_day value of the T4 residual, or None.\n+      t4_residual_days_remaining — initial days_remaining of the T4 residual, or None.\n+    \"\"\"\n+    world_day: int\n+    t4_activated: bool\n+    t4_residual_created: bool\n+    t4_residual_provenance: str         # \"t4_wake_chain\" | \"none\"\n+    t1_residual_created: bool\n+    t2_residual_crea\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 275 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  2%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "You're out of extra usage · resets 2am (Australia/Sydney)",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "You're out of extra usage · resets 2am (Australia/Sydney)"
+}
