@@ -1,0 +1,30 @@
+{
+  "task_id": "round-0010",
+  "title": "Implement narrow social event reading in T4 builder",
+  "objective": "Modify `build_signal_from_t4_relationship_tick()` to read `world.social_event` and detect qualifying events using the narrow trigger conditions approved for Phase 26B, establishing the first event-aware activation seam for T4.",
+  "exact_scope": "IN: Add logic to `build_signal_from_t4_relationship_tick()` to check for qualifying social events in `world.social_event`; implement narrow trigger condition checks (specific event types approved for 26B); return detection result to enable downstream signal generation. OUT: Implementation of negative relational output shape (handled in P26B-T2); modifications to downstream residual creation gates; changes to T1/T2 builders; routing based on `social_event.target_id`; expansion of event taxonomy beyond approved narrow set; settlement or bridge architecture changes.",
+  "constraints": [
+    "Must use only the narrow trigger conditions approved for Phase 26B (specific event types)",
+    "Must not break existing T1/T2 continuity behavior",
+    "Must not introduce routing logic based on social_event.target_id",
+    "Must not modify settlement substrate or downstream gates"
+  ],
+  "acceptance_criteria": [
+    "`build_signal_from_t4_relationship_tick()` reads `world.social_event` when invoked",
+    "Function correctly identifies qualifying social events based on approved narrow trigger conditions",
+    "Function returns appropriate detection result when qualifying event is present, and null/empty when absent",
+    "Existing T1 and T2 bridge operations continue to function without regression"
+  ],
+  "required_tests": [
+    "Test that T4 builder correctly detects a qualifying social event from world state",
+    "Test that T4 builder ignores non-qualifying social events and returns null/empty",
+    "Test that T4 builder handles absence of social event in world state gracefully"
+  ],
+  "non_goals": [
+    "Do not implement the negative relational output signal shape (deferred to P26B-T2)",
+    "Do not modify settlement substrate or residual creation gates",
+    "Do not change T1/T2 builder implementations",
+    "Do not add routing logic based on social_event.target_id",
+    "Do not expand social event taxonomy beyond narrow approved set"
+  ]
+}

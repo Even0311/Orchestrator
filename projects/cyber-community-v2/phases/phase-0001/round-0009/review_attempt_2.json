@@ -1,0 +1,15 @@
+{
+  "attempt": 2,
+  "result": "FAIL",
+  "confidence": "high",
+  "unmet_criteria": [
+    "pytest failed — hard gate"
+  ],
+  "suspicious_claims": [],
+  "required_fixes": [
+    "fix failing tests before proceeding"
+  ],
+  "human_review_needed": false,
+  "rationale": "Hard gate: pytest failed. /bin/sh: 1: python: not found\n",
+  "cost_usd": 0.0
+}

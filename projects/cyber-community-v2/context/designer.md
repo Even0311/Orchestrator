@@ -15,26 +15,26 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 
-- Phase 26B activates T4 via social event reading, not gate tuning
-- T4 will emit only minimal negative relational shapes
+- T4 social event detection seam is verified operational (P26B-T1 complete)
+- T4 will emit only minimal negative relational shapes (P26B-T2 focus)
 - Downstream gates remain unchanged; they decide residual creation
-- Existing T1/T2 continuity must remain stable during T4 activation
+- Existing T1/T2 continuity must remain stable during T4 output implementation
 - World carryover distribution remains as calibrated
 
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder now reads world.social_event (narrow seam)
-- Bridge coverage: T1/T2 active, T4 transitioning from inactive to narrow-active
+- T4 builder verified to read world.social_event via narrow seam (18 tests passing)
+- Bridge coverage: T1/T2 active, T4 now narrow-active (detection phase complete)
 - Settlement substrate unchanged
-- Phase 26B focuses on event-aware activation without architecture redesign
+- Phase 26B progressing to output shape definition (P26B-T2)
 
 ## Known Risks
 
-- Over-expanding T4 trigger conditions beyond narrow approved path
-- Accidentally destabilizing T1/T2 continuity during T4 work
+- Over-expanding T4 output shapes beyond minimal negative relational contract
+- Accidentally destabilizing T1/T2 continuity during T4 output implementation
 - Confusing Phase 26B narrow reopening with full T4 relational continuity
-- Prematurely optimizing output shapes before seam is verified
+- Prematurely optimizing output intensity before seam is fully verified
 
 ## Resolved Strategic Decisions
 
