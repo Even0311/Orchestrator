@@ -1,0 +1,11 @@
+{
+  "attempt": 1,
+  "result": "PASS",
+  "confidence": "high",
+  "unmet_criteria": [],
+  "suspicious_claims": [],
+  "required_fixes": [],
+  "human_review_needed": false,
+  "rationale": "Read back/tests/test_t4_p26b_exit.py in full (500 lines, 14 tests). AC1 met: tests test_qualifying_event_overrides_low_trust_path, test_qualifying_event_fires_at_trust_boundary_exactly_60, and boundary exhaustion tests directly verify T4 reads qualifying events and emits minimal negative relational signals with valid AppraisalSignal contract. AC2 met: test_t1_t2_t4_full_same_day_composition_no_crash and test_t1_t2_t4_signals_are_independent_no_shared_state verify safe composition without gate conflicts. AC3 met: simulate_day_bridged full-pipeline tests plus test_t4_minimal_negative_never_creates_residual_in_isolation verify observable/auditable downstream gate behavior. AC4 met: 233/233 tests pass (14 new + 219 pre-existing), confirmed by running pytest. AC5 met via test file presence and passing results. All three required_tests are covered: narrow activation path (section 1), T1+T2+T4 composition (section 3), and edge cases in detection boundaries (trust boundary, empty rels, non-qualifying types, immutability). All 14 tests pass with no regressions.",
+  "cost_usd": 0.0881322
+}

@@ -1,0 +1,38 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.4847969999999999,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [
+      "back/tests/test_t4_p26b_exit.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 8 ++++----\n 1 file changed, 4 insertions(+), 4 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex 07ba480..8eb2aaa 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,9 +138,9 @@ Current Phase\n Enable the first narrow, explicit, auditable event-aware T4 activation path.\n \n ## Working Assumptions\n-- T4 minimal negative output shape implemented (P26B-T2 complete): valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1\n-- Downstream gate behavior now the critical verification target (P26B-T3)\n-- T1/T2 continuity remains stable (verified by 205 tests)\n-- World carryover distribution remains as calibrated\n+- P26B-T3 complete: downstream gate behavior verified observable, auditable, and stable\n+- T4 negative signals compose safely with T1/T2 same-day paths\n+- 219 tests passing confirms pipeline integrity\n+- P26B-T4 (final stability check) is the remaining task before Phase 26B exit\n \n <!-- end orchestrator dynamic section -->\n\ndiff --git a/back/tests/test_t4_p26b_exit.py b/back/tests/test_t4_p26b_exit.py\nnew file mode 100644\nindex 0000000..132e97e\n--- /dev/null\n+++ b/back/tests/test_t4_p26b_exit.py\n@@ -0,0 +1,499 @@\n+\"\"\"\n+Phase 26B-T4 — Final stability verification and exit condition tests.\n+\n+Confirms that the narrow T4 activation path meets all Phase 26B exit conditions:\n+\n+  1. Narrow activation path: T4 correctly reads qualifying events and emits\n+     minimal negative relational signals with valid contract.\n+  2. Same-day T1+T2+T4 composition: all three signals compose safely without\n+     downstream gate conflicts.\n+  3. Edge cases in detection boundaries: do not cause unstable downstream\n+     behavior or hidden state mutations.\n+\n+These tests are orthogonal to test_t4_social_event_detection.py (seam/shape)\n+and test_t4_downstream_gate.py (gate mechanics); they focus on seam stability,\n+input integrity, and full-pipeline composition.\n+\n+Run from back/ with: .venv/bin/python -m pytest tests/test_t4_p26b_exit.py -v\n+\"\"\"\n+\n+import copy\n+\n+import pytest\n+\n+from app.domain.enums import (\n+    AccentColor, District, FeedTone, GrowthStage,\n+    RelationshipStatus, RelationshipType, ResidualKind,\n+    SocialEventType, Trend, Valence,\n+)\n+from app.domain.models import (\n+    AgentGrowth, AgentProfile, AgentState,\n+    InfluenceAction, PublicFeedItem, Relationship,\n+    ResidualEntry, SocialEventSpec, WorldSnapshot,\n+)\n+from app.engines.appraisal_settlement import (\n+    AbsorptionLevel, AppraisalSignal, Arousal,\n+    GrowthDimension, GrowthDirection,\n+    GuidanceResonance, RelationalBlock, TrustShift,\n+    create_residual_from_appraisal,\n+)\n+from app.engines.tick_bridge import (\n+    T4_QUALIFYING_EVENT_TYPES,\n+    _detect_qualifying_t4_social_event,\n+    build_signal_from_t4_relationship_tick,\n+    build_signal_from_t1_world_tick,\n+    build_signal_from_t2_influencer_tick,\n+    simulate_day_bridged,\n+    ResidualAdjustmentTrace,\n+)\n+\n+\n+# ─── Fixture helpers ──────────────────────────────────────────────────────────\n+\n+\n+def _make_world(\n+    social_event: SocialEventSpec | None = Non\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 233 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  3%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Created test_t4_p26b_exit.py with 14 Phase 26B-T4 exit verification tests covering narrow activation path integrity, input immutability, full T1+T2+T4 same-day composition, and pipeline stability",
+    "files_changed": [
+      "back/tests/test_t4_p26b_exit.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_t4_p26b_exit.py -v",
+      "python -m pytest tests/ -q"
+    ],
+    "test_results": "233 passed / 0 failed (219 pre-existing + 14 new)",
+    "diff_summary": "New test file with 14 tests: 5 narrow-activation-path boundary tests, 3 input-immutability tests, 2 same-day T1+T2+T4 composition tests, 4 simulate_day_bridged pipeline stability tests",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "233 passed (219 + 14 new), zero regressions.\n\nThe Phase 26B-T4 exit verification tests cover:\n\n**1. Narrow activation path integrity** (`test_qualifying_event_overrides_low_trust_path`, `test_qualifying_event_fires_at_trust_boundary_exactly_60`, `test_t4_returns_none_when_no_influencer_relationship_qualifying_event`, `test_all_non_qualifying_event_types_do_not_activate_detection`, `test_qualifying_event_types_constant_is_exactly_two`) — confirms the narrow set is exactly `{confrontation, withdrawal}`, that it overrides trust thresholds, and that missing relationships return `None` safely.\n\n**2. Input immutability / no hidden state mutations** (`test_t4_builder_does_not_mutate_input_relationships_*`, `test_t4_repeated_calls_identical_output_immutable_inputs`) — verifies the builder is a pure function on both paths.\n\n**3. Full T1+T2+T4 same-day composition** (`test_t1_t2_t4_full_same_day_composition_no_crash`, `test_t1_t2_t4_signals_are_independent_no_shared_state`) — three signals compose without crash; T4 negative doesn't feed back into T1/T2.\n\n**4. `simulate_day_bridged` pipeline stability** — qualifying event with no carried residual → zero relational output residuals; both event types complete without error; full-pipeline result is valid.\n\n<evidence>\n{\n  \"summary\": \"Created test_t4_p26b_exit.py with 14 Phase 26B-T4 exit verification tests covering narrow activation path integrity, input immutability, full T1+T2+T4 same-day composition, and pipeline stability\",\n  \"files_changed\": [\"back/tests/test_t4_p26b_exit.py\"],\n  \"commands_run\": [\"python -m pytest tests/test_t4_p26b_exit.py -v\", \"python -m pytest tests/ -q\"],\n  \"test_results\": \"233 passed / 0 failed (219 pre-existing + 14 new)\",\n  \"diff_summary\": \"New test file with 14 tests: 5 narrow-activation-path boundary tests, 3 input-immutability tests, 2 same-day T1+T2+T4 composition tests, 4 simulate_day_bridged pipeline stability tests\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}

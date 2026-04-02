@@ -1,0 +1,31 @@
+{
+  "task_id": "round-0014",
+  "title": "Confirm T4 seam activation stability and exit conditions",
+  "objective": "Execute final verification that the narrow T4 activation path meets all Phase 26B exit conditions: confirm T4 correctly reads qualifying social events, emits minimal negative relational signals with valid contract, and produces stable, observable, auditable downstream gate behavior without architectural instability or test regressions.",
+  "exact_scope": "IN: Running comprehensive verification tests to confirm T4 processes qualifying narrow social events; validating minimal negative relational AppraisalSignal emission shapes; auditing downstream residual creation gate interactions for stability and observability; verifying zero test regressions (maintaining 219+ passing tests); documenting exit condition verification results. OUT: Modifying T4 builder core logic, expanding event taxonomy beyond narrow approved path, adding new signal types or strong negatives, changing settlement/substrate/bridge architecture, implementing deferred tick bridges (T3/T5/T6/T7/T8), introducing LLM appraisal components.",
+  "constraints": [
+    "Must maintain existing test suite at 219+ passing tests with zero regressions",
+    "Must constrain verification to the narrow social event path implemented in P26B-T1/T2",
+    "Must not expand T4 logic to handle broad relational modeling or routing by target_id",
+    "Must document any detected instability or edge cases for human review if found"
+  ],
+  "acceptance_criteria": [
+    "T4 activation seam correctly processes qualifying narrow social events in test scenarios",
+    "Minimal negative relational AppraisalSignals are emitted with valid contract and compose safely with existing T1/T2 signals",
+    "Downstream residual creation gates demonstrate observable, auditable behavior when receiving T4 signals",
+    "Existing test suite passes completely with no regressions",
+    "Exit condition verification results are documented confirming seam stability or specific findings"
+  ],
+  "required_tests": [
+    "test that T4 narrow activation path correctly reads qualifying social events and emits minimal negative relational signals",
+    "test that T4 signals compose safely with same-day T1/T2 signals without downstream gate conflicts",
+    "test that edge cases in social event detection boundaries do not cause unstable downstream behavior or hidden state mutations"
+  ],
+  "non_goals": [
+    "do not modify T4 builder implementation beyond verification necessities",
+    "do not expand event taxonomy or add broad relational modeling",
+    "do not refactor settlement, substrate, or bridge components",
+    "do not implement deferred tick bridges (T3/T5/T6/T7/T8)",
+    "do not introduce live LLM appraisal or shadow validation mode"
+  ]
+}

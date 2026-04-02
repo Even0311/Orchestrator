@@ -6,36 +6,34 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Active Constraints
 
-- T4 activation limited to narrow social event-aware path only
+- T4 activation seam verified stable; narrow path remains the only approved activation shape
 - No broad event taxonomy expansion
 - No changes to settlement/substrate or bridge architecture
 - No live LLM integration yet
-- No routing based on social_event.target_id
 - Stage 1 deferred ticks (T3/T5/T6/T7/T8) remain frozen
 
 ## Working Assumptions
 
-- P26B-T3 complete: downstream gate behavior verified observable, auditable, and stable
-- T4 negative signals compose safely with T1/T2 same-day paths
-- 219 tests passing confirms pipeline integrity
-- P26B-T4 (final stability check) is the remaining task before Phase 26B exit
+- Phase 26B complete: all exit conditions met, P26B-T4 verification passed (233 tests)
+- T4 narrow activation produces stable, auditable downstream behavior
+- Same-day T1/T2/T4 composition verified safe
+- Ready for Phase 27 entry per roadmap
 
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder operational: narrow event detection → minimal negative output emission
-- Downstream gates audited: residual creation, wake triggers, and T1/T2 composition confirmed stable
-- Bridge coverage: T1/T2 active, T4 narrow-active with full output contract and verified gate interactions
+- T4 builder: narrow event-aware activation seam fully verified with 14 exit-condition tests
+- Downstream gates: residual creation and wake chains confirmed stable under T4 load
+- Bridge coverage: T1/T2 active, T4 narrow-active with verified contracts and gate interactions
 - Settlement substrate unchanged
 
 ## Known Risks
 
-- Final exit condition verification (P26B-T4) could reveal edge cases in stability
-- Over-interpreting minimal activation as full relational continuity
-- Premature expansion into broader relational modeling before Phase 27 audit
+- Phase 27 audit may reveal subtle composition issues at higher activation frequencies
+- Risk of interpreting verification success as justification for immediate coverage expansion (deferred to Phase 28)
 
 ## Resolved Strategic Decisions
 
-- Phase 25 officially closed; Phase 26B entered per roadmap
-- T4 reopening approved via Phase 26B social event path (not gate tuning)
-- Scope strictly limited to minimal activation seam verification
+- Phase 26B officially closed; T4 minimal activation seam established and exit-verified
+- Next phase approved: Phase 27 (T4 Activation Audit and Composition Safety) per roadmap.md
+- Deterministic T4 relational negative path now confirmed as stable baseline for future appraisal work

@@ -22,10 +22,11 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Task Queue
 
-- [ ] P26B-T4: Confirm T4 seam activation stability and exit conditions
+(no remaining tasks)
 
 ## Completed Tasks
 
+- [x] P26B-T4: Confirm T4 seam activation stability and exit conditions
 - [x] P26B-T3: Verify downstream gate observability and auditability
 - [x] P26B-T2: Define and implement minimal negative relational output shape
 - [x] P26B-T1: Implement narrow social event reading path in T4 builder
@@ -51,7 +52,7 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Current Status
 
-P26B-T3 complete. Downstream gate interactions audited; T4-generated AppraisalSignals confirmed stable and composable with existing T1/T2 gates. Full test suite at 219 passed / 0 failed.
+phase complete — all tasks done, ready for human review
 
 ## Risks / Blockers
 
@@ -66,6 +67,4 @@ Phase 26B only establishes the activation seam; full T4 relational continuity re
 
 ## Next Recommended Task
 
-### P26B-T4: Confirm T4 seam activation stability and exit conditions
-
-Final verification that the narrow T4 activation path meets all exit conditions: T4 can read qualifying social events, emit minimal negative relational signals, and demonstrate observable, auditable downstream behavior without architectural instability.
+none — phase complete
