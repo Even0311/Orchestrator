@@ -1,31 +1,34 @@
 # Current Phase
 
 ## Phase Goal
-Enable the first narrow, explicit, auditable event-aware T4 activation path.
+Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.
 
 ## In Scope
-- Activate `build_signal_from_t4_relationship_tick()` to read `world.social_event`
-- Allow only a very narrow trigger shape
-- Allow only a minimal negative relational output shape
-- Rely on existing downstream gates to decide whether relational residual is created
-- Verify that the seam can produce a real T4 negative path without broad architecture changes
+- Audit T4 negative activation frequency
+- Audit same-day T2/T4 interaction on the same relationship target
+- Audit downstream residual creation behavior
+- Audit whether `_adjust_t4()` and related paths produce stable and interpretable outcomes
+- Calibrate thresholds / guards / narrow protections if needed
+- Produce explicit contract notes on what is now considered valid T4 behavior
 
 ## Out of Scope
-- No live LLM
-- No broad event taxonomy expansion
-- No routing based on `social_event.target_id`
-- No generator rewrite to actively produce rich social events
-- No settlement/substrate redesign
-- No bridge redesign
-- No strong negative outputs
-- No attempt to solve all relational realism problems in one phase
+- No large relational system redesign
+- No new major event types
+- No player-side new intervention systems
+- No LLM integration yet
+- No generalized multi-factor relational cognition layer
 
 ## Task Queue
 
-(no remaining tasks)
+- [ ] P27-T2: Audit T4 negative activation frequency
+- [ ] P27-T3: Audit downstream residual creation behavior
+- [ ] P27-T4: Audit _adjust_t4() path stability and interpretability
+- [ ] P27-T5: Calibrate thresholds and guards if needed
+- [ ] P27-T6: Produce explicit contract notes for valid T4 behavior
 
 ## Completed Tasks
 
+- [x] P27-T1: Audit same-day T2/T4 composition safety — Added CompositionAuditRecord and composition_audit_out parameter to simulate_day_bridged for observability-only T2/T4 same-day collision detection (14 new tests, 247 passed)
 - [x] P26B-T4: Confirm T4 seam activation stability and exit conditions
 - [x] P26B-T3: Verify downstream gate observability and auditability
 - [x] P26B-T2: Define and implement minimal negative relational output shape
@@ -52,19 +55,16 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Current Status
 
-phase complete — all tasks done, ready for human review
+P27-T1 complete: T2/T4 same-day collision detection instrumentation implemented and verified stable with 247 tests.
 
 ## Risks / Blockers
 
-### R1 — Scope creep beyond narrow activation
-Risk of expanding T4 logic beyond the approved minimal social event path into broad relational modeling. Must constrain to narrow trigger shapes only.
+### R1 — Frequency audit may reveal excessive activation
+P27-T2 may reveal T4 negative activation rates higher than sustainable for continuity health, requiring immediate threshold recalibration.
 
-### R2 — Final stability confirmation pending
-P26B-T4 must confirm the entire activation seam remains stable under exit condition verification before Phase 26B closes.
-
-### R3 — Confusing activation with full continuity
-Phase 26B only establishes the activation seam; full T4 relational continuity remains future work. Avoid premature claims about relational continuity being "solved".
+### R2 — Production wake chain behavior untested
+Wake chain depth bounds verified in test environment; production load patterns may differ and require additional guards.
 
 ## Next Recommended Task
 
-none — phase complete
+P27-T2: Audit T4 negative activation frequency

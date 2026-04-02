@@ -1,0 +1,27 @@
+# Task: Audit Same-Day T2/T4 Composition Safety
+
+**ID:** round-0015  
+**Objective:** Implement comprehensive audit instrumentation to detect and log same-day T2 and T4 signal collisions on identical relationship targets, verifying that composed inputs produce stable downstream residual creation and bounded wake chain behavior.
+
+**Exact Scope:** IN: Add observability hooks to detect when T2 (influencer) and T4 (relationship) both generate signals for the same relationship target on the same simulation day, log collision events with relationship IDs and signal metadata, audit downstream gate behavior under composition, verify wake chain stability metrics. OUT: Modifications to T2/T4 signal generation logic, changes to downstream gate thresholds or residual creation rules, fixes for discovered composition issues (deferred to subsequent calibration tasks), expansion of event taxonomy.
+
+## Constraints
+- Observability-only changes must not alter deterministic T4 logic behavior
+- human review needed if audit reveals critical instability requiring immediate intervention vs deferred correction
+
+## Acceptance Criteria
+- Same-day T2/T4 collisions on identical relationship targets are automatically detected and logged with full context
+- Downstream residual creation behavior is traceable and auditable for each composed T2/T4 input scenario
+- Wake chain execution remains bounded and completes without infinite loops under T2/T4 composition load
+- Baseline metrics demonstrate collision frequency is within expected bounds for narrow activation seam
+
+## Required Tests
+- Test that same-day T2/T4 collision detection correctly identifies when both ticks target identical relationship IDs
+- Test that downstream gates process composed T2/T4 inputs without raising unhandled exceptions
+- Test that wake chain depth remains bounded under simulated high-frequency T2/T4 collision scenarios
+
+## Non-Goals
+- Do not modify T4 trigger conditions or signal strength calculations
+- Do not refactor T2 builder logic
+- Do not implement fixes for discovered issues
+- Do not add audit coverage for T3/T5/T6/T7/T8 deferred ticks

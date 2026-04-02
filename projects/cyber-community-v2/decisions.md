@@ -634,7 +634,30 @@ Schema 宽避免未来返工，authority 窄避免失控。
 
 ---
 
-## 16. 一句话总结
+## 16. Phase 26B 交付验证记录（2026-04-02）
+
+## 决策 16.1
+**Phase 26B seam 已建立，但 world generator 当前不产生 qualifying social events，T4 实际激活率为 0。**
+
+### 已确认
+Phase 26B 完成后，人工启动服务验证：
+- 前端/后端正常运行，T1/T2 continuity 行为未受影响
+- T4 seam 代码已存在（`T4_QUALIFYING_EVENT_TYPES`、`_detect_qualifying_t4_social_event()`），测试全部通过
+- 但 `world/generator.py` 不产生 `social_event`，`world.social_event` 在真实 simulation 中始终为 `None`
+- T4 qualifying event 检测路径在真实运行中永远不会被触发
+
+### 结论
+Phase 26B 建立的是"seam"（接缝），不是"live activation"（真实激活）。  
+T4 当前仍然在真实 simulation 中为 inactive，原因已从"结构上无 negative branch"变为"world generator 不提供 qualifying input"。
+
+### Phase 27 必须处理
+- 审计 T4 在真实 60-day simulation 中的实际激活频率（预期为 0）
+- 明确 world generator 是否需要产生 qualifying social events，以及产生的时机和频率
+- 在此之前，T4 relational continuity 仍未真正成立
+
+---
+
+## 17. 一句话总结
 
 > 当前项目已经明确决定：以 deterministic single-agent backbone 作为最终多主体数字社会系统的迁移母体；以”LLM appraisal + engine settlement”作为长期方向；以 selective tick intake、结构化 appraisal signal、bounded settlement、cross-day residual carryover 作为基础 contract。
 > 当前 T1/T2 continuity 已成立，cross-day persistence 已成立，world-side carryover 已完成第一轮长周期校准。
