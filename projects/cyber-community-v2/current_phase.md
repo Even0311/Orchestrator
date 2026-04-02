@@ -22,11 +22,11 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Task Queue
 
-- [ ] P26B-T3: Verify downstream gate observability and auditability
 - [ ] P26B-T4: Confirm T4 seam activation stability and exit conditions
 
 ## Completed Tasks
 
+- [x] P26B-T3: Verify downstream gate observability and auditability
 - [x] P26B-T2: Define and implement minimal negative relational output shape
 - [x] P26B-T1: Implement narrow social event reading path in T4 builder
 - [x] P25-T1 — 整理当前 continuity 状态结论：docs/phase25_continuity_status.md 已创建
@@ -51,21 +51,21 @@ Enable the first narrow, explicit, auditable event-aware T4 activation path.
 
 ## Current Status
 
-P26B-T2 complete. T4 minimal negative relational output shape implemented with valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1; full detection-to-output pipeline operational with 205 tests passing.
+P26B-T3 complete. Downstream gate interactions audited; T4-generated AppraisalSignals confirmed stable and composable with existing T1/T2 gates. Full test suite at 219 passed / 0 failed.
 
 ## Risks / Blockers
 
 ### R1 — Scope creep beyond narrow activation
 Risk of expanding T4 logic beyond the approved minimal social event path into broad relational modeling. Must constrain to narrow trigger shapes only.
 
-### R2 — Downstream gate instability
-Activating T4 may unpredictably interact with existing T1/T2 residual creation gates. Requires careful audit of same-day composition.
+### R2 — Final stability confirmation pending
+P26B-T4 must confirm the entire activation seam remains stable under exit condition verification before Phase 26B closes.
 
 ### R3 — Confusing activation with full continuity
 Phase 26B only establishes the activation seam; full T4 relational continuity remains future work. Avoid premature claims about relational continuity being "solved".
 
 ## Next Recommended Task
 
-### P26B-T3: Verify downstream gate observability and auditability
+### P26B-T4: Confirm T4 seam activation stability and exit conditions
 
-Audit how T4-generated AppraisalSignals interact with existing downstream gates (residual creation, wake chain triggers, same-day composition with T1/T2). Verify that gate behavior remains observable, auditable, and stable when T4 signals enter the settlement pipeline.
+Final verification that the narrow T4 activation path meets all exit conditions: T4 can read qualifying social events, emit minimal negative relational signals, and demonstrate observable, auditable downstream behavior without architectural instability.

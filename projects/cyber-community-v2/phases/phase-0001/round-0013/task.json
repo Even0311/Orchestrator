@@ -1,0 +1,31 @@
+{
+  "task_id": "round-0013",
+  "title": "Verify T4 downstream gate observability and auditability",
+  "objective": "Audit how T4-generated AppraisalSignals interact with downstream settlement gates (residual creation, wake chain triggers, and same-day composition with T1/T2) to verify gate behavior remains observable, auditable, and stable when T4 negative relational signals enter the pipeline.",
+  "exact_scope": "IN: Instrument or inspect downstream gates to expose decision paths when processing T4-generated AppraisalSignals; verify observability of same-day T2/T4 composition behavior; verify auditability of residual creation gate decisions involving T4 inputs; verify visibility of wake chain triggers activated by T4 signals; establish logging or tracing if gaps prevent observation. OUT: Modifications to T4 signal emission logic; modifications to T1/T2 bridge implementations; modifications to settlement substrate state contracts; expansion of social event taxonomy; implementation of new gate algorithms; fixes for stability issues discovered (report only).",
+  "constraints": [
+    "must not break existing 205 passing tests",
+    "must preserve deterministic settlement discipline",
+    "must not introduce live LLM or probabilistic logic",
+    "must constrain audit to narrow T4 activation path only (no deferred tick expansion)",
+    "must not alter core gate logic—only verify observability"
+  ],
+  "acceptance_criteria": [
+    "T4-generated AppraisalSignals produce observable traces when processed by residual creation gates",
+    "Same-day T2/T4 signal composition on identical relationship targets generates auditable decision logs",
+    "Wake chain triggers activated by T4 signals are inspectable in system output or logs",
+    "Downstream gate behavior with T4 inputs remains deterministic and repeatable across identical inputs"
+  ],
+  "required_tests": [
+    "test that T4 negative relational signal triggers residual creation gate with observable outcome",
+    "test that same-day T2 positive and T4 negative signals on same target compose without crashing and produce auditable result",
+    "test that T4 signal activates wake chain trigger with visible propagation trace"
+  ],
+  "non_goals": [
+    "do not modify T4 signal generation logic (completed in P26B-T2)",
+    "do not refactor T1/T2 bridge implementations",
+    "do not redesign settlement substrate contracts",
+    "do not implement fixes for stability issues discovered (deferred to P26B-T4)",
+    "do not expand event taxonomy beyond narrow social event path"
+  ]
+}

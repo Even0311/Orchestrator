@@ -1,0 +1,13 @@
+{
+  "attempt": 2,
+  "result": "FAIL",
+  "confidence": "low",
+  "unmet_criteria": [],
+  "suspicious_claims": [],
+  "required_fixes": [
+    "Review response could not be parsed — manual review required"
+  ],
+  "human_review_needed": true,
+  "rationale": "You're out of extra usage · resets 9pm (Australia/Sydney)",
+  "cost_usd": 0.0
+}

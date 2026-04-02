@@ -1,0 +1,31 @@
+{
+  "attempt": 2,
+  "success": false,
+  "cost_usd": 0.0,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 7 +++----\n 1 file changed, 3 insertions(+), 4 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex 57f5615..07ba480 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,10 +138,9 @@ Current Phase\n Enable the first narrow, explicit, auditable event-aware T4 activation path.\n \n ## Working Assumptions\n-- T4 social event detection seam is verified operational (P26B-T1 complete)\n-- T4 will emit only minimal negative relational shapes (P26B-T2 focus)\n-- Downstream gates remain unchanged; they decide residual creation\n-- Existing T1/T2 continuity must remain stable during T4 output implementation\n+- T4 minimal negative output shape implemented (P26B-T2 complete): valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1\n+- Downstream gate behavior now the critical verification target (P26B-T3)\n+- T1/T2 continuity remains stable (verified by 205 tests)\n - World carryover distribution remains as calibrated\n \n <!-- end orchestrator dynamic section -->\n",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 205 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  3%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "You're out of extra usage · resets 9pm (Australia/Sydney)",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "You're out of extra usage · resets 9pm (Australia/Sydney)"
+}

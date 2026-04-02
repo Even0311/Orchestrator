@@ -15,24 +15,24 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 
-- T4 minimal negative output shape implemented (P26B-T2 complete): valence=negative, absorption=surface, trust_shift=mild_decrease, closeness_delta=-1
-- Downstream gate behavior now the critical verification target (P26B-T3)
-- T1/T2 continuity remains stable (verified by 205 tests)
-- World carryover distribution remains as calibrated
+- P26B-T3 complete: downstream gate behavior verified observable, auditable, and stable
+- T4 negative signals compose safely with T1/T2 same-day paths
+- 219 tests passing confirms pipeline integrity
+- P26B-T4 (final stability check) is the remaining task before Phase 26B exit
 
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder complete: narrow social event detection → minimal negative relational output emission pipeline operational
-- Bridge coverage: T1/T2 active, T4 now narrow-active with full output contract
+- T4 builder operational: narrow event detection → minimal negative output emission
+- Downstream gates audited: residual creation, wake triggers, and T1/T2 composition confirmed stable
+- Bridge coverage: T1/T2 active, T4 narrow-active with full output contract and verified gate interactions
 - Settlement substrate unchanged
-- Phase 26B progressing to downstream gate audit (P26B-T3)
 
 ## Known Risks
 
-- Downstream gate interactions between T4 and existing T1/T2 paths (same-day composition)
-- Over-interpreting minimal output shape as full relational continuity
-- Phase 26B scope creep beyond audit into tuning
+- Final exit condition verification (P26B-T4) could reveal edge cases in stability
+- Over-interpreting minimal activation as full relational continuity
+- Premature expansion into broader relational modeling before Phase 27 audit
 
 ## Resolved Strategic Decisions
 
