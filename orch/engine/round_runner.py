@@ -1,4 +1,4 @@
-"""Executes a single Round: Designer → Executor → [Designer repair →] Executor → Reviewer."""
+"""Executes a single Round with either Claude subagents or the legacy Designer/Executor/Reviewer chain."""
 import json
 import shutil
 import time
@@ -9,8 +9,13 @@ from pathlib import Path
 import click
 
 from orch.agents.designer import DesignerAgent, TaskDefinition
-from orch.agents.executor import ExecutorAgent, ExecutorEvidence, ExecutorResult
-from orch.agents.reviewer import ReviewerAgent, ReviewResult
+from orch.agents.executor import ExecutorEvidence, ExecutorResult
+from orch.agents.reviewer import ReviewResult, ReviewerAgent
+from orch.engine.claude_round_driver import (
+    inject_round_driver_context,
+    run_attempt as run_subagent_attempt,
+    subagents_available,
+)
 from orch.utils.evidence_collector import GitEvidence
 from orch.utils.verification_runner import VerificationResults, VerificationStepResult
 
@@ -88,7 +93,7 @@ def run_round(
     round_id: str,
     instruction: str,
     designer: DesignerAgent,
-    executor: ExecutorAgent,
+    executor,
     reviewer: ReviewerAgent,
     round_dir: Path,
     codebase_path: Path | None = None,
@@ -96,21 +101,190 @@ def run_round(
     max_attempts: int = 2,
 ) -> RoundResult:
     """Run a complete round. Returns the result regardless of pass/fail."""
-
     round_dir.mkdir(parents=True, exist_ok=True)
 
+    if codebase_path and subagents_available(codebase_path):
+        return _run_round_via_claude_subagents(
+            round_id=round_id,
+            instruction=instruction,
+            round_dir=round_dir,
+            codebase_path=codebase_path,
+            model=getattr(executor, "_model", "sonnet"),
+            test_cmd=test_cmd,
+            max_attempts=max_attempts,
+        )
+
+    return _run_round_legacy(
+        round_id=round_id,
+        instruction=instruction,
+        designer=designer,
+        executor=executor,
+        reviewer=reviewer,
+        round_dir=round_dir,
+        codebase_path=codebase_path,
+        test_cmd=test_cmd,
+        max_attempts=max_attempts,
+    )
+
+
+def _run_round_via_claude_subagents(
+    *,
+    round_id: str,
+    instruction: str,
+    round_dir: Path,
+    codebase_path: Path,
+    model: str,
+    test_cmd: str | None,
+    max_attempts: int,
+) -> RoundResult:
+    click.echo(f"  [{_ts()}] Using Claude Code subagent round driver")
+    placeholder_task = TaskDefinition(
+        task_id=round_id,
+        title="",
+        objective="",
+        exact_scope="",
+        acceptance_criteria=[],
+        verification_steps=[],
+        non_goals=[],
+    )
+    result = RoundResult(round_id=round_id, task=placeholder_task)
+    prior_failure = ""
+
+    for attempt_num in range(1, max_attempts + 1):
+        attempt_label = f"Attempt {attempt_num}/{max_attempts}"
+        click.echo(f"\n  [{_ts()}] --- {attempt_label} ---")
+        inject_round_driver_context(codebase_path, instruction, prior_failure)
+
+        click.echo(f"  [{_ts()}] Claude round driver running...", nl=False)
+        t0 = time.time()
+        driven = run_subagent_attempt(
+            codebase_path=codebase_path,
+            round_id=round_id,
+            attempt_num=attempt_num,
+            model=model,
+        )
+        click.echo(f" done ({_elapsed(t0)}, ${driven.exec_result.cost_usd:.4f})")
+        if driven.exec_result.evidence.summary:
+            click.echo(f"           Summary: {driven.exec_result.evidence.summary[:120]}")
+
+        current_task = driven.task
+        if not current_task.task_id:
+            current_task.task_id = round_id
+        if not result.task.title:
+            result.task = current_task
+        if attempt_num == 1:
+            result.designer_cost_usd += 0.0
+            _write_task_files(round_dir, current_task, prefix="task")
+        else:
+            _write_task_files(round_dir, current_task, prefix=f"repaired_task_attempt_{attempt_num}")
+
+        verification = None
+        click.echo(f"  [{_ts()}] Hard gate: pytest...", nl=False)
+        t0 = time.time()
+        pytest_passed, pytest_output = _run_pytest(codebase_path, test_cmd=test_cmd)
+        verification = VerificationResults(
+            steps=[VerificationStepResult(
+                command=test_cmd or "python -m pytest -v --tb=short",
+                exit_code=0 if pytest_passed else 1,
+                stdout=pytest_output[:1500],
+                stderr="",
+                passed=pytest_passed,
+            )],
+            all_passed=pytest_passed,
+            summary="pytest PASSED" if pytest_passed else "pytest FAILED",
+        )
+        tag = click.style("PASS", fg="green") if pytest_passed else click.style("FAIL", fg="red")
+        click.echo(f" {tag} ({_elapsed(t0)})")
+        if not pytest_passed:
+            click.echo(f"           pytest output (last 500 chars):\n{pytest_output[-500:]}")
+
+        _write_execution_report(
+            round_dir / f"execution_report_attempt_{attempt_num}.json",
+            attempt_num,
+            driven.exec_result,
+            verification,
+        )
+
+        review_verdict = driven.review_result
+        if verification and not verification.all_passed:
+            review_verdict = ReviewResult(
+                result="FAIL",
+                confidence="high",
+                unmet_criteria=["pytest failed — hard gate"],
+                suspicious_claims=[],
+                required_fixes=["fix failing tests before proceeding"],
+                human_review_needed=False,
+                rationale=f"Hard gate: pytest failed. {verification.steps[0].stdout[-300:] if verification.steps else ''}",
+                cost_usd=0.0,
+            )
+            click.echo(f"  [{_ts()}] Internal reviewer overridden — hard gate FAIL (pytest)")
+        else:
+            verdict_color = "green" if review_verdict.passed else "red"
+            verdict_text = click.style(review_verdict.result, fg=verdict_color, bold=True)
+            click.echo(f"  [{_ts()}] Internal reviewer verdict: {verdict_text}")
+            click.echo(f"           Confidence: {review_verdict.confidence}")
+            if not review_verdict.passed and review_verdict.unmet_criteria:
+                for c in review_verdict.unmet_criteria[:3]:
+                    click.echo(f"           Unmet: {c[:100]}")
+
+        _write_review_files(round_dir, attempt_num, review_verdict)
+
+        attempt = AttemptRecord(
+            attempt_number=attempt_num,
+            task_used=current_task,
+            executor_output=driven.exec_result.output,
+            executor_evidence=driven.exec_result.evidence,
+            executor_git_evidence=driven.exec_result.git_evidence,
+            executor_success=driven.exec_result.success,
+            executor_cost_usd=driven.exec_result.cost_usd,
+            reviewer_result=review_verdict.result,
+            reviewer_confidence=review_verdict.confidence,
+            reviewer_rationale=review_verdict.rationale,
+            reviewer_unmet_criteria=review_verdict.unmet_criteria,
+            reviewer_required_fixes=review_verdict.required_fixes,
+            reviewer_human_review_needed=review_verdict.human_review_needed,
+            reviewer_cost_usd=review_verdict.cost_usd,
+            verification_results=verification,
+            is_token_exhausted=driven.exec_result.is_token_exhausted,
+        )
+        result.attempts.append(attempt)
+        _write_attempt_file(round_dir / f"attempt_{attempt_num}.md", attempt)
+
+        if review_verdict.passed:
+            result.final_passed = True
+            result.task = current_task
+            break
+
+        prior_failure = _build_followup_failure_note(attempt)
+        if attempt_num == max_attempts:
+            click.echo(f"\n  [{_ts()}] Max attempts reached — escalating")
+            result.escalated = True
+            result.task = current_task
+            result.escalation_reason = _build_escalation_reason(result)
+
+    _write_audit_file(round_dir / "audit.md", result)
+    return result
+
+
+def _run_round_legacy(
+    *,
+    round_id: str,
+    instruction: str,
+    designer: DesignerAgent,
+    executor,
+    reviewer: ReviewerAgent,
+    round_dir: Path,
+    codebase_path: Path | None,
+    test_cmd: str | None,
+    max_attempts: int,
+) -> RoundResult:
     click.echo(f"  [{_ts()}] Designer planning task...", nl=False)
     t0 = time.time()
     task = designer.plan_next_task(instruction, round_id)
     click.echo(f" done ({_elapsed(t0)}, ${task.cost_usd:.4f})")
     click.echo(f"           Task: {task.title}")
 
-    result = RoundResult(
-        round_id=round_id,
-        task=task,
-        designer_cost_usd=task.cost_usd,
-    )
-
+    result = RoundResult(round_id=round_id, task=task, designer_cost_usd=task.cost_usd)
     _write_task_files(round_dir, task, prefix="task")
     current_task = task
 
@@ -153,10 +327,7 @@ def run_round(
             if not pytest_passed:
                 click.echo(f"           pytest output (last 500 chars):\n{pytest_output[-500:]}")
 
-        _write_execution_report(
-            round_dir / f"execution_report_attempt_{attempt_num}.json",
-            attempt_num, exec_result, verification,
-        )
+        _write_execution_report(round_dir / f"execution_report_attempt_{attempt_num}.json", attempt_num, exec_result, verification)
 
         if verification and not verification.all_passed:
             review_verdict = ReviewResult(
@@ -224,6 +395,23 @@ def run_round(
 
     _write_audit_file(round_dir / "audit.md", result)
     return result
+
+
+def _build_followup_failure_note(attempt: AttemptRecord) -> str:
+    lines = [
+        f"Previous attempt {attempt.attempt_number} failed.",
+        f"Task title: {attempt.task_used.title}",
+        f"Review rationale: {attempt.reviewer_rationale}",
+    ]
+    for issue in attempt.reviewer_unmet_criteria:
+        lines.append(f"Unmet criterion: {issue}")
+    for fix in attempt.reviewer_required_fixes:
+        lines.append(f"Required fix: {fix}")
+    if attempt.verification_results and not attempt.verification_results.all_passed:
+        lines.append(f"Hard gate summary: {attempt.verification_results.summary}")
+        if attempt.verification_results.steps:
+            lines.append(f"Pytest excerpt: {attempt.verification_results.steps[0].stdout[-300:]}")
+    return "\n".join(lines)
 
 
 def _build_executor_prompt(task: TaskDefinition, use_file_ref: bool = False) -> str:
