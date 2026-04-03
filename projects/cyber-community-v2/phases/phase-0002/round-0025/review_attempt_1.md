@@ -1,0 +1,8 @@
+# Review — Attempt 1: PASS
+
+**Confidence:** high  
+**Human review needed:** False
+
+## Rationale
+Read back/tests/test_p28_t4_comprehensive_coverage.py (516 lines, 40 tests across 5 classes). All 40 tests pass, and the full suite shows 441 passed (401 existing + 40 new). The helper functions _detect_pattern_a_contested_endorsement and _detect_pattern_b_high_intensity_disclosure exist in back/app/engines/tick_bridge.py at lines 842 and 866. Pattern A tests verify negative signal with exact field values (absorption=surface, valence=negative, trust_shift=mild_decrease, closeness_delta=-1) against contract bounds. Pattern B tests verify the same for disclosure+high+unilateral. Boundary threshold tests cover contested vs. unilateral/mutual for Pattern A and high vs. moderate/low intensity for Pattern B. Edge case tests cover null social_event, missing optional fields, and empty relationships list — all without exceptions. All acceptance criteria and required tests are satisfied.
+

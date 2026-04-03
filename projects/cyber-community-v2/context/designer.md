@@ -10,24 +10,21 @@ When the current phase is closing or a next phase is being proposed, Designer **
 - Settlement substrate remains engine-authoritative unchanged
 
 ## Working Assumptions
-- T4 builder implements 3 activation paths (original narrow seam + Pattern A Contested Endorsement + Pattern B High-Intensity Unilateral Disclosure)
-- Contract documentation now specifies explicit numerical bounds for signal intensity ranges, activation thresholds, and output boundaries for all expanded patterns
-- Pattern detection logic operational with 401 total tests including 63 dedicated T4 pattern and contract tests
-- Ready to add comprehensive test coverage for edge cases and cross-pattern interactions
+- T4 builder implements 3 activation paths with deterministic bounds formally documented
+- Comprehensive test coverage (40 new tests) now validates Pattern A, Pattern B, and original narrow seam for boundary conditions and edge cases
+- 441 total tests operational including 103 dedicated T4 tests
+- Ready to audit same-day T2/T4 composition safety with expanded coverage
 
 ## Architecture Snapshot
 - Deterministic single-agent backbone operational with T1/T2/T4 bridge coverage
-- T4 builder has 3 activation paths with deterministic bounds formally documented
+- T4 builder has 3 activation paths with explicit numerical bounds and comprehensive test coverage
 - Settlement substrate unchanged and engine-authoritative
-- Test coverage: 401 total tests including 63 dedicated T4 pattern and contract tests
-- Contract docs specify valid ranges for Pattern A and Pattern B intensity outputs
+- Test coverage: 441 total tests including 103 dedicated T4 pattern, contract, and comprehensive coverage tests
 
 ## Known Risks
-- Over-expansion risk: Too many new paths may degrade auditability
-- Composition complexity: More T4 paths increase T2/T4 same-day interaction patterns to validate
-- Signal calibration risk: New output shapes require bounded intensity ranges to prevent settlement instability
+- Composition complexity: Expanded T4 coverage increases the state space of potential same-day T2/T4 interactions requiring audit (P28-T5)
+- Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability (P28-T6)
 
 ## Resolved Strategic Decisions
 - Phase 27 completed: T4 activation audited, composition safety verified, contract formalized
-- Phase 28-T1/T2/T3 completed: Expanded from single minimal seam to 3-condition deterministic coverage with validated pattern library and explicit numerical bounds
-- Expansion remains deterministic, inspectable, and contract-governed; no natural-language appraisal permitted
+- Phase 28-T1/T2/T3/T4 completed: Expanded from single minimal seam to 3-condition deterministic coverage with validated pattern library, explicit numerical bounds, and comprehensive edge case test coverage

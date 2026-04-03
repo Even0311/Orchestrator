@@ -1,0 +1,38 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.5755785,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [
+      "back/tests/test_p28_t4_comprehensive_coverage.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 8 ++++----\n 1 file changed, 4 insertions(+), 4 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex 627866c..bb886d4 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,9 +138,9 @@ P28: Deterministic Relational Appraisal Expansion\n Expand deterministic relational appraisal coverage beyond the single minimal activation slice, while preserving auditability.\n \n ## Working Assumptions\n-- T4 builder now implements 2 expanded condition branches (Contested Endorsement, High-Intensity Unilateral Disclosure) beyond original narrow path\n-- Pattern detection logic operational with 26 new tests validating detection, signal shape, and fallthrough behavior\n-- Ready to update formal contract documentation to specify valid ranges for new coverage\n-- Expanded T4 deterministic coverage progressing without compromising auditability\n+- T4 builder implements 3 activation paths (original narrow seam + Pattern A Contested Endorsement + Pattern B High-Intensity Unilateral Disclosure)\n+- Contract documentation now specifies explicit numerical bounds for signal intensity ranges, activation thresholds, and output boundaries for all expanded patterns\n+- Pattern detection logic operational with 401 total tests including 63 dedicated T4 pattern and contract tests\n+- Ready to add comprehensive test coverage for edge cases and cross-pattern interactions\n \n <!-- end orchestrator dynamic section -->\n\ndiff --git a/back/tests/test_p28_t4_comprehensive_coverage.py b/back/tests/test_p28_t4_comprehensive_coverage.py\nnew file mode 100644\nindex 0000000..c80be63\n--- /dev/null\n+++ b/back/tests/test_p28_t4_comprehensive_coverage.py\n@@ -0,0 +1,515 @@\n+\"\"\"\n+Round-0025 — P28 T4 Comprehensive Coverage Tests.\n+\n+Comprehensive test coverage for the expanded T4 deterministic relational\n+appraisal paths (Pattern A: Contested Endorsement and Pattern B: High-Intensity\n+Unilateral Disclosure).\n+\n+Coverage categories:\n+  1. Pattern A signal intensity bounds — exact field values per Section 8.1.2 contract.\n+  2. Pattern B signal intensity bounds — exact field values per Section 8.2.2 contract.\n+  3. Pattern A boundary activation thresholds — only reciprocity=contested qualifies.\n+  4. Pattern B boundary activation thresholds — only intensity=high AND unilateral qualify.\n+  5. Null / malformed social_event inputs — deterministic fallback without exceptions.\n+  6. Missing optional fields in social_event — graceful handling without exceptions.\n+\n+Run from back/ with: python -m pytest tests/test_p28_t4_comprehensive_coverage.py -v\n+\"\"\"\n+\n+import pytest\n+from pydantic import ValidationError\n+\n+from app.domain.enums import (\n+    AccentColor,\n+    District,\n+    FeedTone,\n+    GrowthStage,\n+    RelationshipStatus,\n+    RelationshipType,\n+    ResidualKind,\n+    SocialEventIntensity,\n+    SocialEventReciprocity,\n+    SocialEventType,\n+    Trend,\n+    Valence,\n+)\n+from app.domain.models import (\n+    AgentGrowth,\n+    AgentProfile,\n+    AgentState,\n+    PublicFeedItem,\n+    Relationship,\n+    ResidualEntry,\n+    SocialEventSpec,\n+    WorldSnapshot,\n+)\n+from app.engines.appr\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 441 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Added 40 comprehensive tests for T4 Pattern A and Pattern B covering signal intensity bounds, boundary activation thresholds, and null/malformed input edge cases",
+    "files_changed": [
+      "back/tests/test_p28_t4_comprehensive_coverage.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_p28_t4_comprehensive_coverage.py -v",
+      "python -m pytest tests/ -q"
+    ],
+    "test_results": "441 passed / 0 failed (401 existing + 40 new)",
+    "diff_summary": "Created new test file with 5 test classes: TestPatternASignalIntensityBounds (9 tests verifying exact field values per Section 8.1.2), TestPatternBSignalIntensityBounds (8 tests for Section 8.2.2), TestPatternABoundaryThresholds (6 tests for contested-only activation gate), TestPatternBBoundaryThresholds (7 tests for high+unilateral threshold), TestNullAndMalformedInputs (10 tests for null events, missing optional fields, empty relationships)",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "441 passed (401 original + 40 new). All acceptance criteria met.\n\n<evidence>\n{\n  \"summary\": \"Added 40 comprehensive tests for T4 Pattern A and Pattern B covering signal intensity bounds, boundary activation thresholds, and null/malformed input edge cases\",\n  \"files_changed\": [\"back/tests/test_p28_t4_comprehensive_coverage.py\"],\n  \"commands_run\": [\"python -m pytest tests/test_p28_t4_comprehensive_coverage.py -v\", \"python -m pytest tests/ -q\"],\n  \"test_results\": \"441 passed / 0 failed (401 existing + 40 new)\",\n  \"diff_summary\": \"Created new test file with 5 test classes: TestPatternASignalIntensityBounds (9 tests verifying exact field values per Section 8.1.2), TestPatternBSignalIntensityBounds (8 tests for Section 8.2.2), TestPatternABoundaryThresholds (6 tests for contested-only activation gate), TestPatternBBoundaryThresholds (7 tests for high+unilateral threshold), TestNullAndMalformedInputs (10 tests for null events, missing optional fields, empty relationships)\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}
