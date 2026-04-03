@@ -1,0 +1,8 @@
+# Review — Attempt 1: PASS
+
+**Confidence:** high  
+**Human review needed:** False
+
+## Rationale
+Read docs/p28_t4_pattern_catalog.md — catalog documents 2 distinct new patterns (Pattern A: endorsement+reciprocity=contested, Pattern B: disclosure+intensity=high+reciprocity=unilateral), each with full trigger conditions, relationship context requirements, deterministic output shape, and contract compliance verification. Both patterns use different event_types from each other and from P0 (confrontation/withdrawal), satisfying non-overlap criteria. Read back/tests/test_p28_t4_pattern_catalog.py — 22 tests cover: (1) schema representability via actual SocialEventSpec and enum instantiation for both patterns, and (2) T2/T4 composition safety via gate logic verification and simulate_day_bridged calls confirming no hazard introduced. All four acceptance criteria are met and both required test categories are substantively covered.
+

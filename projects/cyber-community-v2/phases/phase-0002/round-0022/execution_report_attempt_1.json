@@ -1,0 +1,40 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.90166755,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [
+      "back/tests/test_p28_t4_pattern_catalog.py",
+      "docs/p28_t4_pattern_catalog.md"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 12 ++++++------\n 1 file changed, 6 insertions(+), 6 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex a2ca4d6..b22ab93 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -134,13 +134,13 @@ python -m pytest tests/ -v\n <!-- managed by orchestrator — stable sections above, dynamic sections below -->\n \n ## Current Phase\n-Current Phase\n-Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.\n+P28: Deterministic Relational Appraisal Expansion\n+Expand deterministic relational appraisal coverage beyond the single minimal activation slice, while preserving auditability.\n \n ## Working Assumptions\n-- Phase 27 active: P27-T1 through P27-T5 complete (all audit and calibration tasks done)\n-- T4 thresholds confirmed sufficient; no parameter adjustments required\n-- Test suite stable at 317 passed\n-- Proceeding to P27-T6 for explicit contract formalization\n+- Phase 27 audit completed successfully with 338 tests passed and formal behavior contract established\n+- Current T4 has single narrow activation path proven safe and stable\n+- System is ready to expand from \"one special-case seam\" to \"limited but real coverage across multiple event conditions\"\n+- T4 behavior contract provides stable foundation for extension\n \n <!-- end orchestrator dynamic section -->\n\ndiff --git a/back/tests/test_p28_t4_pattern_catalog.py b/back/tests/test_p28_t4_pattern_catalog.py\nnew file mode 100644\nindex 0000000..a7667f0\n--- /dev/null\n+++ b/back/tests/test_p28_t4_pattern_catalog.py\n@@ -0,0 +1,561 @@\n+\"\"\"\n+Round-0022 — P28 T4 Pattern Catalog Tests.\n+\n+Validates the two additional T4 event-to-relational impact patterns cataloged\n+in docs/p28_t4_pattern_catalog.md.  These tests verify:\n+\n+  1. Schema representability — both patterns can be expressed using existing\n+     SocialEventSpec schema fields without any schema changes.\n+  2. Composition safety — the output signal shape for both patterns maintains\n+     the same T2/T4 composition safety guarantees as the existing P0 path,\n+     because they produce identical output shapes (surface/negative/mild_decrease).\n+\n+Tests do NOT implement the patterns in the T4 builder (deferred to P28-T2).\n+They verify only that the catalog is internally consistent and that the proposed\n+output shapes are safe under existing behavioral contracts.\n+\n+Patterns cataloged:\n+  Pattern A — Contested Endorsement:\n+      event_type=endorsement, reciprocity=contested → surface/negative/mild_decrease\n+  Pattern B — High-Intensity Unilateral Disclosure:\n+      event_type=disclosure, intensity=high, reciprocity=unilateral →\n+      surface/negative/mild_decrease\n+\n+Run from back/ with: python -m pytest tests/test_p28_t4_pattern_catalog.py -v\n+\"\"\"\n+\n+import pytest\n+from pydantic import ValidationError\n+\n+from app.domain.enums import (\n+    AccentColor,\n+    District,\n+    FeedTone,\n+    GrowthStage,\n+    RelationshipStatus,\n+    RelationshipType,\n+    ResidualKind,\n+    SocialEventIntensity,\n+    SocialEventReciprocity,\n+    SocialEventType,\n+    Trend,\n+    Valence\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 360 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Cataloged 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) in a structured document and validated them with 22 tests covering schema representability and composition safety",
+    "files_changed": [
+      "docs/p28_t4_pattern_catalog.md",
+      "back/tests/test_p28_t4_pattern_catalog.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_p28_t4_pattern_catalog.py -v",
+      "python -m pytest tests/ -v --tb=short"
+    ],
+    "test_results": "22 new passed / 0 failed; 360 total passed (no regressions)",
+    "diff_summary": "Added docs/p28_t4_pattern_catalog.md with Pattern A (endorsement + reciprocity=contested) and Pattern B (disclosure + intensity=high + reciprocity=unilateral), both producing the same minimal negative output shape as P0. Added back/tests/test_p28_t4_pattern_catalog.py with 22 tests across schema representability, distinctness validation, and T2/T4 composition safety.",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "360 passed (338 prior + 22 new). No regressions.\n\n<evidence>\n{\n  \"summary\": \"Cataloged 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) in a structured document and validated them with 22 tests covering schema representability and composition safety\",\n  \"files_changed\": [\n    \"docs/p28_t4_pattern_catalog.md\",\n    \"back/tests/test_p28_t4_pattern_catalog.py\"\n  ],\n  \"commands_run\": [\n    \"python -m pytest tests/test_p28_t4_pattern_catalog.py -v\",\n    \"python -m pytest tests/ -v --tb=short\"\n  ],\n  \"test_results\": \"22 new passed / 0 failed; 360 total passed (no regressions)\",\n  \"diff_summary\": \"Added docs/p28_t4_pattern_catalog.md with Pattern A (endorsement + reciprocity=contested) and Pattern B (disclosure + intensity=high + reciprocity=unilateral), both producing the same minimal negative output shape as P0. Added back/tests/test_p28_t4_pattern_catalog.py with 22 tests across schema representability, distinctness validation, and T2/T4 composition safety.\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}

@@ -1,29 +1,32 @@
-# Current Phase
+# P28: Deterministic Relational Appraisal Expansion
 
 ## Phase Goal
-Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.
+Expand deterministic relational appraisal coverage beyond the single minimal activation slice, while preserving auditability.
 
 ## In Scope
-- Audit T4 negative activation frequency
-- Audit same-day T2/T4 interaction on the same relationship target
-- Audit downstream residual creation behavior
-- Audit whether `_adjust_t4()` and related paths produce stable and interpretable outcomes
-- Calibrate thresholds / guards / narrow protections if needed
-- Produce explicit contract notes on what is now considered valid T4 behavior
+- carefully expand event-aware relational appraisal conditions
+- allow more than one narrow approved event-to-relational interpretation path
+- improve deterministic expressiveness of T4 without abandoning controllability
+- make relational appraisal output shapes slightly more representative of actual social friction / trust change patterns
+- keep all behavior explainable and inspectable
 
 ## Out of Scope
-- No large relational system redesign
-- No new major event types
-- No player-side new intervention systems
-- No LLM integration yet
-- No generalized multi-factor relational cognition layer
+- no freeform natural-language appraisal
+- no live LLM runtime
+- no relationship graph redesign
+- no social world simulation explosion
+- no attempt to model full human social complexity
 
 ## Task Queue
-
-(none)
+- [x] P28-T1: Identify and catalog additional social event-to-relational impact mapping patterns beyond current single narrow path
+- [ ] P28-T2: Implement expanded event condition branches in T4 builder for approved new interpretation paths
+- [ ] P28-T3: Extend T4 behavior contract documentation to specify valid ranges for new expanded coverage
+- [ ] P28-T4: Add comprehensive test coverage for new T4 interpretation paths and edge cases
+- [ ] P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage
+- [ ] P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes
 
 ## Completed Tasks
-
+- [x] P28-T1: Identify and catalog additional social event-to-relational impact mapping patterns beyond current single narrow path — Cataloged 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) in docs/p28_t4_pattern_catalog.md with 22 validation tests (360 total tests passed)
 - [x] P27-T6: Produce explicit contract notes for valid T4 behavior — Created docs/t4_negative_behavior_contract.md and 21 contract-verification tests (338 total tests passed)
 - [x] P27-T5: Calibrate thresholds and guards if needed
 - [x] P27-T4: Audit _adjust_t4() path stability and interpretability
@@ -55,14 +58,12 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
 
 ## Current Status
-
-phase complete — all tasks done, ready for human review
+Cataloged 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) with 22 validation tests passed (360 total)
 
 ## Risks / Blockers
-
-### R1 — Production wake chain behavior untested
-Wake chain depth bounds verified in test environment; production load patterns may differ and require additional guards during future deployment.
+- Over-expansion risk: Adding too many interpretation paths too quickly may compromise the auditability established in Phase 27
+- Composition complexity: Expanded T4 coverage increases the state space of potential same-day T2/T4 interactions requiring audit
+- Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability
 
 ## Next Recommended Task
-
-none — phase complete
+P28-T2: Implement expanded event condition branches in T4 builder for approved new interpretation paths
