@@ -1,12 +1,10 @@
 """Main orchestration loop — runs rounds until completion or human intervention."""
-import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import click
 
-from orch.agents.context import load_designer_context
 from orch.agents.designer import DesignerAgent
 from orch.agents.executor import ExecutorAgent
 from orch.agents.reviewer import ReviewerAgent
@@ -15,7 +13,7 @@ from orch.db.database import get_connection, now_iso, update_round_commits
 from orch.engine.round_runner import RoundResult, run_round, inject_recent_rounds, cleanup_round_docs
 from orch.providers.factory import get_provider
 from orch.utils.claudemd_manager import generate_claudemd
-from orch.utils.git_ops import commit_projects_dir, commit_all, clean_working_tree, GitError
+from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, GitError
 
 
 @dataclass
@@ -28,10 +26,7 @@ class EscalationEvent:
 
 
 def run_project(project_row, run_once: bool = False) -> None:
-    """Main loop: runs rounds for the active project until escalation or completion.
-
-    If run_once=True, stop after the first round regardless of outcome.
-    """
+    """Main loop: runs rounds for the active project until escalation or human intervention."""
     config = load_config()
     project_id = project_row["id"]
     project_name = project_row["name"]
@@ -44,55 +39,80 @@ def run_project(project_row, run_once: bool = False) -> None:
     click.echo(f"  Codebase : {codebase_path}")
     click.echo(f"{'='*60}\n")
 
-    # Build agents
     designer_provider = get_provider("designer", config)
-
     designer = DesignerAgent(designer_provider, state_dir)
-    executor = ExecutorAgent(
-        codebase_path=codebase_path,
-        model=config.agents.executor_model,
-    )
-    reviewer = ReviewerAgent(
-        codebase_path=codebase_path,
-        model=config.agents.reviewer_model,
-    )
+    executor = ExecutorAgent(codebase_path=codebase_path, model=config.agents.executor_model)
+    reviewer = ReviewerAgent(codebase_path=codebase_path, model=config.agents.reviewer_model)
 
-    # Bootstrap mode: generate initial phase plan if current_phase.md is uninitialized
     if _needs_bootstrap(state_dir):
         click.echo(f"[{_ts()}] Bootstrap mode: generating initial phase plan from vision.md...")
         _run_bootstrap(designer, state_dir, config)
         click.echo(f"[{_ts()}] Bootstrap complete. Proceeding to first round.\n")
 
-    # Get or create active phase
     phase_id = _ensure_active_phase(project_id, state_dir)
-
-    # Main loop
     round_number = _next_round_number(project_id)
 
     while True:
         round_id = f"round-{round_number:04d}"
         round_dir = state_dir / "phases" / phase_id / round_id
 
+        resolution = _get_pending_human_resolution(project_id)
+        if resolution and resolution["status"] == "accepted_by_human":
+            click.echo(f"\n{'─'*60}")
+            click.echo(f"[{_ts()}] Applying human acceptance for {resolution['id']}")
+            _apply_human_acceptance(designer, state_dir, resolution)
+            orch_hash, target_hash = _commit_both(
+                codebase_path,
+                f"[orch] {resolution['id']}: accepted by human",
+                resolution["id"],
+            )
+            update_round_commits(resolution["id"], orch_hash, target_hash)
+            _set_round_status(resolution["id"], "accepted_applied")
+
+            if _is_phase_complete(state_dir):
+                click.echo(f"\n{'='*60}")
+                click.echo(f"  Phase complete: {phase_id}")
+                click.echo(f"{'='*60}")
+                _close_phase(project_id, phase_id)
+                _notify_phase_complete(project_name, phase_id, config)
+                click.echo(f"  [{_ts()}] Planning next phase...")
+                try:
+                    _run_phase_plan(designer, state_dir)
+                except Exception as e:
+                    click.echo(f"  ⚠ Phase planning failed: {e}", err=True)
+                    click.echo("  Next phase must be planned manually before re-running.", err=True)
+                break
+
+            if run_once:
+                click.echo(f"[{_ts()}] --once: stopping after applying human acceptance for {resolution['id']}.")
+                break
+
+            round_number = _next_round_number(project_id)
+            continue
+
         click.echo(f"\n{'─'*60}")
         click.echo(f"[{_ts()}] Starting {round_id}")
 
-        # Update CLAUDE.md in target project for Claude Code native context
         try:
             generate_claudemd(state_dir, codebase_path)
         except Exception as e:
             click.echo(f"  ⚠ CLAUDE.md generation failed: {e}", err=True)
 
-        # Inject recent rounds summary for Claude Code context
         try:
             recent = _build_recent_rounds_summary(project_id)
             inject_recent_rounds(codebase_path, recent)
         except Exception as e:
             click.echo(f"  ⚠ recent_rounds injection failed: {e}", err=True)
 
-        # Get next instruction from current_phase.md
-        instruction = _get_next_instruction(state_dir, round_id)
+        instruction = (
+            _build_resolution_instruction(state_dir, resolution, round_id)
+            if resolution and resolution["status"] in ("resume_requested", "rejected_by_human")
+            else _get_next_instruction(state_dir, round_id)
+        )
+        if resolution and resolution["status"] in ("resume_requested", "rejected_by_human"):
+            consumed_status = "resume_consumed" if resolution["status"] == "resume_requested" else "redo_consumed"
+            _set_round_status(resolution["id"], consumed_status)
 
-        # Run the round
         result = run_round(
             round_id=round_id,
             instruction=instruction,
@@ -104,29 +124,26 @@ def run_project(project_row, run_once: bool = False) -> None:
             test_cmd=test_cmd,
         )
 
-        # Persist round to DB
         _save_round(project_id, phase_id, round_id, result)
 
-        # Clean up injected .orch/ docs from target project
         try:
             cleanup_round_docs(codebase_path)
         except Exception as e:
-            click.echo(f"  ⚠ .orch/ cleanup failed: {e}", err=True)
+            click.echo(f"  ⚠ .orch/runtime cleanup failed: {e}", err=True)
 
         if result.final_passed:
-            click.echo(f"\n  [{_ts()}] {click.style(f'{round_id} PASSED', fg='green', bold=True)} "
-                       f"({len(result.attempts)} attempt(s), ${result.total_cost_usd:.4f})")
+            click.echo(
+                f"\n  [{_ts()}] {click.style(f'{round_id} PASSED', fg='green', bold=True)} "
+                f"({len(result.attempts)} attempt(s), ${result.total_cost_usd:.4f})"
+            )
 
-            # Update project documents after successful round
             click.echo(f"  [{_ts()}] Updating project documents...")
             _update_documents(designer, state_dir, result)
 
-            # Commit both repos
             commit_msg = f"[orch] {round_id}: {result.task.description[:60]}"
             orch_hash, target_hash = _commit_both(codebase_path, commit_msg, round_id)
             update_round_commits(round_id, orch_hash, target_hash)
 
-            # Check if phase is complete
             if _is_phase_complete(state_dir):
                 click.echo(f"\n{'='*60}")
                 click.echo(f"  Phase complete: {phase_id}")
@@ -134,13 +151,12 @@ def run_project(project_row, run_once: bool = False) -> None:
                 _close_phase(project_id, phase_id)
                 _notify_phase_complete(project_name, phase_id, config)
 
-                # Plan the next phase so the next run starts with a ready Task Queue
                 click.echo(f"  [{_ts()}] Planning next phase...")
                 try:
                     _run_phase_plan(designer, state_dir)
                 except Exception as e:
                     click.echo(f"  ⚠ Phase planning failed: {e}", err=True)
-                    click.echo(f"  Next phase must be planned manually before re-running.", err=True)
+                    click.echo("  Next phase must be planned manually before re-running.", err=True)
                 break
 
             if run_once:
@@ -148,9 +164,7 @@ def run_project(project_row, run_once: bool = False) -> None:
                 break
 
             round_number += 1
-
         else:
-            # Escalate — stop and notify user
             event = EscalationEvent(
                 project_name=project_name,
                 round_id=round_id,
@@ -162,7 +176,6 @@ def run_project(project_row, run_once: bool = False) -> None:
             _notify_escalation(event, config)
             _save_escalation(project_id, round_id, result.escalation_reason)
 
-            # Clean target working tree so next round starts fresh
             try:
                 clean_working_tree(codebase_path)
                 click.echo(f"  [{_ts()}] Target working tree cleaned")
@@ -174,36 +187,30 @@ def run_project(project_row, run_once: bool = False) -> None:
     click.echo(f"\n[{_ts()}] Orchestrator stopped. Use 'orch review' to see pending escalations.")
 
 
-# ── Bootstrap ─────────────────────────────────────────────────────────────────
-
 def _needs_bootstrap(state_dir: Path) -> bool:
-    """Return True if current_phase.md has not yet been initialized by Designer."""
     phase_path = state_dir / "current_phase.md"
     if not phase_path.exists():
         return True
     content = phase_path.read_text()
-    # Check for template placeholder markers
     return "bootstrap_needed" in content or "待规划" in content
 
 
 def _run_phase_plan(designer: DesignerAgent, state_dir: Path) -> None:
-    """After a phase completes, generate the next phase's Task Queue."""
     result = designer.plan_phase()
 
     if result.current_phase_md:
         (state_dir / "current_phase.md").write_text(result.current_phase_md)
-        click.echo(f"  ✓ current_phase.md — next phase planned")
+        click.echo("  ✓ current_phase.md — next phase planned")
 
     if result.designer_context_md:
         (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
-        click.echo(f"  ✓ context/designer.md updated")
+        click.echo("  ✓ context/designer.md updated")
 
     if result.cost_usd:
         click.echo(f"  Phase planning cost: ${result.cost_usd:.4f}")
 
 
 def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: OrchestratorConfig) -> None:
-    """Generate initial current_phase.md and context/designer.md from vision.md."""
     vision_path = state_dir / "vision.md"
     if not vision_path.exists():
         raise click.ClickException(
@@ -213,10 +220,8 @@ def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: Orchestrato
 
     vision_content = vision_path.read_text()
     if "<!-- " in vision_content and len(vision_content) < 500:
-        # Template still has only placeholder comments — user hasn't filled it
         raise click.ClickException(
-            "vision.md appears to still be the template. "
-            "Please fill in your project vision before running.\n"
+            "vision.md appears to still be the template. Please fill in your project vision before running.\n"
             f"  {vision_path}"
         )
 
@@ -224,21 +229,17 @@ def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: Orchestrato
 
     if result.current_phase_md:
         (state_dir / "current_phase.md").write_text(result.current_phase_md)
-        click.echo(f"  ✓ current_phase.md generated")
+        click.echo("  ✓ current_phase.md generated")
 
     if result.designer_context_md:
         (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
-        click.echo(f"  ✓ context/designer.md generated")
+        click.echo("  ✓ context/designer.md generated")
 
-    # Record bootstrap cost
     if result.cost_usd:
         click.echo(f"  Bootstrap cost: ${result.cost_usd:.4f}")
 
 
-# ── Document update ───────────────────────────────────────────────────────────
-
 def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundResult) -> None:
-    """Trigger Designer to update current_phase.md, context/designer.md, and optionally decisions.md."""
     last_attempt = result.attempts[-1]
     ev = last_attempt.executor_evidence
 
@@ -251,31 +252,41 @@ def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundRes
         f"Test results: {ev.test_results or '(not run)'}\n"
         f"Unresolved issues: {', '.join(ev.unresolved_issues) or '(none)'}"
     )
+    _apply_document_update(designer, state_dir, summary)
 
+
+def _apply_human_acceptance(designer: DesignerAgent, state_dir: Path, resolution_row) -> None:
+    round_id = resolution_row["id"]
+    task_description = resolution_row["task_description"] or "(task description unavailable)"
+    note = resolution_row["resolution_note"] or "(no note)"
+    summary = (
+        f"Round {round_id} was accepted by human override.\n"
+        f"Task description: {task_description}\n"
+        f"Human rationale: {note}\n\n"
+        f"Treat this round as accepted and update current_phase.md / context/designer.md accordingly."
+    )
+    _apply_document_update(designer, state_dir, summary)
+
+
+def _apply_document_update(designer: DesignerAgent, state_dir: Path, summary: str) -> None:
     update = designer.update_documents(summary)
 
-    # decisions.md: APPEND only (never rewrite — it is the immutable human audit log)
     if update.decisions_entry and update.decisions_entry.strip():
         decisions_path = state_dir / "decisions.md"
         existing = decisions_path.read_text() if decisions_path.exists() else ""
         decisions_path.write_text(existing.rstrip() + "\n\n" + update.decisions_entry.strip() + "\n")
-        click.echo(f"  ✓ decisions.md updated (appended)")
+        click.echo("  ✓ decisions.md updated (appended)")
 
-    # current_phase.md: full rewrite by Designer
     if update.current_phase_md:
         (state_dir / "current_phase.md").write_text(update.current_phase_md)
-        click.echo(f"  ✓ current_phase.md updated")
+        click.echo("  ✓ current_phase.md updated")
 
-    # context/designer.md: full rewrite (bounded working memory)
     if update.designer_context_md:
         (state_dir / "context" / "designer.md").write_text(update.designer_context_md)
-        click.echo(f"  ✓ context/designer.md updated")
+        click.echo("  ✓ context/designer.md updated")
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
-    """Build a short summary of recent rounds for Claude Code context."""
     with get_connection() as conn:
         rows = conn.execute(
             "SELECT id, status, task_description, cost_usd FROM rounds "
@@ -299,29 +310,72 @@ def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
 
 
 def _get_next_instruction(state_dir: Path, round_id: str) -> str:
-    """Read the next instruction from current_phase.md."""
     phase_path = state_dir / "current_phase.md"
     if phase_path.exists():
         content = phase_path.read_text()
         return (
-            f"Based on the current phase document, determine the next concrete task to implement.\n\n"
+            "Based on the current phase document, determine the next concrete task to implement.\n\n"
             f"Round ID: {round_id}\n\n"
             f"Current phase:\n{content}"
         )
     return f"Review the project vision and plan the next implementation task. Round ID: {round_id}"
 
 
+def _build_resolution_instruction(state_dir: Path, resolution_row, next_round_id: str) -> str:
+    phase_content = (state_dir / "current_phase.md").read_text() if (state_dir / "current_phase.md").exists() else ""
+    round_id = resolution_row["id"]
+    task_description = resolution_row["task_description"] or "(task description unavailable)"
+    note = resolution_row["resolution_note"] or "(no note)"
+    action = resolution_row["resolution_action"] or resolution_row["status"]
+
+    if resolution_row["status"] == "resume_requested":
+        resolution_header = (
+            f"Human requested continuation after escalated round {round_id}.\n"
+            f"Treat this as a follow-up continuation request, not a fresh unrelated task.\n"
+        )
+    else:
+        resolution_header = (
+            f"Human rejected the result of escalated round {round_id} and requested a redo.\n"
+            f"Treat this as a fresh replacement attempt for the same intended outcome.\n"
+        )
+
+    return (
+        f"{resolution_header}\n"
+        f"Previous round: {round_id}\n"
+        f"Recorded action: {action}\n"
+        f"Human note: {note}\n"
+        f"Original task description: {task_description}\n\n"
+        f"Round ID: {next_round_id}\n\n"
+        f"Current phase:\n{phase_content}"
+    )
+
+
+def _get_pending_human_resolution(project_id: str):
+    with get_connection() as conn:
+        return conn.execute(
+            "SELECT * FROM rounds WHERE project_id = ? "
+            "AND status IN ('accepted_by_human', 'resume_requested', 'rejected_by_human') "
+            "ORDER BY updated_at ASC, created_at ASC LIMIT 1",
+            (project_id,),
+        ).fetchone()
+
+
+def _set_round_status(round_id: str, status: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE rounds SET status = ?, updated_at = ? WHERE id = ?",
+            (status, now_iso(), round_id),
+        )
+
+
 def _is_phase_complete(state_dir: Path) -> bool:
-    """Check if current_phase.md indicates all tasks are done."""
     import re
     phase_path = state_dir / "current_phase.md"
     if not phase_path.exists():
         return False
     content = phase_path.read_text()
-    # Primary: explicit completion marker written by Designer
     if any(m in content.lower() for m in ("phase complete", "all tasks done", "phase finished")):
         return True
-    # Fallback: Task Queue has no remaining unchecked items
     queue_match = re.search(r"## Task Queue\s*(.*?)(?=\n##|\Z)", content, re.DOTALL)
     if queue_match:
         return "- [ ]" not in queue_match.group(1)
@@ -329,7 +383,6 @@ def _is_phase_complete(state_dir: Path) -> bool:
 
 
 def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
-    """Get or create the active phase for a project."""
     with get_connection() as conn:
         row = conn.execute(
             "SELECT id FROM phases WHERE project_id = ? AND status = 'in_progress' ORDER BY created_at DESC LIMIT 1",
@@ -338,7 +391,6 @@ def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
         if row:
             return row["id"]
 
-        # Determine next phase number based on existing phases
         count_row = conn.execute(
             "SELECT COUNT(*) as cnt FROM phases WHERE project_id = ? AND id LIKE 'phase-%'",
             (project_id,),
@@ -354,7 +406,6 @@ def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
 
 
 def _close_phase(project_id: str, phase_id: str) -> None:
-    """Mark a phase as completed in the database."""
     with get_connection() as conn:
         conn.execute(
             "UPDATE phases SET status = 'completed' WHERE id = ? AND project_id = ?",
@@ -410,8 +461,11 @@ def _print_escalation_report(event: EscalationEvent) -> None:
     click.echo(f"{'!'*60}")
     click.echo(f"\n{event.reason}")
     click.echo(f"\nAudit report: {event.audit_path}")
-    click.echo(f"\nRun 'orch review' to see details.")
-    click.echo(f"Run 'orch decide <instruction>' to resume.\n")
+    click.echo("\nRun 'orch review' to see details.")
+    click.echo("Then choose one of:")
+    click.echo("  orch decide \"<note>\" --action reject_and_redo")
+    click.echo("  orch decide \"<note>\" --action accept_and_close")
+    click.echo("  orch decide \"<note>\" --action resume_round\n")
 
 
 def _notify_escalation(event: EscalationEvent, config: OrchestratorConfig) -> None:
@@ -433,7 +487,7 @@ def _notify_escalation(event: EscalationEvent, config: OrchestratorConfig) -> No
                 f"Time: {event.timestamp}\n\n"
                 f"Reason:\n{event.reason}\n\n"
                 f"Audit report: {event.audit_path}\n\n"
-                f"Run 'orch review' and 'orch decide' to resume."
+                f"Run 'orch review' and 'orch decide' to continue."
             ),
         )
         click.echo(f"[{event.timestamp}] Email notification sent to {email_cfg.to_addr}")
@@ -460,8 +514,7 @@ def _notify_phase_complete(project_name: str, phase_id: str, config: Orchestrato
         pass
 
 
-def _send_email(smtp_host: str, smtp_port: int, from_addr: str, to_addr: str,
-                subject: str, body: str) -> None:
+def _send_email(smtp_host: str, smtp_port: int, from_addr: str, to_addr: str, subject: str, body: str) -> None:
     import smtplib
     from email.mime.text import MIMEText
 
@@ -476,11 +529,11 @@ def _send_email(smtp_host: str, smtp_port: int, from_addr: str, to_addr: str,
 
 
 def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str, str]:
-    """Commit orchestrator projects/ dir and target project. Returns (orch_hash, target_hash)."""
+    """Record orchestrator revision and commit target project state/code."""
     try:
-        orch_hash = commit_projects_dir(REPO_ROOT, message)
+        orch_hash = get_current_commit(REPO_ROOT)
     except GitError as e:
-        click.echo(f"  ⚠ Orchestrator commit failed: {e}", err=True)
+        click.echo(f"  ⚠ Orchestrator revision lookup failed: {e}", err=True)
         orch_hash = ""
 
     try:
@@ -491,6 +544,8 @@ def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str,
 
     if orch_hash and target_hash:
         click.echo(f"  ✓ Committed — orch:{orch_hash[:7]}  target:{target_hash[:7]}")
+    elif target_hash:
+        click.echo(f"  ✓ Committed target project — {target_hash[:7]}")
 
     return orch_hash, target_hash
 
