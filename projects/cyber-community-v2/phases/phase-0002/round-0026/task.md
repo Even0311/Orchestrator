@@ -1,0 +1,28 @@
+# Task: Audit T2/T4 same-day composition safety with expanded coverage
+
+**ID:** round-0026  
+**Objective:** Extend existing composition audit instrumentation to capture and classify interactions between T2 influencer signals and newly expanded T4 patterns (Pattern A: Contested Endorsement, Pattern B: High-Intensity Unilateral Disclosure) when both target the same relationship within a single day, verifying that expanded coverage does not introduce unsafe composition states.
+
+**Exact Scope:** IN: Extend CompositionAuditRecord capture to specifically log T2 + Pattern A/B collisions; implement analysis to classify composition patterns against safety thresholds; generate audit report documenting collision frequency, intensity distributions, and safety classifications for expanded T4 coverage. OUT: Do not implement calibration fixes or threshold adjustments (deferred to P28-T6); do not modify T2 logic, T4 pattern implementations, or settlement merging algorithms; no LLM integration; do not change relationship graph structure.
+
+## Constraints
+- Must preserve all 441 existing tests with zero failures
+- Audit instrumentation must remain observability-only with no side effects on settlement state transitions
+- Human review needed if audit reveals composition patterns exceeding documented safe bounds, triggering recalibration requirements for P28-T6
+
+## Acceptance Criteria
+- Composition audit records capture all instances where T2 and expanded T4 patterns (Pattern A or Pattern B) target the same relationship on the same day
+- Audit report identifies frequency and intensity distributions of T2+Pattern A and T2+Pattern B same-day compositions
+- Each observed composition pattern is explicitly classified as safe, at-risk, or unsafe based on documented intensity thresholds
+- No regression in existing test suite or settlement behavior occurs after audit extension
+
+## Required Tests
+- Test that simulated same-day T2 and Pattern A T4 activation on identical target generates composition audit record with correct relationship target identification
+- Test that simulated same-day T2 and Pattern B T4 activation produces audit record showing combined intensity within documented safe bounds
+- Test that concurrent high-intensity T2 and high-intensity Pattern B activation is classified as at-risk or unsafe composition in audit output
+
+## Non-Goals
+- Do not implement signal intensity recalibration or threshold adjustments
+- Do not refactor existing T2 or T4 pattern implementations
+- Do not add new T4 patterns beyond existing Pattern A and Pattern B
+- Do not introduce live LLM appraisal or natural-language interpretation

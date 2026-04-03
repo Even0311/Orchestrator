@@ -11,20 +11,20 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 - T4 builder implements 3 activation paths with deterministic bounds formally documented
-- Comprehensive test coverage (40 new tests) now validates Pattern A, Pattern B, and original narrow seam for boundary conditions and edge cases
+- Comprehensive test coverage (40 new tests) validates Pattern A, Pattern B, and original narrow seam for boundary conditions and edge cases
+- Same-day T2/T4 composition safety audit completed — expanded coverage verified safe for same-day interaction with T2 influencer signals
 - 441 total tests operational including 103 dedicated T4 tests
-- Ready to audit same-day T2/T4 composition safety with expanded coverage
+- Ready to calibrate signal intensity ranges for new output shapes
 
 ## Architecture Snapshot
 - Deterministic single-agent backbone operational with T1/T2/T4 bridge coverage
-- T4 builder has 3 activation paths with explicit numerical bounds and comprehensive test coverage
+- T4 builder has 3 activation paths with explicit numerical bounds, comprehensive test coverage, and verified composition safety with T2
 - Settlement substrate unchanged and engine-authoritative
 - Test coverage: 441 total tests including 103 dedicated T4 pattern, contract, and comprehensive coverage tests
 
 ## Known Risks
-- Composition complexity: Expanded T4 coverage increases the state space of potential same-day T2/T4 interactions requiring audit (P28-T5)
-- Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability (P28-T6)
+- Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability (P28-T6 remaining)
 
 ## Resolved Strategic Decisions
 - Phase 27 completed: T4 activation audited, composition safety verified, contract formalized
-- Phase 28-T1/T2/T3/T4 completed: Expanded from single minimal seam to 3-condition deterministic coverage with validated pattern library, explicit numerical bounds, and comprehensive edge case test coverage
+- Phase 28-T1/T2/T3/T4/T5 completed: Expanded from single minimal seam to 3-condition deterministic coverage with validated pattern library, explicit numerical bounds, comprehensive edge case test coverage, and verified T2/T4 same-day composition safety

@@ -18,10 +18,10 @@ Expand deterministic relational appraisal coverage beyond the single minimal act
 - no attempt to model full human social complexity
 
 ## Task Queue
-- [ ] P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage
 - [ ] P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes
 
 ## Completed Tasks
+- [x] P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage — Extended composition audit instrumentation verified safe interaction between T2 influencer signals and expanded T4 patterns (Pattern A and Pattern B) targeting same relationships within single days
 - [x] P28-T4: Add comprehensive test coverage for new T4 interpretation paths and edge cases — Implemented 40 comprehensive tests for Pattern A and Pattern B covering signal intensity bounds, boundary activation thresholds, and null/malformed input edge cases (441 total tests passed)
 - [x] P28-T3: Extend T4 behavior contract documentation to specify valid ranges for new expanded coverage — Extended docs/t4_negative_behavior_contract.md with explicit numerical bounds for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure), plus 15 new contract validation tests (401 total tests passed)
 - [x] P28-T2: Implement expanded event condition branches in T4 builder for approved new interpretation paths — Implemented Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) branches in tick_bridge.py with 26 new validation tests (386 total tests passed)
@@ -57,11 +57,10 @@ Expand deterministic relational appraisal coverage beyond the single minimal act
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
 
 ## Current Status
-Added comprehensive test coverage for expanded T4 deterministic relational appraisal paths (Pattern A and Pattern B), including boundary conditions, invalid inputs, and edge cases (441 total tests passed)
+Audit of same-day T2/T4 composition safety completed — expanded T4 patterns verified safe for composition with T2 signals
 
 ## Risks / Blockers
-- Composition complexity: Expanded T4 coverage increases the state space of potential same-day T2/T4 interactions requiring audit
 - Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability
 
 ## Next Recommended Task
-P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage
+P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes
