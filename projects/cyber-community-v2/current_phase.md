@@ -20,11 +20,11 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Task Queue
 
-- [ ] P27-T5: Calibrate thresholds and guards if needed
 - [ ] P27-T6: Produce explicit contract notes for valid T4 behavior
 
 ## Completed Tasks
 
+- [x] P27-T5: Calibrate thresholds and guards if needed
 - [x] P27-T4: Audit _adjust_t4() path stability and interpretability
 - [x] P27-T3: Audit downstream residual creation behavior — Observability instrumentation implemented for downstream propagation, wake chain depth tracking, and cascade pattern detection
 - [x] P27-T2: Audit T4 negative activation frequency — Observability instrumentation implemented and verified (259 tests passed)
@@ -55,16 +55,13 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Current Status
 
-P27-T4 complete: _adjust_t4() path observability instrumentation implemented and verified (296 tests passed), confirming stable and interpretable threshold adjustment patterns.
+P27-T5 complete: Reviewed audit data from P27-T1 through P27-T4, confirmed current T4 activation thresholds and guard conditions are sufficient for stable negative relational continuity; fixed test suite tuple unpacking issues (317 tests passed).
 
 ## Risks / Blockers
 
-### R1 — Calibration needs unknown until P27-T5 execution
-P27-T4 audit passed without issues, but P27-T5 assessment will confirm whether threshold adjustments or additional guards are actually required before finalizing T4 contracts.
-
-### R2 — Production wake chain behavior untested
-Wake chain depth bounds verified in test environment; production load patterns may differ and require additional guards.
+### R1 — Production wake chain behavior untested
+Wake chain depth bounds verified in test environment; production load patterns may differ and require additional guards during future deployment.
 
 ## Next Recommended Task
 
-P27-T5: Calibrate thresholds and guards if needed
+P27-T6: Produce explicit contract notes for valid T4 behavior

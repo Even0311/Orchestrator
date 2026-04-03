@@ -1,0 +1,38 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.2909949,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [
+      "back/tests/test_t4_threshold_calibration.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 6 +++---\n 1 file changed, 3 insertions(+), 3 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex d6fc077..ae9f208 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,8 +138,8 @@ Current Phase\n Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.\n \n ## Working Assumptions\n-- Phase 27 active: P27-T1, P27-T2, and P27-T3 complete (composition, frequency, and downstream audit instrumentation all verified)\n-- T2/T4 collision detection, T4 activation frequency, and downstream residual propagation now all instrumented for observability\n-- Ready for _adjust_t4() path stability audit (P27-T4)\n+- Phase 27 active: P27-T1 through P27-T4 complete (all audit instrumentation tasks verified)\n+- _adjust_t4() path confirmed stable and interpretable (296 tests passed)\n+- Ready for threshold calibration assessment (P27-T5) and final contract documentation (P27-T6)\n \n <!-- end orchestrator dynamic section -->\n\ndiff --git a/back/tests/test_t4_threshold_calibration.py b/back/tests/test_t4_threshold_calibration.py\nnew file mode 100644\nindex 0000000..90c8d42\n--- /dev/null\n+++ b/back/tests/test_t4_threshold_calibration.py\n@@ -0,0 +1,707 @@\n+\"\"\"\n+Round-0020 — T4 Threshold Calibration Assessment and Protective Guard Tests.\n+\n+Calibration determination (from P27-T1 through P27-T4 audit data):\n+  No threshold adjustments are needed. The existing thresholds are stable and\n+  bounded:\n+    1. Activation frequency is event-driven (0% without qualifying events,\n+       100% with them) — no drift or false activations detected.\n+    2. _adjust_t4() hard stops prevent trust_shift from reaching strong_decrease;\n+       closeness_delta is clamped to [-2, 2]; absorption cannot exceed deep.\n+    3. Phase 23 gate (wake chain) requires absorption >= partial — the T4 event-\n+       aware path emits surface absorption, keeping the gate closed by default.\n+       The gate can only open when a carried negative relational residual is\n+       present AND _adjust_t4() upgrades absorption to partial. That chain decays\n+       naturally (aftershock_days=1 → residual days_remaining=1 → gone after one\n+       step).\n+    4. Same-day T2/T4 composition audits show no boundary violations across the\n+       P27 test series.\n+\n+Tests cover:\n+  1. Calibrated threshold boundaries: T4 negative activation respects all hard\n+     stops under various event and residual conditions.\n+  2. Composition safety: same-day T2/T4 targeting the same relationship at\n+     boundary threshold values does not produce violations.\n+  3. Wake chain stability: downstream residual creation and chain decay behave\n+     predictably after the Phase 23 gate opens.\n+\n+Run from back/ with: python -m pytest tests/test_t4_threshold_calibration.py -v\n+\"\"\"\n+\n+import pytest\n+\n+from app.domain.enums import (\n+    AccentColor, District, FeedTone, GrowthStage,\n+    RelationshipStatus, RelationshipType, ResidualKind,\n+    SocialEventIntensity, SocialEventType, Trend, Valence,\n+)\n+from app.domain.models import (\n+    AgentGrowth\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 317 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  2%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Fixed two failing tests in test_t4_threshold_calibration.py by correctly unpacking the tuple returned by simulate_day_bridged, bringing the full suite to 317 passed",
+    "files_changed": [
+      "back/tests/test_t4_threshold_calibration.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_t4_threshold_calibration.py -v",
+      "python -m pytest tests/ -v"
+    ],
+    "test_results": "317 passed / 0 failed",
+    "diff_summary": "In two multi-day wake-chain tests, replaced result_d5.pending_residuals / result_d1.pending_residuals with tuple-unpacking (_result_d5, pending_d5) / (_result_d1, pending_d1) to match the (SimulationResult, list[ResidualEntry]) return type of simulate_day_bridged",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "317 passed / 0 failed. The task is complete.\n\nThe test file already existed with 21 well-structured calibration tests covering all three required areas (threshold boundaries, composition safety, wake chain stability). Two tests were failing because they accessed `.pending_residuals` on the tuple returned by `simulate_day_bridged` — fixed by unpacking the tuple into `(_result, pending)` variables.\n\n<evidence>\n{\n  \"summary\": \"Fixed two failing tests in test_t4_threshold_calibration.py by correctly unpacking the tuple returned by simulate_day_bridged, bringing the full suite to 317 passed\",\n  \"files_changed\": [\"back/tests/test_t4_threshold_calibration.py\"],\n  \"commands_run\": [\"python -m pytest tests/test_t4_threshold_calibration.py -v\", \"python -m pytest tests/ -v\"],\n  \"test_results\": \"317 passed / 0 failed\",\n  \"diff_summary\": \"In two multi-day wake-chain tests, replaced result_d5.pending_residuals / result_d1.pending_residuals with tuple-unpacking (_result_d5, pending_d5) / (_result_d1, pending_d1) to match the (SimulationResult, list[ResidualEntry]) return type of simulate_day_bridged\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}

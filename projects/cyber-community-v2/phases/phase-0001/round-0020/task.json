@@ -1,0 +1,31 @@
+{
+  "task_id": "round-0020",
+  "title": "Calibrate T4 Thresholds and Guards",
+  "objective": "Review audit data from P27-T1 through P27-T4 and adjust T4 activation thresholds and guard conditions if needed to ensure stable negative relational continuity, or explicitly confirm current parameters are sufficient.",
+  "exact_scope": "IN: Review audit metrics from P27 instrumentation (composition collision rates, activation frequency, downstream propagation depth, _adjust_t4() stability data); adjust threshold constants and guard logic in T4 builder and _adjust_t4() if audit reveals calibration needs; add narrow protective filters if same-day composition risks or wake chain anomalies detected; document calibration decisions. OUT: Changes to settlement substrate, bridge architecture modifications, new event taxonomy, player-side intervention systems, LLM integration, removal of existing audit instrumentation, broad relational system redesign.",
+  "constraints": [
+    "Must preserve all existing audit instrumentation from P27-T1 through P27-T4",
+    "Must not break existing 296+ test assertions",
+    "Changes must be justified by specific audit data findings",
+    "If no calibration changes are needed, must explicitly document this conclusion with rationale",
+    "Must maintain narrow T4 activation seam approved in Phase 26B"
+  ],
+  "acceptance_criteria": [
+    "T4 activation thresholds are either adjusted based on audit data or explicitly confirmed sufficient with documented rationale",
+    "Guard conditions either modified to address identified risks or explicitly confirmed adequate",
+    "All existing tests continue to pass without regression",
+    "Calibration changes do not increase T2/T4 same-day composition collision rates beyond observed baseline",
+    "Downstream wake chain depth remains within acceptable bounds after any threshold adjustments"
+  ],
+  "required_tests": [
+    "test that T4 activation frequency remains within expected bounds after threshold calibration",
+    "test that same-day T2/T4 composition safety is preserved under calibrated parameters",
+    "test that downstream residual creation stability is maintained after guard adjustments"
+  ],
+  "non_goals": [
+    "do not refactor unrelated bridge or settlement code",
+    "do not add new major event types or social event taxonomy",
+    "do not implement LLM appraisal or live runtime features",
+    "do not remove or disable existing audit instrumentation"
+  ]
+}
