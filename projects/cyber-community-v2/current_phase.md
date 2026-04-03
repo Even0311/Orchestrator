@@ -18,14 +18,12 @@ Expand deterministic relational appraisal coverage beyond the single minimal act
 - no attempt to model full human social complexity
 
 ## Task Queue
-- [x] P28-T1: Identify and catalog additional social event-to-relational impact mapping patterns beyond current single narrow path
-- [x] P28-T2: Implement expanded event condition branches in T4 builder for approved new interpretation paths
-- [ ] P28-T3: Extend T4 behavior contract documentation to specify valid ranges for new expanded coverage
 - [ ] P28-T4: Add comprehensive test coverage for new T4 interpretation paths and edge cases
 - [ ] P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage
 - [ ] P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes
 
 ## Completed Tasks
+- [x] P28-T3: Extend T4 behavior contract documentation to specify valid ranges for new expanded coverage — Extended docs/t4_negative_behavior_contract.md with explicit numerical bounds for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure), plus 15 new contract validation tests (401 total tests passed)
 - [x] P28-T2: Implement expanded event condition branches in T4 builder for approved new interpretation paths — Implemented Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) branches in tick_bridge.py with 26 new validation tests (386 total tests passed)
 - [x] P28-T1: Identify and catalog additional social event-to-relational impact mapping patterns beyond current single narrow path — Cataloged 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) in docs/p28_t4_pattern_catalog.md with 22 validation tests (360 total tests passed)
 - [x] P27-T6: Produce explicit contract notes for valid T4 behavior — Created docs/t4_negative_behavior_contract.md and 21 contract-verification tests (338 total tests passed)
@@ -59,7 +57,7 @@ Expand deterministic relational appraisal coverage beyond the single minimal act
 - Phase 25 status review support 已完成，已明确当前 backbone continuity 的成立边界
 
 ## Current Status
-Implemented T4 builder condition branches for Contested Endorsement and High-Intensity Unilateral Disclosure patterns with 26 new tests (386 total tests passed)
+Extended T4 behavior contract documentation with explicit numerical bounds for Pattern A and Pattern B, establishing deterministic bounds for expanded relational appraisal coverage (401 tests passed)
 
 ## Risks / Blockers
 - Over-expansion risk: Adding too many interpretation paths too quickly may compromise the auditability established in Phase 27
@@ -67,4 +65,4 @@ Implemented T4 builder condition branches for Contested Endorsement and High-Int
 - Signal calibration risk: New output intensity ranges must be bounded to prevent downstream settlement instability
 
 ## Next Recommended Task
-P28-T3: Extend T4 behavior contract documentation to specify valid ranges for new expanded coverage
+P28-T4: Add comprehensive test coverage for new T4 interpretation paths and edge cases

@@ -1,0 +1,39 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.58410765,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md",
+      "back/tests/test_t4_behavior_contract.py",
+      "docs/t4_negative_behavior_contract.md"
+    ],
+    "files_added": [],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md                               |   8 +-\n back/tests/test_t4_behavior_contract.py | 310 ++++++++++++++++++++++++++++++++\n docs/t4_negative_behavior_contract.md   | 180 ++++++++++++++++++-\n 3 files changed, 493 insertions(+), 5 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex 266d153..627866c 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,9 +138,9 @@ P28: Deterministic Relational Appraisal Expansion\n Expand deterministic relational appraisal coverage beyond the single minimal activation slice, while preserving auditability.\n \n ## Working Assumptions\n-- Pattern catalog established: 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) documented and validated\n-- Phase 27 contract foundation stable with 338 tests passed\n-- Ready to implement expanded event condition branches in T4 builder\n-- Current T4 has single narrow activation path proven safe; expansion now has validated pattern library to draw from\n+- T4 builder now implements 2 expanded condition branches (Contested Endorsement, High-Intensity Unilateral Disclosure) beyond original narrow path\n+- Pattern detection logic operational with 26 new tests validating detection, signal shape, and fallthrough behavior\n+- Ready to update formal contract documentation to specify valid ranges for new coverage\n+- Expanded T4 deterministic coverage progressing without compromising auditability\n \n <!-- end orchestrator dynamic section -->\ndiff --git a/back/tests/test_t4_behavior_contract.py b/back/tests/test_t4_behavior_contract.py\nindex d224b2e..65bec3f 100644\n--- a/back/tests/test_t4_behavior_contract.py\n+++ b/back/tests/test_t4_behavior_contract.py\n@@ -34,6 +34,10 @@ from app.engines.appraisal_settlement import (\n     AbsorptionLevel, AppraisalSignal, Arousal,\n     RelationalBlock, TrustShift, GuidanceResonance,\n )\n+from app.domain.enums import (\n+    SocialEventIntensity,\n+    SocialEventReciprocity,\n+)\n from app.engines.tick_bridge import (\n     T4ActivationAuditRecord,\n     T4AdjustmentAuditRecord,\n@@ -41,7 +45,10 @@ from app.engines.tick_bridge import (\n     CompositionAuditRecord,\n     T4_QUALIFYING_EVENT_TYPES,\n     _adjust_t4,\n+    _detect_pattern_a_contested_endorsement,\n+    _detect_pattern_b_high_intensity_disclosure,\n     _detect_qualifying_t4_social_event,\n+    build_signal_from_t4_relationship_tick,\n     simulate_day_bridged,\n )\n \n@@ -700,3 +707,306 @@ class TestAdjustT4SemanticsContract:\n         assert rec.output_absorption == \"partial\", (\n             f\"Contract: output must be partial, got {rec.output_absorption!r}\"\n         )\n+\n+\n+# ─── Section 5: Expanded Pattern Signal Intensity Bounds (Phase 28) ──────────\n+#\n+# Contract (Section 8 of docs/t4_negative_behavior_contract.md):\n+#   Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral\n+#   Disclosure) produce the minimal negative signal shape.  Hard caps prevent\n+#   downstream settlement instability.\n+#\n+# Required by round-0024:\n+#   - Pattern A base signal respects maximum negative intensity bound.\n+#   - Pattern B base signal respects maximum negative intensity bound.\n+#   - Activation logic adheres to minimum threshold values for each pattern.\n+\n+\n+class TestExpandedPatternSignalIntensityBounds:\n+ \n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 401 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Extended T4 contract doc with explicit numerical bounds for Pattern A and Pattern B, and added 15 new contract tests validating signal intensity bounds and activation thresholds",
+    "files_changed": [
+      "docs/t4_negative_behavior_contract.md",
+      "back/tests/test_t4_behavior_contract.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_t4_behavior_contract.py -v",
+      "python -m pytest tests/ -q --tb=short"
+    ],
+    "test_results": "401 passed / 0 failed (15 new tests added)",
+    "diff_summary": "docs/t4_negative_behavior_contract.md: added Sections 8-10 specifying Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) with exact activation thresholds (endorsement+contested, disclosure+high+unilateral), explicit min/max signal bounds (absorption=surface, trust_shift=mild_decrease, closeness_delta=-1, risk_delta=0, aftershock_days=0), hard magnitude caps, and fallthrough precedence. test_t4_behavior_contract.py: added TestExpandedPatternSignalIntensityBounds class with 15 tests covering Pattern A and B signal intensity bounds (absorption, trust_shift, closeness_delta, risk_delta, aftershock_days) and activation threshold enforcement (reciprocity, intensity, event_type filters).",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "401 passed (386 + 15 new tests). All passing.\n\n<evidence>\n{\n  \"summary\": \"Extended T4 contract doc with explicit numerical bounds for Pattern A and Pattern B, and added 15 new contract tests validating signal intensity bounds and activation thresholds\",\n  \"files_changed\": [\n    \"docs/t4_negative_behavior_contract.md\",\n    \"back/tests/test_t4_behavior_contract.py\"\n  ],\n  \"commands_run\": [\n    \"python -m pytest tests/test_t4_behavior_contract.py -v\",\n    \"python -m pytest tests/ -q --tb=short\"\n  ],\n  \"test_results\": \"401 passed / 0 failed (15 new tests added)\",\n  \"diff_summary\": \"docs/t4_negative_behavior_contract.md: added Sections 8-10 specifying Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) with exact activation thresholds (endorsement+contested, disclosure+high+unilateral), explicit min/max signal bounds (absorption=surface, trust_shift=mild_decrease, closeness_delta=-1, risk_delta=0, aftershock_days=0), hard magnitude caps, and fallthrough precedence. test_t4_behavior_contract.py: added TestExpandedPatternSignalIntensityBounds class with 15 tests covering Pattern A and B signal intensity bounds (absorption, trust_shift, closeness_delta, risk_delta, aftershock_days) and activation threshold enforcement (reciprocity, intensity, event_type filters).\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}
