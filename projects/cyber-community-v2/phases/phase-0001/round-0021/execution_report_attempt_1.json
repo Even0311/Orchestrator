@@ -1,0 +1,41 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.7965566999999999,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md"
+    ],
+    "files_added": [
+      "back/tests/test_t4_behavior_contract.py",
+      "docs/t4_negative_behavior_contract.md"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md | 7 ++++---\n 1 file changed, 4 insertions(+), 3 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex ae9f208..a2ca4d6 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,8 +138,9 @@ Current Phase\n Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.\n \n ## Working Assumptions\n-- Phase 27 active: P27-T1 through P27-T4 complete (all audit instrumentation tasks verified)\n-- _adjust_t4() path confirmed stable and interpretable (296 tests passed)\n-- Ready for threshold calibration assessment (P27-T5) and final contract documentation (P27-T6)\n+- Phase 27 active: P27-T1 through P27-T5 complete (all audit and calibration tasks done)\n+- T4 thresholds confirmed sufficient; no parameter adjustments required\n+- Test suite stable at 317 passed\n+- Proceeding to P27-T6 for explicit contract formalization\n \n <!-- end orchestrator dynamic section -->\n\ndiff --git a/back/tests/test_t4_behavior_contract.py b/back/tests/test_t4_behavior_contract.py\nnew file mode 100644\nindex 0000000..d224b2e\n--- /dev/null\n+++ b/back/tests/test_t4_behavior_contract.py\n@@ -0,0 +1,702 @@\n+\"\"\"\n+Round-0021 — T4 Negative Behavior Contract Tests.\n+\n+Formalizes the T4 negative relational behavior contract defined in\n+docs/t4_negative_behavior_contract.md.  Each test class corresponds to one\n+contract section.  Tests verify that documented specifications match the\n+actual implementation — they do not test new behavior.\n+\n+Contract sections covered:\n+  1. Activation Conditions — documented qualifying event types match\n+     T4_QUALIFYING_EVENT_TYPES and the activation detection function.\n+  2. T2/T4 Composition Constraints — documented collision detection rule\n+     matches actual CompositionAuditRecord behavior.\n+  3. Wake Chain Depth Limits — documented 1-day wake chain depth limit\n+     matches actual residual propagation bounds.\n+  4. _adjust_t4() Semantics — documented hard stops match actual function behavior.\n+\n+Run from back/ with: python -m pytest tests/test_t4_behavior_contract.py -v\n+\"\"\"\n+\n+import pytest\n+\n+from app.domain.enums import (\n+    AccentColor, District, FeedTone, GrowthStage,\n+    RelationshipStatus, RelationshipType, ResidualKind,\n+    SocialEventType, Trend, Valence,\n+)\n+from app.domain.models import (\n+    AgentGrowth, AgentProfile, AgentState,\n+    InfluenceAction, PublicFeedItem, Relationship,\n+    ResidualEntry, SocialEventSpec, WorldSnapshot,\n+)\n+from app.engines.appraisal_settlement import (\n+    AbsorptionLevel, AppraisalSignal, Arousal,\n+    RelationalBlock, TrustShift, GuidanceResonance,\n+)\n+from app.engines.tick_bridge import (\n+    T4ActivationAuditRecord,\n+    T4AdjustmentAuditRecord,\n+    T4ResidualCreationAuditRecord,\n+    CompositionAuditRecord,\n+    T4_QUALIFYING_EVENT_TYPES,\n+    _adjust_t4,\n+    _detect_qualifying_t4_social_event,\n+    simulate_day_bridged,\n+)\n+\n+\n+# ─── Fixture helpers ──────────────────────────────────────────────────────────\n+\n+\n+def _make_world(\n+    social_event: SocialEventSpec | None = None,\n+    world_day: int = 5,\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 338 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  2%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Created T4 negative behavior contract documentation and 21 contract-verification tests covering activation thresholds, T2/T4 composition safety, wake chain depth limits, and _adjust_t4() semantics",
+    "files_changed": [
+      "docs/t4_negative_behavior_contract.md",
+      "back/tests/test_t4_behavior_contract.py"
+    ],
+    "commands_run": [
+      "cd back && python -m pytest tests/ -q --tb=no",
+      "python -m pytest tests/test_t4_behavior_contract.py -v",
+      "python -m pytest tests/ -q --tb=no"
+    ],
+    "test_results": "338 passed / 0 failed (317 existing + 21 new contract tests)",
+    "diff_summary": "New file docs/t4_negative_behavior_contract.md: 7-section contract spec covering activation conditions, signal shape, _adjust_t4() semantics, T2/T4 composition, and wake chain depth. New file back/tests/test_t4_behavior_contract.py: 21 tests in 4 classes (TestT4ActivationThresholdContract, TestT2T4CompositionConstraintContract, TestWakeChainDepthLimitContract, TestAdjustT4SemanticsContract) verifying documented specs against actual implementation.",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "338 passed (317 existing + 21 new), no failures.\n\n**Summary:**\n\nCreated `docs/t4_negative_behavior_contract.md` — a formal contract document specifying:\n1. **Activation conditions**: qualifying event types (`confrontation`, `withdrawal`), no target_id routing, event-driven (0%/100%) frequency\n2. **Negative path signal shape**: `surface` absorption, `negative` valence, `mild_decrease` trust_shift, `closeness_delta=-1`, suppressed growth\n3. **`_adjust_t4()` semantics**: hard stops (trust_shift capped at `mild_decrease`, closeness clamped `[-2,2]`, absorption capped at `deep`), one-step transitions, pure deterministic function, fallback behavior\n4. **Same-day T2/T4 composition safety**: collision detection rule, two-factor gate requirement (qualifying event + carried residual)\n5. **Wake chain depth limit**: maximum 1 day — residual `days_remaining=1` decays and drops; chain doesn't self-sustain\n\nCreated `back/tests/test_t4_behavior_contract.py` with 21 tests across 4 contract sections covering all 4 required test areas.\n\n<evidence>\n{\n  \"summary\": \"Created T4 negative behavior contract documentation and 21 contract-verification tests covering activation thresholds, T2/T4 composition safety, wake chain depth limits, and _adjust_t4() semantics\",\n  \"files_changed\": [\n    \"docs/t4_negative_behavior_contract.md\",\n    \"back/tests/test_t4_behavior_contract.py\"\n  ],\n  \"commands_run\": [\n    \"cd back && python -m pytest tests/ -q --tb=no\",\n    \"python -m pytest tests/test_t4_behavior_contract.py -v\",\n    \"python -m pytest tests/ -q --tb=no\"\n  ],\n  \"test_results\": \"338 passed / 0 failed (317 existing + 21 new contract tests)\",\n  \"diff_summary\": \"New file docs/t4_negative_behavior_contract.md: 7-section contract spec covering activation conditions, signal shape, _adjust_t4() semantics, T2/T4 composition, and wake chain depth. New file back/tests/test_t4_behavior_contract.py: 21 tests in 4 classes (TestT4ActivationThresholdContract, TestT2T4CompositionConstraintContract, TestWakeCha"
+}

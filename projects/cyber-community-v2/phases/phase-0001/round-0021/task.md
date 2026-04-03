@@ -1,0 +1,32 @@
+# Task: Formalize T4 Behavior Contract
+
+**ID:** round-0021  
+**Objective:** Create explicit contract documentation defining valid T4 negative relational behavior specifications based on P27 audit findings (T1-T5), establishing formal references for activation conditions, composition rules, and propagation boundaries.
+
+**Exact Scope:** IN: Create formal contract documentation (markdown or structured format) specifying valid T4 negative relational behavior based on P27-T1 through P27-T5 audit findings, including activation threshold specifications, same-day T2/T4 composition safety constraints, downstream residual creation and wake chain depth boundaries, and _adjust_t4() path semantics. OUT: Modifying existing T4 builder implementation code, changing calibration thresholds or guard conditions, expanding event taxonomy, implementing deferred tick bridges (T3/T5/T6/T7/T8), LLM integration, settlement/substrate refactoring.
+
+## Constraints
+- Must not modify existing T4 activation logic or thresholds (confirmed sufficient in P27-T5)
+- Must not break existing test suite (317 tests must pass)
+- Must align with approved narrow T4 activation seam from Phase 26B
+- Must follow Stage 1 scope from roadmap.md (no live LLM, no deferred tick expansion)
+
+## Acceptance Criteria
+- Contract documentation file exists specifying valid T4 activation conditions and thresholds
+- Contract documentation specifies same-day T2/T4 composition safety constraints
+- Contract documentation specifies downstream residual creation and wake chain depth boundaries
+- Contract documentation specifies _adjust_t4() path semantics and interpretability guarantees
+- All 317 existing tests continue to pass
+
+## Required Tests
+- Test that documented T4 activation thresholds match actual implementation trigger conditions
+- Test that documented T2/T4 composition constraints align with actual collision detection behavior
+- Test that documented downstream wake chain depth limits match actual propagation bounds
+- Test that documented _adjust_t4() semantics match actual adjustment path behavior
+
+## Non-Goals
+- Do not modify T4 builder implementation logic
+- Do not change activation thresholds or guard parameters
+- Do not expand event taxonomy or introduce new event types
+- Do not implement LLM appraisal features
+- Do not refactor deferred tick bridges (T3/T5/T6/T7/T8) or settlement substrate

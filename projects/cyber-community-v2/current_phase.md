@@ -20,10 +20,11 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Task Queue
 
-- [ ] P27-T6: Produce explicit contract notes for valid T4 behavior
+(none)
 
 ## Completed Tasks
 
+- [x] P27-T6: Produce explicit contract notes for valid T4 behavior — Created docs/t4_negative_behavior_contract.md and 21 contract-verification tests (338 total tests passed)
 - [x] P27-T5: Calibrate thresholds and guards if needed
 - [x] P27-T4: Audit _adjust_t4() path stability and interpretability
 - [x] P27-T3: Audit downstream residual creation behavior — Observability instrumentation implemented for downstream propagation, wake chain depth tracking, and cascade pattern detection
@@ -55,7 +56,7 @@ Audit and stabilize the first activated T4 negative path, especially same-day co
 
 ## Current Status
 
-P27-T5 complete: Reviewed audit data from P27-T1 through P27-T4, confirmed current T4 activation thresholds and guard conditions are sufficient for stable negative relational continuity; fixed test suite tuple unpacking issues (317 tests passed).
+phase complete — all tasks done, ready for human review
 
 ## Risks / Blockers
 
@@ -64,4 +65,4 @@ Wake chain depth bounds verified in test environment; production load patterns m
 
 ## Next Recommended Task
 
-P27-T6: Produce explicit contract notes for valid T4 behavior
+none — phase complete

@@ -7,31 +7,30 @@ When the current phase is closing or a next phase is being proposed, Designer **
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder: narrow event-aware activation seam active with full audit instrumentation (composition, frequency, downstream, adjustment)
-- T4 threshold calibration complete: audit data reviewed, current parameters confirmed sufficient
-- Test suite stable: 317 tests passed, unpacking issues resolved
-- _adjust_t4() path: observability instrumentation active, stability and interpretability verified
-- Bridge coverage: T1/T2 active, T4 narrow-active with complete instrumentation suite
+- T4 builder: narrow event-aware activation seam active with full audit instrumentation
+- T4 behavior contract formalized: docs/t4_negative_behavior_contract.md defines valid activation conditions, composition rules, and propagation boundaries
+- Contract verification suite: 21 dedicated tests validating T4 semantics (338 total tests passed)
+- Bridge coverage: T1/T2 active, T4 narrow-active with complete instrumentation and formal contract
 - Settlement substrate unchanged
 
 ## Active Constraints
 
-- T4 activation seam verified stable; narrow path remains the only approved activation shape
+- T4 behavior contract now formally documented and tested
 - No broad event taxonomy expansion
 - No changes to settlement/substrate or bridge architecture
 - No live LLM integration yet
 - Stage 1 deferred ticks (T3/T5/T6/T7/T8) remain frozen
-- Ready for final contract documentation (P27-T6)
+- Phase 27 complete; awaiting human review for transition to Phase 28 per roadmap
 
 ## Working Assumptions
 
-- Phase 27 active: P27-T1 through P27-T5 complete (all audit and calibration tasks done)
-- T4 thresholds confirmed sufficient; no parameter adjustments required
-- Test suite stable at 317 passed
-- Proceeding to P27-T6 for explicit contract formalization
+- Phase 27 complete: all audit, calibration, and contract documentation tasks finished
+- T4 behavior now governed by explicit contract specification
+- Test suite stable at 338 passed (including 21 new contract tests)
+- System ready for Phase 28 (Deterministic Relational Appraisal Expansion) upon human approval
 
 ## Resolved Strategic Decisions
 
-- Phase 27 progressing: T4 activation audit and calibration complete (5/6 tasks done)
-- T4 threshold calibration complete: current guards and parameters sufficient for stable negative relational continuity
-- System ready for final contract documentation (P27-T6) and Phase 27 closure
+- Phase 27 closed: T4 activation audit, calibration, and behavior contract formalization complete
+- T4 negative relational continuity seam verified stable, auditable, and contractually bounded
+- Explicit contract documentation establishes valid T4 behavior specifications for future expansion
