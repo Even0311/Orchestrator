@@ -33,14 +33,19 @@ Required changes:
 - Move the completed entry to `## Completed Tasks` section (add section if missing)
 - Update `## Current Status` to one sentence describing what was just accomplished
 - Update `## Next Recommended Task` to the next `- [ ]` item in the queue
-- If this was the last task, set `## Current Status` to
+- If this was the last task in the queue, set `## Current Status` to EXACTLY:
   "phase complete — all tasks done, ready for human review"
   and set `## Next Recommended Task` to "none — phase complete"
 
 Do NOT:
 - Remove or reorder tasks that are still pending
-- Add new tasks that were not in the original queue
+- Add new tasks that were not in the original queue — including tasks for the NEXT phase
 - Change task titles or IDs
+- Write "officially closed" or any other phrasing instead of the exact marker above
+
+IMPORTANT: When the last task is done, your ONLY job is to mark the phase complete with
+the exact status string above. Planning the next phase is done by a separate step — do not
+add next-phase tasks here.
 
 ## Rules for designer_context_md
 
@@ -53,8 +58,8 @@ Required:
 - Update `## Active Constraints` if new constraints were discovered or old ones resolved
 - Update `## Working Assumptions` if assumptions were confirmed or invalidated
 - Update `## Resolved Strategic Decisions` only if a decision was newly resolved or invalidated
-- If all tasks are complete and the phase is closing, note the next phase from road_map.md
-  in `## Resolved Strategic Decisions`
+- If all tasks are complete and the phase is closing, note that phase is complete in
+  `## Resolved Strategic Decisions` — do NOT add next-phase tasks or transition details
 
 Do NOT:
 - Log what happened this round (that belongs in decisions.md)

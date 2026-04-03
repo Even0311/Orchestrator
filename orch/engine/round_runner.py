@@ -1,6 +1,9 @@
 """Executes a single Round: Designer → Executor → [Designer repair →] Executor → Reviewer."""
 import json
+import os
 import shutil
+import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -12,11 +15,11 @@ from orch.agents.designer import DesignerAgent, TaskDefinition
 from orch.agents.executor import ExecutorAgent, ExecutorEvidence, ExecutorResult
 from orch.agents.reviewer import ReviewerAgent, ReviewResult
 from orch.utils.evidence_collector import GitEvidence
-from orch.utils.verification_runner import VerificationResults, run_verification_steps
+from orch.utils.verification_runner import VerificationResults, VerificationStepResult
 
 
 def _ts() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now().strftime("%H:%M:%S")
 
 
 def _elapsed(start: float) -> str:
@@ -90,6 +93,7 @@ def run_round(
     reviewer: ReviewerAgent,
     round_dir: Path,
     codebase_path: Path | None = None,
+    test_cmd: str | None = None,
     max_attempts: int = 2,
 ) -> RoundResult:
     """Run a complete round. Returns the result regardless of pass/fail."""
@@ -134,21 +138,27 @@ def run_round(
         if exec_result.evidence.summary:
             click.echo(f"           Summary: {exec_result.evidence.summary[:120]}")
 
-        # Run mechanical verification (Designer's verification_steps)
+        # Hard gate: run pytest unconditionally
         verification = None
-        if codebase_path and current_task.verification_steps:
-            click.echo(f"  [{_ts()}] Mechanical verification ({len(current_task.verification_steps)} steps)...", nl=False)
+        if codebase_path:
+            click.echo(f"  [{_ts()}] Hard gate: pytest...", nl=False)
             t0 = time.time()
-            verification = run_verification_steps(
-                steps=current_task.verification_steps,
-                cwd=codebase_path,
+            pytest_passed, pytest_output = _run_pytest(codebase_path, test_cmd=test_cmd)
+            verification = VerificationResults(
+                steps=[VerificationStepResult(
+                    command="pytest",
+                    exit_code=0 if pytest_passed else 1,
+                    stdout=pytest_output[:1000],
+                    stderr="",
+                    passed=pytest_passed,
+                )],
+                all_passed=pytest_passed,
+                summary="pytest PASSED" if pytest_passed else "pytest FAILED",
             )
-            tag = click.style("ALL PASS", fg="green") if verification.all_passed else click.style(verification.summary, fg="red")
+            tag = click.style("PASS", fg="green") if pytest_passed else click.style("FAIL", fg="red")
             click.echo(f" {tag} ({_elapsed(t0)})")
-            if not verification.all_passed:
-                for s in verification.steps:
-                    if not s.passed:
-                        click.echo(f"           FAIL: {s.command}")
+            if not pytest_passed:
+                click.echo(f"           pytest output (last 500 chars):\n{pytest_output[-500:]}")
 
         # Save execution report (git-verified + mechanical verification + self-reported)
         _write_execution_report(
@@ -156,21 +166,33 @@ def run_round(
             attempt_num, exec_result, verification,
         )
 
-        # Reviewer evaluates using full exec_result + mechanical verification
-        click.echo(f"  [{_ts()}] Reviewer evaluating...", nl=False)
-        t0 = time.time()
-        review_verdict = reviewer.review(
-            task=current_task,
-            exec_result=exec_result,
-            verification_results=verification,
-        )
-        verdict_color = "green" if review_verdict.passed else "red"
-        verdict_text = click.style(review_verdict.result, fg=verdict_color, bold=True)
-        click.echo(f" {verdict_text} ({_elapsed(t0)}, ${review_verdict.cost_usd:.4f})")
-        click.echo(f"           Confidence: {review_verdict.confidence}")
-        if not review_verdict.passed and review_verdict.unmet_criteria:
-            for c in review_verdict.unmet_criteria[:3]:
-                click.echo(f"           Unmet: {c[:100]}")
+        # Hard gate: if pytest failed, skip reviewer (save cost) and auto-FAIL
+        if verification and not verification.all_passed:
+            review_verdict = ReviewResult(
+                result="FAIL",
+                confidence="high",
+                unmet_criteria=["pytest failed — hard gate"],
+                suspicious_claims=[],
+                required_fixes=["fix failing tests before proceeding"],
+                human_review_needed=False,
+                rationale=f"Hard gate: pytest failed. {verification.steps[0].stdout[-300:] if verification.steps else ''}",
+            )
+            click.echo(f"  [{_ts()}] Reviewer skipped — hard gate FAIL (pytest)")
+        else:
+            # Soft gate: Claude CLI reviewer evaluates semantics
+            click.echo(f"  [{_ts()}] Soft gate: Reviewer evaluating...", nl=False)
+            t0 = time.time()
+            review_verdict = reviewer.review(
+                task=current_task,
+                exec_result=exec_result,
+            )
+            verdict_color = "green" if review_verdict.passed else "red"
+            verdict_text = click.style(review_verdict.result, fg=verdict_color, bold=True)
+            click.echo(f" {verdict_text} ({_elapsed(t0)}, ${review_verdict.cost_usd:.4f})")
+            click.echo(f"           Confidence: {review_verdict.confidence}")
+            if not review_verdict.passed and review_verdict.unmet_criteria:
+                for c in review_verdict.unmet_criteria[:3]:
+                    click.echo(f"           Unmet: {c[:100]}")
 
         # Save review result
         _write_review_files(round_dir, attempt_num, review_verdict)
@@ -233,31 +255,28 @@ def _build_executor_prompt(task: TaskDefinition, use_file_ref: bool = False) -> 
         return (
             f"Execute the task defined in .orch/current_task.md\n\n"
             f"Read that file first for the full task definition, acceptance criteria, "
-            f"and verification steps.\n\n"
+            f"and required tests.\n\n"
             f"Also check .orch/recent_rounds.md if it exists — it shows what was already "
             f"done in recent rounds, so you don't redo completed work."
         )
 
     # Fallback: full prompt (when codebase_path is not set)
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
-    verification = "\n".join(f"- {v}" for v in task.verification_steps)
+    required_tests = "\n".join(f"- {t}" for t in task.required_tests)
     non_goals = "\n".join(f"- {g}" for g in task.non_goals)
     constraints = "\n".join(f"- {c}" for c in task.constraints)
-    likely_files = "\n".join(f"- {f}" for f in task.likely_files)
 
     parts = [
         f"# Task: {task.title}",
         f"\n## Objective\n{task.objective}",
         f"\n## Exact Scope\n{task.exact_scope}",
     ]
-    if likely_files:
-        parts.append(f"\n## Likely Files\n{likely_files}")
     if constraints:
         parts.append(f"\n## Constraints\n{constraints}")
     if criteria:
         parts.append(f"\n## Acceptance Criteria\n{criteria}")
-    if verification:
-        parts.append(f"\n## Verification Steps\n{verification}")
+    if required_tests:
+        parts.append(f"\n## Required Tests\nYou must write tests covering:\n{required_tests}")
     if non_goals:
         parts.append(f"\n## Non-Goals (Do NOT do these)\n{non_goals}")
 
@@ -273,16 +292,15 @@ def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> Non
         "title": task.title,
         "objective": task.objective,
         "exact_scope": task.exact_scope,
-        "likely_files": task.likely_files,
         "constraints": task.constraints,
         "acceptance_criteria": task.acceptance_criteria,
-        "verification_steps": task.verification_steps,
+        "required_tests": task.required_tests,
         "non_goals": task.non_goals,
     }
     (round_dir / f"{prefix}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
-    verification = "\n".join(f"- {v}" for v in task.verification_steps)
+    required_tests = "\n".join(f"- {t}" for t in task.required_tests)
     non_goals = "\n".join(f"- {g}" for g in task.non_goals)
     md = (
         f"# Task: {task.title}\n\n"
@@ -290,14 +308,12 @@ def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> Non
         f"**Objective:** {task.objective}\n\n"
         f"**Exact Scope:** {task.exact_scope}\n\n"
     )
-    if task.likely_files:
-        md += f"## Likely Files\n" + "\n".join(f"- {f}" for f in task.likely_files) + "\n\n"
     if task.constraints:
         md += f"## Constraints\n" + "\n".join(f"- {c}" for c in task.constraints) + "\n\n"
     if criteria:
         md += f"## Acceptance Criteria\n{criteria}\n\n"
-    if verification:
-        md += f"## Verification Steps\n{verification}\n\n"
+    if required_tests:
+        md += f"## Required Tests\n{required_tests}\n\n"
     if non_goals:
         md += f"## Non-Goals\n{non_goals}\n"
     (round_dir / f"{prefix}.md").write_text(md)
@@ -324,8 +340,8 @@ def _write_execution_report(
             "has_changes": git_ev.has_changes,
             "error": git_ev.error,
         },
-        # Mechanical verification — orchestrator-run verification_steps
-        "mechanical_verification": None,
+        # Hard gate — pytest result
+        "hard_gate_pytest": None,
         # Self-reported by Executor — supplementary
         "executor_reported": {
             "summary": ev.summary,
@@ -338,19 +354,10 @@ def _write_execution_report(
         "full_output_truncated": exec_result.output[:2000],
     }
     if verification:
-        data["mechanical_verification"] = {
+        data["hard_gate_pytest"] = {
             "summary": verification.summary,
             "all_passed": verification.all_passed,
-            "steps": [
-                {
-                    "command": s.command,
-                    "exit_code": s.exit_code,
-                    "passed": s.passed,
-                    "stdout": s.stdout,
-                    "stderr": s.stderr,
-                }
-                for s in verification.steps
-            ],
+            "output": verification.steps[0].stdout if verification.steps else "",
         }
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
@@ -434,10 +441,9 @@ def _inject_task_file(codebase_path: Path, task: TaskDefinition) -> None:
     orch_dir.mkdir(exist_ok=True)
 
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
-    verification = "\n".join(f"- {v}" for v in task.verification_steps)
+    required_tests = "\n".join(f"- {t}" for t in task.required_tests)
     non_goals = "\n".join(f"- {g}" for g in task.non_goals)
     constraints = "\n".join(f"- {c}" for c in task.constraints)
-    likely_files = "\n".join(f"- {f}" for f in task.likely_files)
 
     parts = [
         f"# Task: {task.title}",
@@ -445,14 +451,12 @@ def _inject_task_file(codebase_path: Path, task: TaskDefinition) -> None:
         f"\n## Objective\n{task.objective}",
         f"\n## Exact Scope\n{task.exact_scope}",
     ]
-    if likely_files:
-        parts.append(f"\n## Likely Files\n{likely_files}")
     if constraints:
         parts.append(f"\n## Constraints\n{constraints}")
     if criteria:
         parts.append(f"\n## Acceptance Criteria\n{criteria}")
-    if verification:
-        parts.append(f"\n## Verification Steps\n{verification}")
+    if required_tests:
+        parts.append(f"\n## Required Tests\nYou must write tests covering:\n{required_tests}")
     if non_goals:
         parts.append(f"\n## Non-Goals (Do NOT do these)\n{non_goals}")
 
@@ -471,6 +475,47 @@ def cleanup_round_docs(codebase_path: Path) -> None:
     orch_dir = codebase_path / ".orch"
     if orch_dir.exists():
         shutil.rmtree(orch_dir)
+
+
+def _run_pytest(codebase_path: Path, test_cmd: str | None = None, timeout: int = 120) -> tuple[bool, str]:
+    """Run pytest in the target project. Returns (passed, output).
+
+    If *test_cmd* is provided it is executed as a shell command (so ``cd back &&
+    python -m pytest …`` works).  Otherwise falls back to the default command.
+
+    The current Python interpreter's directory is prepended to PATH so that
+    ``python`` resolves to the same interpreter running the orchestrator (which
+    has pytest installed).
+    """
+    env = os.environ.copy()
+    env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+
+    try:
+        if test_cmd:
+            proc = subprocess.run(
+                test_cmd,
+                shell=True,
+                cwd=str(codebase_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        else:
+            proc = subprocess.run(
+                [sys.executable, "-m", "pytest", "-v", "--tb=short"],
+                cwd=str(codebase_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        output = proc.stdout + proc.stderr
+        return proc.returncode == 0, output
+    except subprocess.TimeoutExpired:
+        return False, f"pytest timed out after {timeout}s"
+    except FileNotFoundError:
+        return False, "python not found in PATH"
 
 
 def _build_escalation_reason(result: RoundResult) -> str:

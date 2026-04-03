@@ -11,6 +11,7 @@ from orch.db.database import (
     init_db,
     set_active_project,
     update_project_path,
+    update_project_test_cmd,
 )
 from orch.config.settings import PROJECTS_DIR
 from orch.utils.git_ops import is_git_repo, git_init
@@ -194,6 +195,8 @@ def list_cmd():
         click.echo(f"{active_marker}{p['name']}")
         click.echo(f"    codebase : {p['codebase_path']}")
         click.echo(f"    state    : {p['state_dir']}")
+        if p["test_cmd"]:
+            click.echo(f"    test_cmd : {p['test_cmd']}")
 
 
 @click.command("switch")
@@ -225,3 +228,18 @@ def set_path_cmd(name: str, new_path: str):
     update_project_path(project["id"], str(resolved))
     click.echo(f"✓ Codebase path updated for '{name}'")
     click.echo(f"  {resolved}")
+
+
+@click.command("set-test-cmd")
+@click.argument("name")
+@click.argument("cmd")
+def set_test_cmd_cmd(name: str, cmd: str):
+    """Set a custom test command for the hard gate (e.g. 'cd back && python -m pytest tests/ -v --tb=short')."""
+    init_db()
+    project = get_project_by_name(name)
+    if not project:
+        raise click.ClickException(f"Project '{name}' not found.")
+
+    update_project_test_cmd(project["id"], cmd)
+    click.echo(f"✓ Test command updated for '{name}'")
+    click.echo(f"  {cmd}")

@@ -8,6 +8,7 @@ from orch.agents.context import (
     build_designer_system_prompt,
     build_designer_repair_system_prompt,
     build_document_update_system_prompt,
+    build_phase_plan_system_prompt,
     build_bootstrap_system_prompt,
     load_designer_context,
 )
@@ -24,8 +25,9 @@ class TaskDefinition:
     acceptance_criteria: list[str]
     verification_steps: list[str]
     non_goals: list[str]
-    likely_files: list[str] = field(default_factory=list)
+    likely_files: list[str] = field(default_factory=list)      # deprecated — kept for backward compat
     constraints: list[str] = field(default_factory=list)
+    required_tests: list[str] = field(default_factory=list)
     cost_usd: float = 0.0
 
     # Backward compat properties used in orchestrator.py
@@ -43,10 +45,9 @@ class TaskDefinition:
             "title": self.title,
             "objective": self.objective,
             "exact_scope": self.exact_scope,
-            "likely_files": self.likely_files,
             "constraints": self.constraints,
             "acceptance_criteria": self.acceptance_criteria,
-            "verification_steps": self.verification_steps,
+            "required_tests": self.required_tests,
             "non_goals": self.non_goals,
         }, indent=2)
 
@@ -68,6 +69,14 @@ class BootstrapResult:
     cost_usd: float = 0.0
 
 
+@dataclass
+class PhaseResult:
+    """Next phase documents generated after a phase completes."""
+    current_phase_md: str
+    designer_context_md: str
+    cost_usd: float = 0.0
+
+
 # ── Prompt constants ──────────────────────────────────────────────────────────
 
 _TASK_JSON_SPEC = """\
@@ -77,15 +86,14 @@ Output EXACTLY this JSON (no prose, no markdown fences):
   "title": "<short descriptive title>",
   "objective": "<what must be implemented — concrete and specific>",
   "exact_scope": "<precise boundaries: what is in and out of this task>",
-  "likely_files": ["path/to/file.py"],
   "constraints": ["must not break existing tests"],
   "acceptance_criteria": [
-    "criterion 1 — observable and verifiable",
+    "criterion 1 — business-level, binary pass/fail",
     "criterion 2"
   ],
-  "verification_steps": [
-    "pytest tests/",
-    "python -c 'import module; assert something'"
+  "required_tests": [
+    "test that <specific behavior> works correctly",
+    "test that <edge case> is handled"
   ],
   "non_goals": ["do not refactor unrelated code"]
 }"""
@@ -155,7 +163,7 @@ class DesignerAgent:
                     "Produce a repaired task that:\n"
                     "- Keeps the same core objective\n"
                     "- Explicitly addresses each required fix\n"
-                    "- Has targeted verification_steps that would have caught the original failures\n\n"
+                    "- Has targeted acceptance_criteria and required_tests that address each failure point\n\n"
                     + _TASK_JSON_SPEC
                 ),
             }
@@ -183,6 +191,27 @@ class DesignerAgent:
 
         response = self._provider.complete(system_prompt, messages)
         result = _parse_document_update(response.content, context)
+        result.cost_usd = response.cost_usd
+        return result
+
+    def plan_phase(self) -> PhaseResult:
+        """After a phase completes, plan the next phase from road_map.md."""
+        context = load_designer_context(self._state_dir)
+        system_prompt = build_phase_plan_system_prompt(context)
+
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    "The current phase is complete. Plan the next phase based on road_map.md.\n"
+                    "Produce a fresh current_phase_md with a populated Task Queue and "
+                    "an updated designer_context_md. Return JSON."
+                ),
+            }
+        ]
+
+        response = self._provider.complete(system_prompt, messages)
+        result = _parse_phase_result(response.content)
         result.cost_usd = response.cost_usd
         return result
 
@@ -238,11 +267,12 @@ def _parse_task_json(content: str, round_id: str) -> TaskDefinition:
             title=data.get("title", ""),
             objective=data.get("objective", data.get("description", content.strip()[:200])),
             exact_scope=data.get("exact_scope", ""),
-            likely_files=data.get("likely_files", []),
+            likely_files=[],             # deprecated — Designer no longer specifies files
             constraints=data.get("constraints", []),
             acceptance_criteria=data.get("acceptance_criteria", []),
-            verification_steps=data.get("verification_steps", []),
+            verification_steps=[],       # deprecated — replaced by hard gate (pytest) + soft gate (reviewer)
             non_goals=data.get("non_goals", []),
+            required_tests=data.get("required_tests", []),
         )
     # Fallback: treat entire response as objective
     return TaskDefinition(
@@ -269,6 +299,16 @@ def _parse_document_update(content: str, fallback_context: dict[str, str]) -> Do
         current_phase_md=fallback_context.get("current_phase.md", ""),
         designer_context_md=fallback_context.get("context/designer.md", ""),
     )
+
+
+def _parse_phase_result(content: str) -> PhaseResult:
+    data = _extract_json(content)
+    if data:
+        return PhaseResult(
+            current_phase_md=data.get("current_phase_md", ""),
+            designer_context_md=data.get("designer_context_md", ""),
+        )
+    return PhaseResult(current_phase_md=content.strip(), designer_context_md="")
 
 
 def _parse_bootstrap(content: str) -> BootstrapResult:

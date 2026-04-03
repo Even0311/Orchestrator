@@ -1,0 +1,28 @@
+# Task: Calibrate T4 signal intensity ranges for Pattern A and B
+
+**ID:** round-0027  
+**Objective:** Adjust the signal intensity output values for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) in the T4 builder to ensure they fall within documented safe bounds that prevent downstream settlement instability.
+
+**Exact Scope:** IN: Review and adjust intensity value assignments for Pattern A and Pattern B in the T4 builder; ensure output magnitudes align with documented safe ranges; implement clamping or scaling if necessary to bound signal intensities. OUT: Pattern activation conditions (event triggers), downstream settlement logic, T1/T2 tick bridges, relationship graph structure, and addition of new patterns.
+
+## Constraints
+- must preserve all 441 existing test passes
+- must operate within bounds documented in t4_negative_behavior_contract.md
+- do not modify pattern activation logic (what events trigger Pattern A/B), only output intensity values
+
+## Acceptance Criteria
+- Pattern A produces intensity values within documented safe numerical bounds
+- Pattern B produces intensity values within documented safe numerical bounds
+- All 441 existing tests continue to pass without regression
+- Maximum intensity values from both patterns do not trigger downstream settlement processing errors
+
+## Required Tests
+- test that Pattern A intensity outputs fall within calibrated safe bounds for valid inputs
+- test that Pattern B intensity outputs fall within calibrated safe bounds for valid inputs
+- test that extreme intensity values are properly bounded to prevent settlement overflow
+
+## Non-Goals
+- do not add new T4 patterns
+- do not modify pattern activation conditions or trigger logic
+- do not refactor settlement substrate
+- do not implement live LLM appraisal

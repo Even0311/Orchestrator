@@ -1,0 +1,34 @@
+{
+  "attempt": 1,
+  "success": false,
+  "cost_usd": 0.8772114000000001,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md",
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_t4_pattern_intensity_calibration.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md                       |  5 +++--\n back/app/engines/tick_bridge.py | 28 ++++++++++++++++++++++------\n 2 files changed, 25 insertions(+), 8 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex d3e0808..95fdea7 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -139,8 +139,9 @@ Expand deterministic relational appraisal coverage beyond the single minimal act\n \n ## Working Assumptions\n - T4 builder implements 3 activation paths with deterministic bounds formally documented\n-- Comprehensive test coverage (40 new tests) now validates Pattern A, Pattern B, and original narrow seam for boundary conditions and edge cases\n+- Comprehensive test coverage (40 new tests) validates Pattern A, Pattern B, and original narrow seam for boundary conditions and edge cases\n+- Same-day T2/T4 composition safety audit completed — expanded coverage verified safe for same-day interaction with T2 influencer signals\n - 441 total tests operational including 103 dedicated T4 tests\n-- Ready to audit same-day T2/T4 composition safety with expanded coverage\n+- Ready to calibrate signal intensity ranges for new output shapes\n \n <!-- end orchestrator dynamic section -->\ndiff --git a/back/app/engines/tick_bridge.py b/back/app/engines/tick_bridge.py\nindex 4f6f060..b0b1504 100644\n--- a/back/app/engines/tick_bridge.py\n+++ b/back/app/engines/tick_bridge.py\n@@ -894,6 +894,18 @@ def build_signal_from_t2_influencer_tick(\n \n # ─── Phase 26B — T4 social event detection seam ──────────────────────────────\n \n+# ── Pattern A / B calibrated intensity bounds (Phase 28 round-0027) ──────────\n+# Base signal values for Pattern A (Contested Endorsement) and Pattern B\n+# (High-Intensity Unilateral Disclosure).  Documented in\n+# docs/t4_negative_behavior_contract.md Section 8.1.4 / 8.2.4.\n+#\n+# These constants are the calibrated safe values.  Using them in the builder\n+# prevents accidental drift if the signal construction is ever refactored.\n+# Changing these requires a corresponding contract update.\n+_T4_PATTERN_AB_BASE_CLOSENESS_DELTA: int = -1   # one unit of distance; base floor\n+_T4_PATTERN_AB_BASE_RISK_DELTA: int = 0          # no risk escalation\n+_T4_PATTERN_AB_BASE_AFTERSHOCK_DAYS: int = 0     # surface absorption keeps gate closed\n+\n # Narrow set of social event types that qualify for event-aware T4 activation.\n # Phase 26B approval: confrontation (direct interpersonal conflict) and\n # withdrawal (deliberate disengagement) are the two relational-impact event\n@@ -1061,6 +1073,8 @@ def build_signal_from_t4_relationship_tick(\n         )\n \n     # Phase 28-T2 Pattern A: Contested Endorsement.\n+    # Calibrated intensity: surface absorption (score=1), closeness_delta bounded\n+    # to _T4_PATTERN_AB_BASE_CLOSENESS_DELTA, risk_delta=0, aftershock_days=0.\n     if _detect_pattern_a_contested_endorsement(world) is not None:\n         return AppraisalSignal(\n             absorption=AbsorptionLevel.surface,\n@@ -1070,14 +1084,16 @@ def build_signal_from_t4_relationship_tick(\n             relational=RelationalBlock(\n                 target_id=target_rel.targetId,\n                 trust_shift=TrustShift.mild_decrease,\n-                closeness_delta=-1,\n-         \n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest FAILED",
+    "all_passed": false,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 488 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "You're out of extra usage · resets 1am (Australia/Sydney)",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "You're out of extra usage · resets 1am (Australia/Sydney)"
+}

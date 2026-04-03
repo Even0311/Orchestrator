@@ -1,11 +1,9 @@
-"""Reviewer agent — validates Executor output using both git evidence and self-report."""
+"""Reviewer agent — independent Claude CLI session that verifies Executor output."""
 import json
 import re
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from orch.agents.context import build_reviewer_system_prompt, load_reviewer_context
-from orch.providers.base import LLMProvider
 
 
 @dataclass
@@ -38,140 +36,129 @@ class ReviewResult:
 ReviewVerdict = ReviewResult
 
 
+_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+
+
 class ReviewerAgent:
-    def __init__(self, provider: LLMProvider, state_dir: Path):
-        self._provider = provider
-        self._state_dir = state_dir
+    """Independent reviewer that spawns a fresh Claude CLI session to verify execution."""
+
+    def __init__(self, codebase_path: Path, model: str = "sonnet"):
+        self._codebase_path = codebase_path
+        self._model = model
 
     def review(
         self,
         task: "object",        # TaskDefinition
         exec_result: "object", # ExecutorResult (carries both git_evidence and self-reported evidence)
-        verification_results: "object | None" = None,  # VerificationResults from mechanical verification
     ) -> ReviewResult:
-        """Review execution result using mechanical verification + git evidence + self-report."""
-        context = load_reviewer_context(self._state_dir)
-        system_prompt = build_reviewer_system_prompt(context)
+        """Review via independent Claude CLI session with full codebase access."""
+        prompt = self._build_review_prompt(task, exec_result)
 
-        task_section = _format_task(task)
-        evidence_section = _format_evidence(exec_result, verification_results)
-
-        messages = [
-            {
-                "role": "user",
-                "content": (
-                    f"{task_section}\n\n"
-                    f"{evidence_section}\n\n"
-                    "Review the evidence against each acceptance criterion. "
-                    "Check mechanical verification results FIRST — if a verification step passed, "
-                    "the corresponding criterion is MET. "
-                    "Return your verdict as JSON."
-                ),
-            }
+        cmd = [
+            "claude",
+            "-p", prompt,
+            "--model", self._model,
+            "--permission-mode", "bypassPermissions",
+            "--output-format", "json",
+            "--add-dir", str(self._codebase_path),
         ]
 
-        response = self._provider.complete(system_prompt, messages)
-        verdict = _parse_review_result(response.content)
-        verdict.cost_usd = response.cost_usd
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(self._codebase_path),
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+        except subprocess.TimeoutExpired:
+            return ReviewResult(
+                result="FAIL",
+                confidence="low",
+                unmet_criteria=[],
+                suspicious_claims=[],
+                required_fixes=["Reviewer timed out — manual review required"],
+                human_review_needed=True,
+                rationale="Reviewer Claude CLI session timed out after 5 minutes.",
+            )
+        except FileNotFoundError:
+            return ReviewResult(
+                result="FAIL",
+                confidence="low",
+                unmet_criteria=[],
+                suspicious_claims=[],
+                required_fixes=["Claude CLI not found"],
+                human_review_needed=True,
+                rationale="Claude Code CLI not found. Ensure 'claude' is installed and in PATH.",
+            )
+
+        # Parse Claude CLI JSON output
+        cost = 0.0
+        output_text = ""
+        if proc.stdout.strip():
+            try:
+                data = json.loads(proc.stdout)
+                output_text = data.get("result", "")
+                cost = data.get("total_cost_usd", 0.0) or 0.0
+            except json.JSONDecodeError:
+                output_text = proc.stdout
+
+        if not output_text:
+            output_text = proc.stderr.strip() or "No output from reviewer"
+
+        verdict = _parse_review_result(output_text)
+        verdict.cost_usd = cost
         return verdict
 
+    def _build_review_prompt(self, task: "object", exec_result: "object") -> str:
+        """Build the review prompt with task info, git evidence, and instructions."""
+        # Load the reviewer prompt template
+        template_path = _PROMPTS_DIR / "reviewer.md"
+        template = template_path.read_text() if template_path.exists() else ""
 
-def _format_task(task: "object") -> str:
-    task_id = getattr(task, "task_id", "")
-    title = getattr(task, "title", "")
-    objective = getattr(task, "objective", getattr(task, "description", ""))
-    exact_scope = getattr(task, "exact_scope", "")
-    criteria = getattr(task, "acceptance_criteria", [])
-    verification = getattr(task, "verification_steps", [])
+        # Task info
+        criteria = getattr(task, "acceptance_criteria", [])
+        required_tests = getattr(task, "required_tests", [])
+        criteria_text = "\n".join(f"- {c}" for c in criteria) if criteria else "(none)"
+        tests_text = "\n".join(f"- {t}" for t in required_tests) if required_tests else "(none)"
 
-    if isinstance(criteria, list):
-        criteria_text = "\n".join(f"- {c}" for c in criteria)
-    else:
-        criteria_text = criteria
+        task_section = (
+            f"## Task\n"
+            f"**Title:** {getattr(task, 'title', '')}\n"
+            f"**Objective:** {getattr(task, 'objective', '')}\n"
+            f"**Scope:** {getattr(task, 'exact_scope', '')}\n\n"
+            f"### Acceptance Criteria\n{criteria_text}\n\n"
+            f"### Required Tests\n{tests_text}"
+        )
 
-    if isinstance(verification, list):
-        verification_text = "\n".join(f"- {v}" for v in verification)
-    else:
-        verification_text = verification
+        # Git evidence
+        git_ev = getattr(exec_result, "git_evidence", None)
+        git_section = "## Git Evidence\n"
+        if git_ev and not getattr(git_ev, "error", ""):
+            modified = getattr(git_ev, "files_modified", [])
+            added = getattr(git_ev, "files_added", [])
+            deleted = getattr(git_ev, "files_deleted", [])
+            diff_stat = getattr(git_ev, "diff_stat", "")
+            git_section += f"Modified: {modified}\nAdded: {added}\nDeleted: {deleted}\n"
+            if diff_stat:
+                git_section += f"Diff stat:\n{diff_stat}\n"
+        else:
+            git_section += "(no git evidence available)\n"
 
-    return (
-        f"## Task Package\n"
-        f"ID: {task_id}  |  Title: {title}\n"
-        f"Objective: {objective}\n"
-        f"Scope: {exact_scope}\n\n"
-        f"### Acceptance Criteria\n{criteria_text}\n\n"
-        f"### Verification Steps\n{verification_text}"
-    )
+        # Self-report (supplementary)
+        self_ev = getattr(exec_result, "evidence", None)
+        report_section = "## Executor Self-Report (supplementary — verify against actual code)\n"
+        if self_ev:
+            report_section += (
+                f"Summary: {getattr(self_ev, 'summary', '')}\n"
+                f"Commands run: {getattr(self_ev, 'commands_run', [])}\n"
+                f"Test results: {getattr(self_ev, 'test_results', '')}\n"
+                f"Unresolved: {getattr(self_ev, 'unresolved_issues', [])}\n"
+            )
+        else:
+            report_section += "(no self-report)\n"
 
-
-def _format_evidence(exec_result: "object", verification_results: "object | None" = None) -> str:
-    """Format evidence: mechanical verification first, then git-verified, then self-report."""
-    git_ev = getattr(exec_result, "git_evidence", None)
-    self_ev = getattr(exec_result, "evidence", None)
-
-    lines = ["## Execution Evidence"]
-
-    # ── Mechanical Verification (highest authority) ───────────────────────────
-    if verification_results:
-        from orch.utils.verification_runner import format_verification_results
-        lines.append("")
-        lines.append(format_verification_results(verification_results))
-    else:
-        lines.append("\n### Mechanical Verification\n(not run — no verification steps provided)")
-
-    # ── Git-Verified (authoritative) ──────────────────────────────────────────
-    lines.append("\n### Git-Verified (collected externally by orchestrator)")
-    if git_ev and not getattr(git_ev, "error", ""):
-        has_changes = getattr(git_ev, "has_changes", False)
-        lines.append(f"Has uncommitted changes: {'Yes' if has_changes else 'No'}")
-
-        modified = getattr(git_ev, "files_modified", [])
-        added = getattr(git_ev, "files_added", [])
-        deleted = getattr(git_ev, "files_deleted", [])
-
-        if modified:
-            lines.append(f"Modified files: {modified}")
-        if added:
-            lines.append(f"New files on disk: {added}")
-        if deleted:
-            lines.append(f"Deleted files: {deleted}")
-
-        diff_stat = getattr(git_ev, "diff_stat", "")
-        if diff_stat:
-            lines.append(f"git diff --stat:\n{_indent(diff_stat)}")
-        elif not has_changes:
-            lines.append("(no git changes detected)")
-    elif git_ev:
-        lines.append(f"(git evidence unavailable: {git_ev.error})")
-    else:
-        lines.append("(git evidence not collected)")
-
-    # ── Executor Self-Reported (supplementary) ────────────────────────────────
-    lines.append("\n### Executor Self-Reported (supplementary — verify against git evidence)")
-    if self_ev:
-        summary = getattr(self_ev, "summary", "")
-        commands = getattr(self_ev, "commands_run", [])
-        test_results = getattr(self_ev, "test_results", "")
-        unresolved = getattr(self_ev, "unresolved_issues", [])
-
-        if summary:
-            lines.append(f"Summary: {summary}")
-        if commands:
-            lines.append(f"Commands run: {commands}")
-        if test_results:
-            lines.append(f"Test results: {test_results}")
-        if unresolved:
-            lines.append(f"Unresolved issues: {unresolved}")
-        if not any([summary, commands, test_results]):
-            lines.append("(no self-report provided)")
-    else:
-        lines.append("(no self-report)")
-
-    return "\n".join(lines)
-
-
-def _indent(text: str, prefix: str = "  ") -> str:
-    return "\n".join(prefix + line for line in text.splitlines())
+        return f"{template}\n\n{task_section}\n\n{git_section}\n{report_section}"
 
 
 def _parse_review_result(content: str) -> ReviewResult:

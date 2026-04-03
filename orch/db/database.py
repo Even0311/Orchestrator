@@ -23,6 +23,7 @@ def init_db() -> None:
                 codebase_path TEXT NOT NULL,
                 state_dir     TEXT NOT NULL,
                 is_active     INTEGER DEFAULT 0,
+                test_cmd      TEXT,
                 created_at    TEXT NOT NULL
             );
 
@@ -61,6 +62,11 @@ def init_db() -> None:
                 conn.execute(f"ALTER TABLE rounds ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
                 pass  # column already exists
+        # Migrate: add test_cmd to projects
+        try:
+            conn.execute("ALTER TABLE projects ADD COLUMN test_cmd TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 def now_iso() -> str:
@@ -103,6 +109,14 @@ def update_project_path(project_id: str, new_path: str) -> None:
         conn.execute(
             "UPDATE projects SET codebase_path = ? WHERE id = ?",
             (new_path, project_id),
+        )
+
+
+def update_project_test_cmd(project_id: str, test_cmd: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE projects SET test_cmd = ? WHERE id = ?",
+            (test_cmd, project_id),
         )
 
 

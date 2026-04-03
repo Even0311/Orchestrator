@@ -15,7 +15,7 @@ from orch.db.database import get_connection, now_iso, update_round_commits
 from orch.engine.round_runner import RoundResult, run_round, inject_recent_rounds, cleanup_round_docs
 from orch.providers.factory import get_provider
 from orch.utils.claudemd_manager import generate_claudemd
-from orch.utils.git_ops import commit_projects_dir, commit_all, GitError
+from orch.utils.git_ops import commit_projects_dir, commit_all, clean_working_tree, GitError
 
 
 @dataclass
@@ -37,6 +37,7 @@ def run_project(project_row, run_once: bool = False) -> None:
     project_name = project_row["name"]
     codebase_path = Path(project_row["codebase_path"])
     state_dir = Path(project_row["state_dir"])
+    test_cmd = project_row["test_cmd"]  # may be None
 
     click.echo(f"\n{'='*60}")
     click.echo(f"  Orchestrator starting: {project_name}")
@@ -45,14 +46,16 @@ def run_project(project_row, run_once: bool = False) -> None:
 
     # Build agents
     designer_provider = get_provider("designer", config)
-    reviewer_provider = get_provider("reviewer", config)
 
     designer = DesignerAgent(designer_provider, state_dir)
     executor = ExecutorAgent(
         codebase_path=codebase_path,
         model=config.agents.executor_model,
     )
-    reviewer = ReviewerAgent(reviewer_provider, state_dir)
+    reviewer = ReviewerAgent(
+        codebase_path=codebase_path,
+        model=config.agents.reviewer_model,
+    )
 
     # Bootstrap mode: generate initial phase plan if current_phase.md is uninitialized
     if _needs_bootstrap(state_dir):
@@ -98,6 +101,7 @@ def run_project(project_row, run_once: bool = False) -> None:
             reviewer=reviewer,
             round_dir=round_dir,
             codebase_path=codebase_path,
+            test_cmd=test_cmd,
         )
 
         # Persist round to DB
@@ -127,7 +131,16 @@ def run_project(project_row, run_once: bool = False) -> None:
                 click.echo(f"\n{'='*60}")
                 click.echo(f"  Phase complete: {phase_id}")
                 click.echo(f"{'='*60}")
+                _close_phase(project_id, phase_id)
                 _notify_phase_complete(project_name, phase_id, config)
+
+                # Plan the next phase so the next run starts with a ready Task Queue
+                click.echo(f"  [{_ts()}] Planning next phase...")
+                try:
+                    _run_phase_plan(designer, state_dir)
+                except Exception as e:
+                    click.echo(f"  ⚠ Phase planning failed: {e}", err=True)
+                    click.echo(f"  Next phase must be planned manually before re-running.", err=True)
                 break
 
             if run_once:
@@ -148,6 +161,14 @@ def run_project(project_row, run_once: bool = False) -> None:
             _print_escalation_report(event)
             _notify_escalation(event, config)
             _save_escalation(project_id, round_id, result.escalation_reason)
+
+            # Clean target working tree so next round starts fresh
+            try:
+                clean_working_tree(codebase_path)
+                click.echo(f"  [{_ts()}] Target working tree cleaned")
+            except Exception as e:
+                click.echo(f"  ⚠ Working tree cleanup failed: {e}", err=True)
+
             break
 
     click.echo(f"\n[{_ts()}] Orchestrator stopped. Use 'orch review' to see pending escalations.")
@@ -163,6 +184,22 @@ def _needs_bootstrap(state_dir: Path) -> bool:
     content = phase_path.read_text()
     # Check for template placeholder markers
     return "bootstrap_needed" in content or "待规划" in content
+
+
+def _run_phase_plan(designer: DesignerAgent, state_dir: Path) -> None:
+    """After a phase completes, generate the next phase's Task Queue."""
+    result = designer.plan_phase()
+
+    if result.current_phase_md:
+        (state_dir / "current_phase.md").write_text(result.current_phase_md)
+        click.echo(f"  ✓ current_phase.md — next phase planned")
+
+    if result.designer_context_md:
+        (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
+        click.echo(f"  ✓ context/designer.md updated")
+
+    if result.cost_usd:
+        click.echo(f"  Phase planning cost: ${result.cost_usd:.4f}")
 
 
 def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: OrchestratorConfig) -> None:
@@ -276,11 +313,19 @@ def _get_next_instruction(state_dir: Path, round_id: str) -> str:
 
 def _is_phase_complete(state_dir: Path) -> bool:
     """Check if current_phase.md indicates all tasks are done."""
+    import re
     phase_path = state_dir / "current_phase.md"
     if not phase_path.exists():
         return False
-    content = phase_path.read_text().lower()
-    return any(marker in content for marker in ("phase complete", "all tasks done", "phase finished"))
+    content = phase_path.read_text()
+    # Primary: explicit completion marker written by Designer
+    if any(m in content.lower() for m in ("phase complete", "all tasks done", "phase finished")):
+        return True
+    # Fallback: Task Queue has no remaining unchecked items
+    queue_match = re.search(r"## Task Queue\s*(.*?)(?=\n##|\Z)", content, re.DOTALL)
+    if queue_match:
+        return "- [ ]" not in queue_match.group(1)
+    return False
 
 
 def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
@@ -293,13 +338,28 @@ def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
         if row:
             return row["id"]
 
-        phase_id = "phase-0001"
+        # Determine next phase number based on existing phases
+        count_row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM phases WHERE project_id = ? AND id LIKE 'phase-%'",
+            (project_id,),
+        ).fetchone()
+        next_num = (count_row["cnt"] or 0) + 1
+        phase_id = f"phase-{next_num:04d}"
         conn.execute(
             "INSERT INTO phases (id, project_id, name, status, created_at) VALUES (?, ?, ?, ?, ?)",
-            (phase_id, project_id, "Phase 1", "in_progress", now_iso()),
+            (phase_id, project_id, f"Phase {next_num}", "in_progress", now_iso()),
         )
         (state_dir / "phases" / phase_id).mkdir(parents=True, exist_ok=True)
         return phase_id
+
+
+def _close_phase(project_id: str, phase_id: str) -> None:
+    """Mark a phase as completed in the database."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE phases SET status = 'completed' WHERE id = ? AND project_id = ?",
+            (phase_id, project_id),
+        )
 
 
 def _next_round_number(project_id: str) -> int:
@@ -436,4 +496,4 @@ def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str,
 
 
 def _ts() -> str:
-    return datetime.now(timezone.utc).strftime("%H:%M:%S")
+    return datetime.now().strftime("%H:%M:%S")

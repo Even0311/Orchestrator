@@ -1,0 +1,15 @@
+{
+  "attempt": 1,
+  "result": "FAIL",
+  "confidence": "high",
+  "unmet_criteria": [
+    "pytest failed — hard gate"
+  ],
+  "suspicious_claims": [],
+  "required_fixes": [
+    "fix failing tests before proceeding"
+  ],
+  "human_review_needed": false,
+  "rationale": "Hard gate: pytest failed. settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr",
+  "cost_usd": 0.0
+}

@@ -15,7 +15,7 @@ ENV_PATH = REPO_ROOT / ".env"
 PROJECTS_DIR = REPO_ROOT / "projects"
 
 VALID_DESIGNER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
-VALID_REVIEWER_MODELS = ("opus", "chatgpt", "minimax", "kimi")
+VALID_REVIEWER_MODELS = ("sonnet", "opus", "haiku")
 VALID_EXECUTOR_MODELS = ("sonnet", "opus", "haiku")
 
 
@@ -32,7 +32,7 @@ class NotificationConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     designer: str = "opus"
-    reviewer: str = "opus"
+    reviewer_model: str = "sonnet"
     executor_model: str = "sonnet"
 
 
@@ -96,10 +96,10 @@ def set_config_value(key: str, value: str) -> str:
             if value not in VALID_DESIGNER_MODELS:
                 raise ValueError(f"Invalid designer model '{value}'. Choose from: {', '.join(VALID_DESIGNER_MODELS)}")
             config.agents.designer = value
-        elif parts[1] == "reviewer":
+        elif parts[1] in ("reviewer", "reviewer_model"):
             if value not in VALID_REVIEWER_MODELS:
                 raise ValueError(f"Invalid reviewer model '{value}'. Choose from: {', '.join(VALID_REVIEWER_MODELS)}")
-            config.agents.reviewer = value
+            config.agents.reviewer_model = value
         elif parts[1] == "executor_model":
             if value not in VALID_EXECUTOR_MODELS:
                 raise ValueError(f"Invalid executor model '{value}'. Choose from: {', '.join(VALID_EXECUTOR_MODELS)}")

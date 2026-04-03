@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from orch.agents.context import load_designer_context, load_reviewer_context
+from orch.agents.context import load_designer_context
 from orch.agents.designer import DesignerAgent
 from orch.agents.executor import ExecutorEvidence, ExecutorResult
-from orch.agents.reviewer import ReviewerAgent
+from orch.agents.reviewer import ReviewResult
 from orch.engine.orchestrator import _needs_bootstrap, _run_bootstrap
 from orch.engine.round_runner import run_round
 from orch.providers.base import LLMProvider, LLMResponse
@@ -41,6 +41,21 @@ class MockProvider(LLMProvider):
     @property
     def model_name(self) -> str:
         return "mock"
+
+
+class MockReviewer:
+    """Reviewer that returns predefined ReviewResults in sequence."""
+
+    def __init__(self, results: list[ReviewResult]):
+        self._results = list(results)
+        self._index = 0
+
+    def review(self, task, exec_result) -> ReviewResult:
+        if self._index >= len(self._results):
+            raise RuntimeError("MockReviewer exhausted")
+        result = self._results[self._index]
+        self._index += 1
+        return result
 
 
 class FileWritingMockExecutor:
@@ -260,31 +275,24 @@ def test_full_round_pass_with_real_git_evidence(tmp_path):
         "title": "Implement add function",
         "objective": "Create add(a, b) in calculator.py",
         "exact_scope": "Only the add function",
-        "likely_files": ["calculator.py"],
         "constraints": [],
         "acceptance_criteria": ["calculator.py exists", "add(2, 3) returns 5"],
-        "verification_steps": ["python -c 'from calculator import add; assert add(2,3)==5'"],
+        "required_tests": ["test that add returns correct sum"],
         "non_goals": [],
-    })
-
-    review_pass = json.dumps({
-        "result": "PASS",
-        "confidence": "high",
-        "unmet_criteria": [],
-        "suspicious_claims": [],
-        "required_fixes": [],
-        "human_review_needed": False,
-        "rationale": "calculator.py is present in git-verified files_added, objective met",
     })
 
     designer = DesignerAgent(
         MockProvider([LLMResponse(content=task_json, input_tokens=100, output_tokens=100, cost_usd=0.001)]),
         state_dir,
     )
-    reviewer = ReviewerAgent(
-        MockProvider([LLMResponse(content=review_pass, input_tokens=100, output_tokens=100, cost_usd=0.001)]),
-        state_dir,
-    )
+    reviewer = MockReviewer([
+        ReviewResult(
+            result="PASS", confidence="high", unmet_criteria=[], suspicious_claims=[],
+            required_fixes=[], human_review_needed=False,
+            rationale="calculator.py is present in git-verified files_added, objective met",
+            cost_usd=0.001,
+        ),
+    ])
     executor = FileWritingMockExecutor(codebase, [
         {
             "files": {"calculator.py": "def add(a, b):\n    return a + b\n"},
@@ -326,6 +334,7 @@ def test_full_round_pass_with_real_git_evidence(tmp_path):
     task_data = json.loads((round_dir / "task.json").read_text())
     assert task_data["task_id"] == "round-0001"
     assert isinstance(task_data["acceptance_criteria"], list)
+    assert "required_tests" in task_data
 
     # Verify review_attempt_1.json
     review_data = json.loads((round_dir / "review_attempt_1.json").read_text())
@@ -351,21 +360,10 @@ def test_full_round_fail_repair_pass_with_git(tmp_path):
         "title": "Implement add with tests",
         "objective": "Create add(a, b) AND write pytest tests",
         "exact_scope": "calculator.py + test_calculator.py",
-        "likely_files": ["calculator.py", "test_calculator.py"],
         "constraints": [],
         "acceptance_criteria": ["calculator.py exists", "test_calculator.py exists", "tests pass"],
-        "verification_steps": ["pytest test_calculator.py -v"],
+        "required_tests": ["test that add returns correct sum"],
         "non_goals": [],
-    })
-
-    review_fail = json.dumps({
-        "result": "FAIL",
-        "confidence": "high",
-        "unmet_criteria": ["test_calculator.py exists — not found in git evidence"],
-        "suspicious_claims": ["claimed tests pass but test file absent"],
-        "required_fixes": ["create test_calculator.py with at least one test"],
-        "human_review_needed": False,
-        "rationale": "git-verified files_added only shows calculator.py, test file missing",
     })
 
     repaired_task_json = json.dumps({
@@ -373,25 +371,14 @@ def test_full_round_fail_repair_pass_with_git(tmp_path):
         "title": "Implement add with tests (repaired)",
         "objective": "Create calculator.py AND test_calculator.py with passing tests",
         "exact_scope": "BOTH files must appear in git-verified changes",
-        "likely_files": ["calculator.py", "test_calculator.py"],
         "constraints": ["must create test file — this was the failure point"],
         "acceptance_criteria": [
             "calculator.py exists in git",
             "test_calculator.py exists in git",
             "pytest test_calculator.py exits 0",
         ],
-        "verification_steps": ["pytest test_calculator.py -v"],
+        "required_tests": ["test that add returns correct sum"],
         "non_goals": [],
-    })
-
-    review_pass = json.dumps({
-        "result": "PASS",
-        "confidence": "high",
-        "unmet_criteria": [],
-        "suspicious_claims": [],
-        "required_fixes": [],
-        "human_review_needed": False,
-        "rationale": "both files in git files_added, verification step ran",
     })
 
     designer = DesignerAgent(
@@ -401,13 +388,23 @@ def test_full_round_fail_repair_pass_with_git(tmp_path):
         ]),
         state_dir,
     )
-    reviewer = ReviewerAgent(
-        MockProvider([
-            LLMResponse(content=review_fail, input_tokens=100, output_tokens=100, cost_usd=0.001),
-            LLMResponse(content=review_pass, input_tokens=100, output_tokens=100, cost_usd=0.001),
-        ]),
-        state_dir,
-    )
+    reviewer = MockReviewer([
+        ReviewResult(
+            result="FAIL", confidence="high",
+            unmet_criteria=["test_calculator.py exists — not found in git evidence"],
+            suspicious_claims=["claimed tests pass but test file absent"],
+            required_fixes=["create test_calculator.py with at least one test"],
+            human_review_needed=False,
+            rationale="git-verified files_added only shows calculator.py, test file missing",
+            cost_usd=0.001,
+        ),
+        ReviewResult(
+            result="PASS", confidence="high", unmet_criteria=[], suspicious_claims=[],
+            required_fixes=[], human_review_needed=False,
+            rationale="both files in git files_added, verification step ran",
+            cost_usd=0.001,
+        ),
+    ])
     executor = FileWritingMockExecutor(codebase, [
         {
             # Attempt 1: only creates calculator.py, forgets test file
@@ -497,10 +494,9 @@ def test_cli_log_reads_new_json_artifacts(tmp_path):
         "title": "Test Task",
         "objective": "Do the thing",
         "exact_scope": "only this",
-        "likely_files": ["foo.py"],
         "constraints": [],
         "acceptance_criteria": ["foo.py created"],
-        "verification_steps": [],
+        "required_tests": ["test that foo works"],
         "non_goals": [],
     }))
 

@@ -32,20 +32,6 @@ def load_designer_context(state_dir: Path) -> dict[str, str]:
     return docs
 
 
-def load_reviewer_context(state_dir: Path) -> dict[str, str]:
-    """Load context for Reviewer: vision + current_phase only.
-
-    Reviewer evaluates objectively against the task and vision.
-    No designer working memory, no decisions history.
-    """
-    docs = {}
-    for name in ("vision.md", "current_phase.md"):
-        path = state_dir / name
-        if path.exists():
-            docs[name] = path.read_text()
-    return docs
-
-
 # Backward compat alias
 load_project_context = load_designer_context
 
@@ -62,15 +48,15 @@ def build_designer_repair_system_prompt(context: dict[str, str]) -> str:
     return _append_docs(base, context)
 
 
-def build_reviewer_system_prompt(context: dict[str, str]) -> str:
-    """System prompt for review — loaded from reviewer.md."""
-    base = _load_prompt("reviewer.md")
-    return _append_docs(base, context)
-
-
 def build_document_update_system_prompt(context: dict[str, str]) -> str:
     """System prompt for update_documents — loaded from designer_update.md."""
     base = _load_prompt("designer_update.md")
+    return _append_docs(base, context)
+
+
+def build_phase_plan_system_prompt(context: dict[str, str]) -> str:
+    """System prompt for plan_phase — loaded from designer_phase.md."""
+    base = _load_prompt("designer_phase.md")
     return _append_docs(base, context)
 
 

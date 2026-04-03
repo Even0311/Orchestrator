@@ -81,6 +81,18 @@ def commit_all(repo_path: Path, message: str) -> str:
     return get_current_commit(repo_path)
 
 
+def clean_working_tree(repo_path: Path) -> None:
+    """Discard all uncommitted changes and remove untracked files."""
+    subprocess.run(
+        ["git", "checkout", "."],
+        cwd=str(repo_path), check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "clean", "-fd"],
+        cwd=str(repo_path), check=True, capture_output=True,
+    )
+
+
 def reset_hard(repo_path: Path, commit_hash: str) -> None:
     """Hard reset the current branch to a specific commit."""
     result = subprocess.run(

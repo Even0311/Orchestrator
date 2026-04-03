@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from orch.agents.context import load_designer_context, load_reviewer_context
+from orch.agents.context import load_designer_context
 from orch.agents.designer import DesignerAgent
 from orch.agents.executor import ExecutorEvidence, ExecutorResult
-from orch.agents.reviewer import ReviewerAgent
+from orch.agents.reviewer import ReviewResult
 from orch.engine.round_runner import run_round
 from orch.providers.base import LLMProvider, LLMResponse
 
@@ -48,6 +48,21 @@ class MockExecutor:
         return result
 
 
+class MockReviewer:
+    """Reviewer that returns predefined ReviewResults in sequence."""
+
+    def __init__(self, results: list[ReviewResult]):
+        self._results = list(results)
+        self._index = 0
+
+    def review(self, task, exec_result) -> ReviewResult:
+        if self._index >= len(self._results):
+            raise RuntimeError("MockReviewer exhausted")
+        result = self._results[self._index]
+        self._index += 1
+        return result
+
+
 def _make_state_dir(tmp_path: Path) -> Path:
     state_dir = tmp_path / "project"
     state_dir.mkdir()
@@ -66,36 +81,37 @@ def _task_json(round_id: str = "round-0001", objective: str = "Create add(a, b) 
         "title": "Implement add function",
         "objective": objective,
         "exact_scope": "Only the add function in calculator.py",
-        "likely_files": ["calculator.py"],
         "constraints": [],
         "acceptance_criteria": ["calculator.py exists", "add(2, 3) returns 5"],
-        "verification_steps": ["python -c 'from calculator import add; assert add(2,3)==5'"],
+        "required_tests": ["test that add returns correct sum"],
         "non_goals": ["multiply, subtract"],
     })
 
 
-def _review_pass_json(rationale: str = "all criteria met") -> str:
-    return json.dumps({
-        "result": "PASS",
-        "confidence": "high",
-        "unmet_criteria": [],
-        "suspicious_claims": [],
-        "required_fixes": [],
-        "human_review_needed": False,
-        "rationale": rationale,
-    })
+def _review_pass(rationale: str = "all criteria met") -> ReviewResult:
+    return ReviewResult(
+        result="PASS",
+        confidence="high",
+        unmet_criteria=[],
+        suspicious_claims=[],
+        required_fixes=[],
+        human_review_needed=False,
+        rationale=rationale,
+        cost_usd=0.001,
+    )
 
 
-def _review_fail_json(reason: str = "tests not run") -> str:
-    return json.dumps({
-        "result": "FAIL",
-        "confidence": "high",
-        "unmet_criteria": ["add(2,3)==5 — no test evidence provided"],
-        "suspicious_claims": ["claimed success but no commands_run"],
-        "required_fixes": ["run the verification step and show output"],
-        "human_review_needed": False,
-        "rationale": reason,
-    })
+def _review_fail(reason: str = "tests not run") -> ReviewResult:
+    return ReviewResult(
+        result="FAIL",
+        confidence="high",
+        unmet_criteria=["add(2,3)==5 — no test evidence provided"],
+        suspicious_claims=["claimed success but no commands_run"],
+        required_fixes=["run the verification step and show output"],
+        human_review_needed=False,
+        rationale=reason,
+        cost_usd=0.001,
+    )
 
 
 def _make_evidence(files=None, commands=None, test_results="", unresolved=None) -> ExecutorEvidence:
@@ -111,36 +127,28 @@ def _make_evidence(files=None, commands=None, test_results="", unresolved=None) 
 
 # ── Test: decisions.md NEVER in AI context ────────────────────────────────────
 
-def test_decisions_md_excluded_from_all_ai_contexts(tmp_path):
-    """decisions.md must never appear in designer or reviewer context."""
+def test_decisions_md_excluded_from_designer_context(tmp_path):
+    """decisions.md must never appear in designer context."""
     state_dir = _make_state_dir(tmp_path)
     (state_dir / "decisions.md").write_text(
         "# Decisions\n## 2024-01-01 — Secret\n**决定:** confidential decision"
     )
 
     designer_ctx = load_designer_context(state_dir)
-    reviewer_ctx = load_reviewer_context(state_dir)
 
     assert "decisions.md" not in designer_ctx, "decisions.md key must not appear in designer context"
-    assert "decisions.md" not in reviewer_ctx, "decisions.md key must not appear in reviewer context"
 
     all_designer_text = " ".join(designer_ctx.values())
-    all_reviewer_text = " ".join(reviewer_ctx.values())
-
     assert "confidential decision" not in all_designer_text
-    assert "confidential decision" not in all_reviewer_text
     assert "Secret" not in all_designer_text
 
 
 def test_designer_context_includes_designer_md(tmp_path):
-    """Designer context must include context/designer.md; reviewer context must not."""
+    """Designer context must include context/designer.md."""
     state_dir = _make_state_dir(tmp_path)
 
     designer_ctx = load_designer_context(state_dir)
-    reviewer_ctx = load_reviewer_context(state_dir)
-
     assert "context/designer.md" in designer_ctx
-    assert "context/designer.md" not in reviewer_ctx
 
 
 # ── Test: PASS on first attempt ───────────────────────────────────────────────
@@ -151,9 +159,6 @@ def test_pass_on_first_attempt(tmp_path):
     designer_provider = MockProvider([
         LLMResponse(content=_task_json(), input_tokens=100, output_tokens=100, cost_usd=0.001),
     ])
-    reviewer_provider = MockProvider([
-        LLMResponse(content=_review_pass_json(), input_tokens=100, output_tokens=100, cost_usd=0.001),
-    ])
     mock_exec = MockExecutor([
         ExecutorResult(
             success=True, output="Done.", cost_usd=0.005, session_id="s1",
@@ -163,9 +168,9 @@ def test_pass_on_first_attempt(tmp_path):
             ),
         ),
     ])
+    mock_reviewer = MockReviewer([_review_pass()])
 
     designer = DesignerAgent(designer_provider, state_dir)
-    reviewer = ReviewerAgent(reviewer_provider, state_dir)
     round_dir = tmp_path / "round-0001"
 
     result = run_round(
@@ -173,7 +178,7 @@ def test_pass_on_first_attempt(tmp_path):
         instruction="implement add function",
         designer=designer,
         executor=mock_exec,
-        reviewer=reviewer,
+        reviewer=mock_reviewer,
         round_dir=round_dir,
     )
 
@@ -200,6 +205,7 @@ def test_pass_on_first_attempt(tmp_path):
     assert task_data["task_id"] == "round-0001"
     assert "acceptance_criteria" in task_data
     assert isinstance(task_data["acceptance_criteria"], list)
+    assert "required_tests" in task_data
 
     # Verify review_attempt_1.json structure
     review_data = json.loads((round_dir / "review_attempt_1.json").read_text())
@@ -218,20 +224,15 @@ def test_fail_triggers_repair_step_then_pass(tmp_path):
         "title": "Implement add function with verification",
         "objective": "Create add(a,b) AND run the verification command",
         "exact_scope": "calculator.py + must run verification",
-        "likely_files": ["calculator.py"],
         "constraints": ["must run verification step before claiming done"],
         "acceptance_criteria": ["calculator.py exists", "verification command output shows assertion passed"],
-        "verification_steps": ["python -c 'from calculator import add; assert add(2,3)==5'"],
+        "required_tests": ["test that add returns correct sum"],
         "non_goals": [],
     })
 
     designer_provider = MockProvider([
         LLMResponse(content=_task_json(), input_tokens=100, output_tokens=100, cost_usd=0.001),
         LLMResponse(content=repaired_task_json, input_tokens=150, output_tokens=150, cost_usd=0.0015),
-    ])
-    reviewer_provider = MockProvider([
-        LLMResponse(content=_review_fail_json(), input_tokens=100, output_tokens=100, cost_usd=0.001),
-        LLMResponse(content=_review_pass_json("evidence confirms assertion passed"), input_tokens=100, output_tokens=100, cost_usd=0.001),
     ])
     mock_exec = MockExecutor([
         # Attempt 1: no commands run → FAIL
@@ -248,9 +249,12 @@ def test_fail_triggers_repair_step_then_pass(tmp_path):
             ),
         ),
     ])
+    mock_reviewer = MockReviewer([
+        _review_fail(),
+        _review_pass("evidence confirms assertion passed"),
+    ])
 
     designer = DesignerAgent(designer_provider, state_dir)
-    reviewer = ReviewerAgent(reviewer_provider, state_dir)
     round_dir = tmp_path / "round-0001"
 
     result = run_round(
@@ -258,7 +262,7 @@ def test_fail_triggers_repair_step_then_pass(tmp_path):
         instruction="implement add function",
         designer=designer,
         executor=mock_exec,
-        reviewer=reviewer,
+        reviewer=mock_reviewer,
         round_dir=round_dir,
     )
 
@@ -303,19 +307,18 @@ def test_double_fail_escalates(tmp_path):
         LLMResponse(content=_task_json(), input_tokens=100, output_tokens=100, cost_usd=0.001),
         LLMResponse(content=_task_json("round-0001-repair"), input_tokens=100, output_tokens=100, cost_usd=0.001),
     ])
-    reviewer_provider = MockProvider([
-        LLMResponse(content=_review_fail_json("first fail"), input_tokens=100, output_tokens=100, cost_usd=0.001),
-        LLMResponse(content=_review_fail_json("second fail"), input_tokens=100, output_tokens=100, cost_usd=0.001),
-    ])
     mock_exec = MockExecutor([
         ExecutorResult(success=False, output="Error", cost_usd=0.0, session_id="",
                        evidence=_make_evidence()),
         ExecutorResult(success=False, output="Error again", cost_usd=0.0, session_id="",
                        evidence=_make_evidence()),
     ])
+    mock_reviewer = MockReviewer([
+        _review_fail("first fail"),
+        _review_fail("second fail"),
+    ])
 
     designer = DesignerAgent(designer_provider, state_dir)
-    reviewer = ReviewerAgent(reviewer_provider, state_dir)
     round_dir = tmp_path / "round-0001"
 
     result = run_round(
@@ -323,7 +326,7 @@ def test_double_fail_escalates(tmp_path):
         instruction="implement add function",
         designer=designer,
         executor=mock_exec,
-        reviewer=reviewer,
+        reviewer=mock_reviewer,
         round_dir=round_dir,
     )
 
@@ -375,8 +378,9 @@ def test_task_definition_backward_compat(tmp_path):
         objective="Do the thing",
         exact_scope="only this thing",
         acceptance_criteria=["thing is done"],
-        verification_steps=["check thing"],
+        verification_steps=[],
         non_goals=[],
+        required_tests=["test that thing works"],
     )
 
     # backward compat
@@ -387,6 +391,7 @@ def test_task_definition_backward_compat(tmp_path):
     data = json.loads(task.to_json())
     assert data["task_id"] == "round-0001"
     assert isinstance(data["acceptance_criteria"], list)
+    assert "required_tests" in data
 
 
 # ── Test: review result backward compat ───────────────────────────────────────
