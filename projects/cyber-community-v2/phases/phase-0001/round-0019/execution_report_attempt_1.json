@@ -1,0 +1,34 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.8745972,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md",
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_t4_adjustment_audit.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md                       |   6 +-\n back/app/engines/tick_bridge.py | 118 ++++++++++++++++++++++++++++++++++++++++\n 2 files changed, 121 insertions(+), 3 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex a72db7b..d6fc077 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,8 +138,8 @@ Current Phase\n Audit and stabilize the first activated T4 negative path, especially same-day composition with T2 and downstream wake-up behavior.\n \n ## Working Assumptions\n-- Phase 27 active: P27-T1 and P27-T2 complete (composition and frequency audit instrumentation verified, 506 total tests passed)\n-- T2/T4 collision detection and T4 activation frequency now both instrumented for observability\n-- Ready for downstream residual creation audit (P27-T3)\n+- Phase 27 active: P27-T1, P27-T2, and P27-T3 complete (composition, frequency, and downstream audit instrumentation all verified)\n+- T2/T4 collision detection, T4 activation frequency, and downstream residual propagation now all instrumented for observability\n+- Ready for _adjust_t4() path stability audit (P27-T4)\n \n <!-- end orchestrator dynamic section -->\ndiff --git a/back/app/engines/tick_bridge.py b/back/app/engines/tick_bridge.py\nindex 02a899c..7c9489d 100644\n--- a/back/app/engines/tick_bridge.py\n+++ b/back/app/engines/tick_bridge.py\n@@ -267,6 +267,78 @@ class T4ResidualCreationAuditRecord:\n     cascade_detected: bool\n \n \n+@dataclass\n+class T4AdjustmentAuditRecord:\n+    \"\"\"\n+    Per-invocation audit record for the _adjust_t4() path.\n+\n+    Emitted by simulate_day_bridged when t4_adjustment_audit_out is provided.\n+    Captures complete input context (pre-adjustment signal fields and the carried\n+    residual that triggered the call), intermediate causality (which fields changed\n+    and in what direction), and final output values for stability verification.\n+\n+    One record is emitted per day regardless of whether _adjust_t4 was invoked:\n+      - invoked=False: no carried relational residual was present; all input/output\n+        fields are None. The record documents the dormant-path case.\n+      - invoked=True: a residual was present and _adjust_t4 was called; all fields\n+        are populated from the actual input and output values.\n+\n+    Observability-only: does not alter any deterministic logic.\n+\n+    Fields:\n+      world_day                  — simulation day.\n+      invoked                    — True if _adjust_t4 was actually called (a carried\n+                                   relational residual was selected for T4 bias).\n+      residual_valence           — source_valence of the carried residual (\"negative\"\n+                                   or \"positive\"); None if invoked=False.\n+      residual_kind              — kind of the carried residual; None if invoked=False.\n+      residual_days_remaining    — days_remaining of the carried residual (wake chain\n+                                   depth indicator); None if invoked=False.\n+      input_absorption           — absorption value of the base signal before adjustment.\n+      input_valence              — valence value of the base signal before adjustment.\n+      input_arousal              — arousal value of the base s\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 296 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  2%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  2%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Full suite confirmed — 296/296 passed, exit code 0.",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "Full suite confirmed — 296/296 passed, exit code 0."
+}

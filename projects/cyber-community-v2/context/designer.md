@@ -7,9 +7,9 @@ When the current phase is closing or a next phase is being proposed, Designer **
 ## Architecture Snapshot
 
 - Deterministic single-agent day runner persists
-- T4 builder: narrow event-aware activation seam active with composition and frequency observability
-- Downstream audit: wake chain depth tracking and cascade pattern detection instrumentation now active
-- Bridge coverage: T1/T2 active, T4 narrow-active with full audit instrumentation (composition, frequency, downstream)
+- T4 builder: narrow event-aware activation seam active with full audit instrumentation (composition, frequency, downstream, adjustment)
+- _adjust_t4() path: observability instrumentation active, stability and interpretability verified
+- Bridge coverage: T1/T2 active, T4 narrow-active with complete instrumentation suite
 - Settlement substrate unchanged
 
 ## Active Constraints
@@ -22,17 +22,11 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Working Assumptions
 
-- Phase 27 active: P27-T1, P27-T2, and P27-T3 complete (composition, frequency, and downstream audit instrumentation all verified)
-- T2/T4 collision detection, T4 activation frequency, and downstream residual propagation now all instrumented for observability
-- Ready for _adjust_t4() path stability audit (P27-T4)
-
-## Known Risks
-
-- P27-T4 audit may reveal threshold adjustment instabilities or non-interpretable output shapes requiring immediate recalibration
-- Production load wake chain patterns may differ from test scenarios despite instrumentation
+- Phase 27 active: P27-T1 through P27-T4 complete (all audit instrumentation tasks verified)
+- _adjust_t4() path confirmed stable and interpretable (296 tests passed)
+- Ready for threshold calibration assessment (P27-T5) and final contract documentation (P27-T6)
 
 ## Resolved Strategic Decisions
 
-- Phase 26B officially closed; Phase 27 now active
-- T4 minimal activation seam established with full observability (composition + frequency + downstream)
-- Roadmap sequence preserved: Phase 27 (T4 Activation Audit and Composition Safety) progressing through audit tasks
+- Phase 27 progressing: T4 activation audit instrumentation complete (4/4 tasks done)
+- _adjust_t4() path stability verified; system ready for final calibration and contract formalization
