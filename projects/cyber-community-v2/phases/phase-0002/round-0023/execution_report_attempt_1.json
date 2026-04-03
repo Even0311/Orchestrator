@@ -1,0 +1,39 @@
+{
+  "attempt": 1,
+  "success": true,
+  "cost_usd": 0.5502929999999999,
+  "is_token_exhausted": false,
+  "git_evidence": {
+    "files_modified": [
+      "CLAUDE.md",
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_p28_t2_t4_pattern_expansion.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "CLAUDE.md                       |  8 ++--\n back/app/engines/tick_bridge.py | 98 ++++++++++++++++++++++++++++++++++++++++-\n 2 files changed, 100 insertions(+), 6 deletions(-)",
+    "diff_patch_truncated": "diff --git a/CLAUDE.md b/CLAUDE.md\nindex b22ab93..266d153 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -138,9 +138,9 @@ P28: Deterministic Relational Appraisal Expansion\n Expand deterministic relational appraisal coverage beyond the single minimal activation slice, while preserving auditability.\n \n ## Working Assumptions\n-- Phase 27 audit completed successfully with 338 tests passed and formal behavior contract established\n-- Current T4 has single narrow activation path proven safe and stable\n-- System is ready to expand from \"one special-case seam\" to \"limited but real coverage across multiple event conditions\"\n-- T4 behavior contract provides stable foundation for extension\n+- Pattern catalog established: 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) documented and validated\n+- Phase 27 contract foundation stable with 338 tests passed\n+- Ready to implement expanded event condition branches in T4 builder\n+- Current T4 has single narrow activation path proven safe; expansion now has validated pattern library to draw from\n \n <!-- end orchestrator dynamic section -->\ndiff --git a/back/app/engines/tick_bridge.py b/back/app/engines/tick_bridge.py\nindex 7c9489d..b1ab824 100644\n--- a/back/app/engines/tick_bridge.py\n+++ b/back/app/engines/tick_bridge.py\n@@ -37,7 +37,7 @@ from typing import Optional\n \n from pydantic import ValidationError as _ValidationError\n \n-from app.domain.enums import ResidualKind, SocialEventIntensity, SocialEventType, Valence\n+from app.domain.enums import ResidualKind, SocialEventIntensity, SocialEventReciprocity, SocialEventType, Valence\n from app.domain.models import (\n     AgentGrowth,\n     AgentProfile,\n@@ -839,6 +839,57 @@ def _detect_qualifying_t4_social_event(\n     return None\n \n \n+def _detect_pattern_a_contested_endorsement(\n+    world: WorldSnapshot,\n+) -> Optional[SocialEventSpec]:\n+    \"\"\"\n+    Check whether world.social_event is a Pattern A (Contested Endorsement) event.\n+\n+    Qualifying conditions (Phase 28 — Pattern A):\n+      - event_type == endorsement\n+      - reciprocity == contested\n+\n+    Other attributes are not inspected.  Returns the SocialEventSpec if both\n+    conditions are met, None otherwise.\n+    \"\"\"\n+    event = world.social_event\n+    if event is None:\n+        return None\n+    if (\n+        event.event_type == SocialEventType.endorsement\n+        and event.reciprocity == SocialEventReciprocity.contested\n+    ):\n+        return event\n+    return None\n+\n+\n+def _detect_pattern_b_high_intensity_disclosure(\n+    world: WorldSnapshot,\n+) -> Optional[SocialEventSpec]:\n+    \"\"\"\n+    Check whether world.social_event is a Pattern B (High-Intensity Unilateral\n+    Disclosure) event.\n+\n+    Qualifying conditions (Phase 28 — Pattern B):\n+      - event_type == disclosure\n+      - intensity == high\n+      - reciprocity == unilateral\n+\n+    Both attribute filters are required.  Other attributes are not inspected.\n+    Returns the SocialEventSpec if all conditions ar\n...(truncated)",
+    "has_changes": true,
+    "error": ""
+  },
+  "hard_gate_pytest": {
+    "summary": "pytest PASSED",
+    "all_passed": true,
+    "output": "============================= test session starts ==============================\nplatform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0 -- /home/even/projects/orchestration/agent_orchestrator/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/even/projects/cyber-community-v2/back\nplugins: anyio-4.13.0\ncollecting ... collected 386 items\n\ntests/test_appraisal_settlement.py::test_signal_growth_max_3 PASSED      [  0%]\ntests/test_appraisal_settlement.py::test_signal_aftershock_days_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_closeness_delta_bounds PASSED [  0%]\ntests/test_appraisal_settlement.py::test_signal_risk_delta_bounds PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_raises_unknown_target PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_growth_with_none_absorption_is_hard_failure PASSED [  1%]\ntests/test_appraisal_settlement.py::test_validate_absorption_none_with_aftershock_is_hard_failure PASSED [  1%]\ntests/test_appr"
+  },
+  "executor_reported": {
+    "summary": "Implemented T4 builder condition branches for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) in tick_bridge.py, with 26 new tests covering detection, signal shape, non-matching fallthrough, and P0 regression",
+    "files_changed": [
+      "back/app/engines/tick_bridge.py",
+      "back/tests/test_p28_t2_t4_pattern_expansion.py"
+    ],
+    "commands_run": [
+      "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v --tb=short"
+    ],
+    "test_results": "386 passed / 0 failed",
+    "diff_summary": "Added SocialEventReciprocity import; added _detect_pattern_a_contested_endorsement() and _detect_pattern_b_high_intensity_disclosure() detection functions; added two new conditional branches in build_signal_from_t4_relationship_tick() after the P0 check, each emitting the same minimal negative signal shape (surface/negative/mild_decrease/-1/aftershock=0); created new test file with 26 tests covering all required acceptance criteria",
+    "unresolved_issues": []
+  },
+  "full_output_truncated": "All 386 tests pass (360 existing + 26 new).\n\n<evidence>\n{\n  \"summary\": \"Implemented T4 builder condition branches for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) in tick_bridge.py, with 26 new tests covering detection, signal shape, non-matching fallthrough, and P0 regression\",\n  \"files_changed\": [\n    \"back/app/engines/tick_bridge.py\",\n    \"back/tests/test_p28_t2_t4_pattern_expansion.py\"\n  ],\n  \"commands_run\": [\n    \"cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v --tb=short\"\n  ],\n  \"test_results\": \"386 passed / 0 failed\",\n  \"diff_summary\": \"Added SocialEventReciprocity import; added _detect_pattern_a_contested_endorsement() and _detect_pattern_b_high_intensity_disclosure() detection functions; added two new conditional branches in build_signal_from_t4_relationship_tick() after the P0 check, each emitting the same minimal negative signal shape (surface/negative/mild_decrease/-1/aftershock=0); created new test file with 26 tests covering all required acceptance criteria\",\n  \"unresolved_issues\": []\n}\n</evidence>"
+}

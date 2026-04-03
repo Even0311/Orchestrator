@@ -1,0 +1,8 @@
+# Review — Attempt 1: PASS
+
+**Confidence:** high  
+**Human review needed:** False
+
+## Rationale
+Read back/app/engines/tick_bridge.py lines 842–1004: _detect_pattern_a_contested_endorsement() and _detect_pattern_b_high_intensity_disclosure() are correctly implemented with the required attribute filters (endorsement+contested; disclosure+high+unilateral). Both are wired into build_signal_from_t4_relationship_tick() as separate conditional branches after the existing P0 path (confrontation/withdrawal), emitting the correct minimal negative AppraisalSignal shape. The test file back/tests/test_p28_t2_t4_pattern_expansion.py contains 26 tests covering: Pattern A and B detection helpers for both matching and non-matching inputs, full builder integration assertions for signal shape, non-matching fallthrough to the default positive path, and P0 regression tests for both confrontation and withdrawal. All four required test categories are substantively covered.
+

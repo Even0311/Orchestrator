@@ -10,17 +10,16 @@ When the current phase is closing or a next phase is being proposed, Designer **
 - Settlement substrate remains engine-authoritative unchanged
 
 ## Working Assumptions
-- Pattern catalog established: 2 new T4 relational impact patterns (Contested Endorsement, High-Intensity Unilateral Disclosure) documented and validated
-- Phase 27 contract foundation stable with 338 tests passed
-- Ready to implement expanded event condition branches in T4 builder
-- Current T4 has single narrow activation path proven safe; expansion now has validated pattern library to draw from
+- T4 builder now implements 2 expanded condition branches (Contested Endorsement, High-Intensity Unilateral Disclosure) beyond original narrow path
+- Pattern detection logic operational with 26 new tests validating detection, signal shape, and fallthrough behavior
+- Ready to update formal contract documentation to specify valid ranges for new coverage
+- Expanded T4 deterministic coverage progressing without compromising auditability
 
 ## Architecture Snapshot
 - Deterministic single-agent backbone operational with T1/T2/T4 bridge coverage
-- T4 pattern catalog available at docs/p28_t4_pattern_catalog.md with 22 validation tests
-- T4 builder has narrow event-aware seam with full instrumentation and formal contract
+- T4 builder now has 3 activation paths: original narrow seam + Pattern A (Contested Endorsement) + Pattern B (High-Intensity Unilateral Disclosure)
 - Settlement substrate unchanged and engine-authoritative
-- Contract verification suite: 21 dedicated tests (338 total) + 22 new pattern tests (360 total)
+- Test coverage: 386 total tests including 48 dedicated T4 pattern and contract tests
 
 ## Known Risks
 - Over-expansion risk: Too many new paths may degrade auditability
@@ -29,5 +28,5 @@ When the current phase is closing or a next phase is being proposed, Designer **
 
 ## Resolved Strategic Decisions
 - Phase 27 completed: T4 activation audited, composition safety verified, contract formalized in docs/t4_negative_behavior_contract.md
-- Approved to proceed from single minimal seam to limited multi-condition coverage
-- Expansion must remain deterministic, inspectable, and contract-governed; no natural-language appraisal permitted
+- Phase 28-T1/T2 completed: Expanded from single minimal seam to 3-condition deterministic coverage with validated pattern library
+- Expansion remains deterministic, inspectable, and contract-governed; no natural-language appraisal permitted
