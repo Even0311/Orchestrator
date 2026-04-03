@@ -3,6 +3,14 @@ import click
 from orch.db.database import get_active_project, get_connection, init_db
 
 
+ACTIONABLE_HUMAN_STATUSES = (
+    "escalated",
+    "accepted_by_human",
+    "resume_requested",
+    "rejected_by_human",
+)
+
+
 @click.command("run")
 @click.option("--once", is_flag=True, default=False,
               help="Run a single round then stop (useful for manual inspection).")
@@ -41,6 +49,11 @@ def status_cmd():
             (project["id"],),
         ).fetchone()["total"]
 
+        actionable = conn.execute(
+            "SELECT COUNT(*) as cnt FROM rounds WHERE project_id = ? AND status IN ('escalated', 'accepted_by_human', 'resume_requested', 'rejected_by_human')",
+            (project["id"],),
+        ).fetchone()["cnt"]
+
     if not rounds:
         click.echo("\nNo rounds yet. Run 'orch run' to start.")
         return
@@ -48,9 +61,12 @@ def status_cmd():
     status_icon = {
         "passed": "✓",
         "accepted_by_human": "✓",
+        "accepted_applied": "✓",
         "escalated": "!",
         "rejected_by_human": "×",
+        "redo_consumed": "↺",
         "resume_requested": "↺",
+        "resume_consumed": "↺",
         "pending": "…",
     }
 
@@ -62,11 +78,6 @@ def status_cmd():
             f"attempts:{r['attempt_count']}  ${r['cost_usd']:.4f}"
         )
 
-    with get_connection() as conn:
-        pending = conn.execute(
-            "SELECT COUNT(*) as cnt FROM rounds WHERE project_id = ? AND status = 'escalated'",
-            (project["id"],),
-        ).fetchone()["cnt"]
-
-    if pending:
-        click.echo(f"\n  ⚠  {pending} escalated round(s) waiting. Run 'orch review'.")
+    if actionable:
+        click.echo(f"\n  ⚠  {actionable} round(s) need human attention or a follow-up run.")
+        click.echo("     Use 'orch review' to inspect escalations, then 'orch decide' or 'orch run' as appropriate.")
