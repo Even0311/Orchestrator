@@ -45,11 +45,20 @@ def status_cmd():
         click.echo("\nNo rounds yet. Run 'orch run' to start.")
         return
 
+    status_icon = {
+        "passed": "✓",
+        "accepted_by_human": "✓",
+        "escalated": "!",
+        "rejected_by_human": "×",
+        "resume_requested": "↺",
+        "pending": "…",
+    }
+
     click.echo(f"\nRecent rounds (total cost: ${total_cost:.4f}):")
     for r in rounds:
-        status_icon = {"passed": "✓", "escalated": "!", "pending": "…"}.get(r["status"], "?")
+        icon = status_icon.get(r["status"], "?")
         click.echo(
-            f"  {status_icon} {r['id']}  {r['status']:10}  "
+            f"  {icon} {r['id']}  {r['status']:18}  "
             f"attempts:{r['attempt_count']}  ${r['cost_usd']:.4f}"
         )
 

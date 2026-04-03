@@ -3,7 +3,15 @@ from pathlib import Path
 
 import click
 
-from orch.db.database import get_active_project, get_connection, init_db
+from orch.db.database import get_active_project, get_connection, init_db, resolve_round
+
+
+RESOLUTION_ACTIONS = ("reject_and_redo", "accept_and_close", "resume_round")
+STATUS_BY_ACTION = {
+    "reject_and_redo": "rejected_by_human",
+    "accept_and_close": "accepted_by_human",
+    "resume_round": "resume_requested",
+}
 
 
 @click.command("review")
@@ -40,13 +48,17 @@ def review_cmd():
         else:
             click.echo(f"\nReason:\n{row['escalation_reason']}")
 
-        click.echo(f"\nTo resume: orch decide '<instruction>'")
+        click.echo("\nResolution options:")
+        click.echo("  orch decide '<note>' --action reject_and_redo")
+        click.echo("  orch decide '<note>' --action accept_and_close")
+        click.echo("  orch decide '<note>' --action resume_round")
 
 
 @click.command("decide")
 @click.argument("instruction")
-def decide_cmd(instruction: str):
-    """Provide a decision on the oldest escalated round and resume execution."""
+@click.option("--action", type=click.Choice(RESOLUTION_ACTIONS), default="resume_round", show_default=True)
+def decide_cmd(instruction: str, action: str):
+    """Resolve the oldest escalated round and record the chosen action."""
     init_db()
     project = get_active_project()
     if not project:
@@ -62,24 +74,31 @@ def decide_cmd(instruction: str):
         raise click.ClickException("No escalated rounds to decide on.")
 
     round_id = row["id"]
-
-    # Append human decision to current_phase.md
     state_dir = Path(project["state_dir"])
     phase_path = state_dir / "current_phase.md"
     existing = phase_path.read_text() if phase_path.exists() else ""
-    phase_path.write_text(
-        existing.rstrip() + f"\n\n## Human Decision ({round_id})\n{instruction}\n"
+    resolution_block = (
+        f"\n\n## Human Resolution ({round_id})\n"
+        f"Action: {action}\n"
+        f"Note: {instruction}\n"
+    )
+    phase_path.write_text(existing.rstrip() + resolution_block)
+
+    resolve_round(
+        round_id=round_id,
+        status=STATUS_BY_ACTION[action],
+        action=action,
+        note=instruction,
+        resolved_by="human",
     )
 
-    # Mark round as resolved
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE rounds SET status = 'resolved_by_human', updated_at = datetime('now') WHERE id = ?",
-            (round_id,),
-        )
-
-    click.echo(f"✓ Decision recorded for {round_id}")
-    click.echo(f"  Run 'orch run' to continue from this point.")
+    click.echo(f"✓ Resolution recorded for {round_id}")
+    if action == "accept_and_close":
+        click.echo("  Current round is marked accepted_by_human.")
+    elif action == "reject_and_redo":
+        click.echo("  Current round is marked rejected_by_human. Run 'orch run' to start a fresh replacement round.")
+    else:
+        click.echo("  Current round is marked resume_requested. Run 'orch run' to continue with the recorded human note.")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,8 +116,6 @@ def _find_round_dir(state_dir: Path, round_id: str) -> Path | None:
 
 def _show_escalated_round(round_dir: Path) -> None:
     """Show detailed view of an escalated round for human decision."""
-
-    # Show task
     task_json = round_dir / "task.json"
     if task_json.exists():
         t = json.loads(task_json.read_text())
@@ -110,20 +127,15 @@ def _show_escalated_round(round_dir: Path) -> None:
             for c in criteria:
                 click.echo(f"    - {c}")
 
-    # Count attempts
-    attempt_count = len(list(round_dir.glob("execution_report_attempt_*.json"))) or \
-                    len(list(round_dir.glob("attempt_*.md")))
+    attempt_count = len(list(round_dir.glob("execution_report_attempt_*.json"))) or len(list(round_dir.glob("attempt_*.md")))
 
     for i in range(1, attempt_count + 1):
         click.echo(f"\n  --- Attempt {i} ---")
-
-        # Show repaired task if this was attempt > 1
         repaired = round_dir / f"repaired_task_attempt_{i}.json"
         if repaired.exists():
             r = json.loads(repaired.read_text())
             click.echo(f"  [Repaired task] {r.get('title', '')} — {r.get('objective', '')}")
 
-        # Show git evidence
         exec_json = round_dir / f"execution_report_attempt_{i}.json"
         if exec_json.exists():
             e = json.loads(exec_json.read_text())
@@ -139,7 +151,6 @@ def _show_escalated_round(round_dir: Path) -> None:
             if ex_ev.get("test_results"):
                 click.echo(f"  Tests: {ex_ev['test_results']}")
 
-        # Show review verdict
         review_json = round_dir / f"review_attempt_{i}.json"
         if review_json.exists():
             rv = json.loads(review_json.read_text())
@@ -150,7 +161,6 @@ def _show_escalated_round(round_dir: Path) -> None:
                 for f in rv["required_fixes"]:
                     click.echo(f"    - {f}")
 
-    # Show audit
     audit = round_dir / "audit.md"
     if audit.exists():
         click.echo(f"\n{audit.read_text()}")

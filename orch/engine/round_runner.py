@@ -1,9 +1,6 @@
 """Executes a single Round: Designer → Executor → [Designer repair →] Executor → Reviewer."""
 import json
-import os
 import shutil
-import subprocess
-import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -16,6 +13,9 @@ from orch.agents.executor import ExecutorAgent, ExecutorEvidence, ExecutorResult
 from orch.agents.reviewer import ReviewerAgent, ReviewResult
 from orch.utils.evidence_collector import GitEvidence
 from orch.utils.verification_runner import VerificationResults, VerificationStepResult
+
+
+RUNTIME_DIRNAME = "runtime"
 
 
 def _ts() -> str:
@@ -32,13 +32,13 @@ def _elapsed(start: float) -> str:
 @dataclass
 class AttemptRecord:
     attempt_number: int
-    task_used: TaskDefinition          # may differ from round's initial task (repair)
+    task_used: TaskDefinition
     executor_output: str
-    executor_evidence: ExecutorEvidence   # self-reported
-    executor_git_evidence: GitEvidence    # externally collected (authoritative)
+    executor_evidence: ExecutorEvidence
+    executor_git_evidence: GitEvidence
     executor_success: bool
     executor_cost_usd: float
-    reviewer_result: str               # "PASS" | "FAIL"
+    reviewer_result: str
     reviewer_confidence: str
     reviewer_rationale: str
     reviewer_unmet_criteria: list[str]
@@ -48,7 +48,6 @@ class AttemptRecord:
     verification_results: VerificationResults | None = None
     is_token_exhausted: bool = False
 
-    # Backward compat
     @property
     def reviewer_passed(self) -> bool:
         return self.reviewer_result == "PASS"
@@ -69,7 +68,7 @@ class AttemptRecord:
 @dataclass
 class RoundResult:
     round_id: str
-    task: TaskDefinition              # initial task from Designer
+    task: TaskDefinition
     attempts: list[AttemptRecord] = field(default_factory=list)
     final_passed: bool = False
     escalated: bool = False
@@ -100,7 +99,6 @@ def run_round(
 
     round_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 1: Designer plans the initial task
     click.echo(f"  [{_ts()}] Designer planning task...", nl=False)
     t0 = time.time()
     task = designer.plan_next_task(instruction, round_id)
@@ -113,17 +111,13 @@ def run_round(
         designer_cost_usd=task.cost_usd,
     )
 
-    # Save initial task package
     _write_task_files(round_dir, task, prefix="task")
+    current_task = task
 
-    current_task = task  # may be replaced by repair on FAIL
-
-    # Step 2: Executor + Reviewer loop (up to max_attempts)
     for attempt_num in range(1, max_attempts + 1):
         attempt_label = f"Attempt {attempt_num}/{max_attempts}"
         click.echo(f"\n  [{_ts()}] --- {attempt_label} ---")
 
-        # Inject task as file in target project so Claude Code can re-read mid-work
         if codebase_path:
             _inject_task_file(codebase_path, current_task)
 
@@ -134,11 +128,10 @@ def run_round(
         click.echo(f" done ({_elapsed(t0)}, ${exec_result.cost_usd:.4f})")
 
         if exec_result.is_token_exhausted:
-            click.echo(f"           !! Token limit hit — executor may be incomplete")
+            click.echo("           !! Token limit hit — executor may be incomplete")
         if exec_result.evidence.summary:
             click.echo(f"           Summary: {exec_result.evidence.summary[:120]}")
 
-        # Hard gate: run pytest unconditionally
         verification = None
         if codebase_path:
             click.echo(f"  [{_ts()}] Hard gate: pytest...", nl=False)
@@ -146,9 +139,9 @@ def run_round(
             pytest_passed, pytest_output = _run_pytest(codebase_path, test_cmd=test_cmd)
             verification = VerificationResults(
                 steps=[VerificationStepResult(
-                    command="pytest",
+                    command=test_cmd or "python -m pytest -v --tb=short",
                     exit_code=0 if pytest_passed else 1,
-                    stdout=pytest_output[:1000],
+                    stdout=pytest_output[:1500],
                     stderr="",
                     passed=pytest_passed,
                 )],
@@ -160,13 +153,11 @@ def run_round(
             if not pytest_passed:
                 click.echo(f"           pytest output (last 500 chars):\n{pytest_output[-500:]}")
 
-        # Save execution report (git-verified + mechanical verification + self-reported)
         _write_execution_report(
             round_dir / f"execution_report_attempt_{attempt_num}.json",
             attempt_num, exec_result, verification,
         )
 
-        # Hard gate: if pytest failed, skip reviewer (save cost) and auto-FAIL
         if verification and not verification.all_passed:
             review_verdict = ReviewResult(
                 result="FAIL",
@@ -179,13 +170,9 @@ def run_round(
             )
             click.echo(f"  [{_ts()}] Reviewer skipped — hard gate FAIL (pytest)")
         else:
-            # Soft gate: Claude CLI reviewer evaluates semantics
             click.echo(f"  [{_ts()}] Soft gate: Reviewer evaluating...", nl=False)
             t0 = time.time()
-            review_verdict = reviewer.review(
-                task=current_task,
-                exec_result=exec_result,
-            )
+            review_verdict = reviewer.review(task=current_task, exec_result=exec_result)
             verdict_color = "green" if review_verdict.passed else "red"
             verdict_text = click.style(review_verdict.result, fg=verdict_color, bold=True)
             click.echo(f" {verdict_text} ({_elapsed(t0)}, ${review_verdict.cost_usd:.4f})")
@@ -194,7 +181,6 @@ def run_round(
                 for c in review_verdict.unmet_criteria[:3]:
                     click.echo(f"           Unmet: {c[:100]}")
 
-        # Save review result
         _write_review_files(round_dir, attempt_num, review_verdict)
 
         attempt = AttemptRecord(
@@ -216,17 +202,13 @@ def run_round(
             is_token_exhausted=exec_result.is_token_exhausted,
         )
         result.attempts.append(attempt)
-
-        # Save human-readable attempt summary
         _write_attempt_file(round_dir / f"attempt_{attempt_num}.md", attempt)
 
         if review_verdict.passed:
             result.final_passed = True
             break
 
-        # Not passed — decide what to do next
         if attempt_num < max_attempts:
-            # Designer repair step: produce targeted fix task based on review failures
             click.echo(f"  [{_ts()}] Designer repairing task...", nl=False)
             t0 = time.time()
             repaired = designer.repair_task(current_task, review_verdict, exec_result.evidence)
@@ -236,31 +218,22 @@ def run_round(
             current_task = repaired
             _write_task_files(round_dir, repaired, prefix=f"repaired_task_attempt_{attempt_num + 1}")
         else:
-            # Max attempts reached — escalate
             click.echo(f"\n  [{_ts()}] Max attempts reached — escalating")
             result.escalated = True
             result.escalation_reason = _build_escalation_reason(result)
 
-    # Save audit file
     _write_audit_file(round_dir / "audit.md", result)
-
     return result
 
 
-# ── Prompt builder ────────────────────────────────────────────────────────────
-
 def _build_executor_prompt(task: TaskDefinition, use_file_ref: bool = False) -> str:
     if use_file_ref:
-        # Slim prompt — task details are in .orch/current_task.md, CLAUDE.md has project context
         return (
-            f"Execute the task defined in .orch/current_task.md\n\n"
-            f"Read that file first for the full task definition, acceptance criteria, "
-            f"and required tests.\n\n"
-            f"Also check .orch/recent_rounds.md if it exists — it shows what was already "
-            f"done in recent rounds, so you don't redo completed work."
+            "Execute the task defined in .orch/runtime/current_task.md\n\n"
+            "Read that file first for the full task definition, acceptance criteria, and required tests.\n\n"
+            "Also check .orch/runtime/recent_rounds.md if it exists — it shows what was already done in recent rounds, so you don't redo completed work."
         )
 
-    # Fallback: full prompt (when codebase_path is not set)
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
     required_tests = "\n".join(f"- {t}" for t in task.required_tests)
     non_goals = "\n".join(f"- {g}" for g in task.non_goals)
@@ -279,14 +252,10 @@ def _build_executor_prompt(task: TaskDefinition, use_file_ref: bool = False) -> 
         parts.append(f"\n## Required Tests\nYou must write tests covering:\n{required_tests}")
     if non_goals:
         parts.append(f"\n## Non-Goals (Do NOT do these)\n{non_goals}")
-
     return "\n".join(parts)
 
 
-# ── File writers ──────────────────────────────────────────────────────────────
-
 def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> None:
-    """Write task.json and task.md (or repaired_task_attempt_N.json/md)."""
     data = {
         "task_id": task.task_id,
         "title": task.title,
@@ -309,7 +278,7 @@ def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> Non
         f"**Exact Scope:** {task.exact_scope}\n\n"
     )
     if task.constraints:
-        md += f"## Constraints\n" + "\n".join(f"- {c}" for c in task.constraints) + "\n\n"
+        md += "## Constraints\n" + "\n".join(f"- {c}" for c in task.constraints) + "\n\n"
     if criteria:
         md += f"## Acceptance Criteria\n{criteria}\n\n"
     if required_tests:
@@ -319,10 +288,7 @@ def _write_task_files(round_dir: Path, task: TaskDefinition, prefix: str) -> Non
     (round_dir / f"{prefix}.md").write_text(md)
 
 
-def _write_execution_report(
-    path: Path, attempt_num: int, exec_result: ExecutorResult,
-    verification: VerificationResults | None = None,
-) -> None:
+def _write_execution_report(path: Path, attempt_num: int, exec_result: ExecutorResult, verification: VerificationResults | None = None) -> None:
     ev = exec_result.evidence
     git_ev = exec_result.git_evidence
     data = {
@@ -330,7 +296,6 @@ def _write_execution_report(
         "success": exec_result.success,
         "cost_usd": exec_result.cost_usd,
         "is_token_exhausted": exec_result.is_token_exhausted,
-        # Git-collected evidence is listed first — it's the authoritative source
         "git_evidence": {
             "files_modified": git_ev.files_modified,
             "files_added": git_ev.files_added,
@@ -340,9 +305,7 @@ def _write_execution_report(
             "has_changes": git_ev.has_changes,
             "error": git_ev.error,
         },
-        # Hard gate — pytest result
         "hard_gate_pytest": None,
-        # Self-reported by Executor — supplementary
         "executor_reported": {
             "summary": ev.summary,
             "files_changed": ev.files_changed,
@@ -394,10 +357,7 @@ def _write_review_files(round_dir: Path, attempt_num: int, verdict: ReviewResult
 
 def _write_attempt_file(path: Path, attempt: AttemptRecord) -> None:
     ev = attempt.executor_evidence
-    git_ev = attempt.executor_evidence  # access via the record; git ev is in exec report
-    verdict = attempt.reviewer_result
     exhausted = "\n> ⚠ TOKEN EXHAUSTED" if attempt.is_token_exhausted else ""
-
     content = (
         f"# Attempt {attempt.attempt_number}{exhausted}\n\n"
         f"**Task:** {attempt.task_used.title}\n\n"
@@ -407,10 +367,9 @@ def _write_attempt_file(path: Path, attempt: AttemptRecord) -> None:
         f"- Test results: {ev.test_results or '(not run)'}\n"
         f"- Unresolved issues: {ev.unresolved_issues or '(none)'}\n\n"
         f"*(See execution_report_attempt_{attempt.attempt_number}.json for git-verified evidence)*\n\n"
-        f"## Reviewer Verdict: {verdict} (confidence: {attempt.reviewer_confidence})\n"
+        f"## Reviewer Verdict: {attempt.reviewer_result} (confidence: {attempt.reviewer_confidence})\n"
         f"{attempt.reviewer_rationale}\n\n"
-        f"**Cost:** executor ${attempt.executor_cost_usd:.4f} | "
-        f"reviewer ${attempt.reviewer_cost_usd:.4f}\n"
+        f"**Cost:** executor ${attempt.executor_cost_usd:.4f} | reviewer ${attempt.reviewer_cost_usd:.4f}\n"
     )
     if attempt.reviewer_unmet_criteria:
         content += "\n## Unmet Criteria\n" + "\n".join(f"- {c}" for c in attempt.reviewer_unmet_criteria) + "\n"
@@ -435,10 +394,13 @@ def _write_audit_file(path: Path, result: RoundResult) -> None:
     path.write_text(content)
 
 
+def _runtime_dir(codebase_path: Path) -> Path:
+    return codebase_path / ".orch" / RUNTIME_DIRNAME
+
+
 def _inject_task_file(codebase_path: Path, task: TaskDefinition) -> None:
-    """Write .orch/current_task.md in the target project for Claude Code to read."""
-    orch_dir = codebase_path / ".orch"
-    orch_dir.mkdir(exist_ok=True)
+    runtime_dir = _runtime_dir(codebase_path)
+    runtime_dir.mkdir(parents=True, exist_ok=True)
 
     criteria = "\n".join(f"- {c}" for c in task.acceptance_criteria)
     required_tests = "\n".join(f"- {t}" for t in task.required_tests)
@@ -460,33 +422,26 @@ def _inject_task_file(codebase_path: Path, task: TaskDefinition) -> None:
     if non_goals:
         parts.append(f"\n## Non-Goals (Do NOT do these)\n{non_goals}")
 
-    (orch_dir / "current_task.md").write_text("\n".join(parts) + "\n")
+    (runtime_dir / "current_task.md").write_text("\n".join(parts) + "\n")
 
 
 def inject_recent_rounds(codebase_path: Path, rounds_summary: str) -> None:
-    """Write .orch/recent_rounds.md in the target project. Called by orchestrator."""
-    orch_dir = codebase_path / ".orch"
-    orch_dir.mkdir(exist_ok=True)
-    (orch_dir / "recent_rounds.md").write_text(rounds_summary)
+    runtime_dir = _runtime_dir(codebase_path)
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    (runtime_dir / "recent_rounds.md").write_text(rounds_summary)
 
 
 def cleanup_round_docs(codebase_path: Path) -> None:
-    """Remove .orch/ directory from target project after round completes."""
-    orch_dir = codebase_path / ".orch"
-    if orch_dir.exists():
-        shutil.rmtree(orch_dir)
+    runtime_dir = _runtime_dir(codebase_path)
+    if runtime_dir.exists():
+        shutil.rmtree(runtime_dir)
 
 
 def _run_pytest(codebase_path: Path, test_cmd: str | None = None, timeout: int = 120) -> tuple[bool, str]:
-    """Run pytest in the target project. Returns (passed, output).
+    import os
+    import subprocess
+    import sys
 
-    If *test_cmd* is provided it is executed as a shell command (so ``cd back &&
-    python -m pytest …`` works).  Otherwise falls back to the default command.
-
-    The current Python interpreter's directory is prepended to PATH so that
-    ``python`` resolves to the same interpreter running the orchestrator (which
-    has pytest installed).
-    """
     env = os.environ.copy()
     env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
 
