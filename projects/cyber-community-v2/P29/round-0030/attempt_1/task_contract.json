@@ -1,0 +1,64 @@
+{
+  "phase_id": "P29",
+  "task_key": "P29-T1",
+  "title": "Define unified AppraisalInput schema for all 8 tick types",
+  "objective": "Introduce a new Pydantic model called AppraisalInput in back/app/domain/ that represents the structured context slice each of the 8 ticks passes to the appraisal layer. The schema must accommodate all tick types (T1–T8) in a single unified model, even though only T1, T2, and T4 have active bridges today. No engine logic, no bridge wiring, and no settlement behavior is changed in this task — only the schema is introduced.",
+  "exact_scope": "Create one new file back/app/domain/appraisal_input.py containing the AppraisalInput Pydantic model and any supporting sub-models or enums specific to it. Optionally re-export it from back/app/domain/__init__.py if that file already exports domain symbols. Do not modify any engine file, any existing model, or any existing test.",
+  "constraints": [
+    "AppraisalSignal v1 is frozen — do not modify its fields or validators in appraisal_settlement.py",
+    "The new schema must not be wired into any engine call path in this task; it is schema-only",
+    "T3, T5, T6, T7, T8 context slices are accommodated by the schema but grant no new live authority to those ticks",
+    "No LLM integration, prompt construction, or dynamic routing logic may be introduced",
+    "All existing 441+ tests must continue to pass without modification",
+    "The new file must be importable as a standalone domain model with no circular imports",
+    "Pydantic v2 conventions must be used (BaseModel, model_validator, Field) — consistent with existing models.py"
+  ],
+  "acceptance_criteria": [
+    "A file back/app/domain/appraisal_input.py exists and is importable without errors",
+    "AppraisalInput has a tick_type field that accepts all 8 EventCategory values (information_exposure, social_interaction, self_initiated_action, relationship_shift, emotional_shift, learning_work, player_influence, reflection)",
+    "AppraisalInput carries an agent_context sub-model that includes the fields a bridge needs from AgentState and AgentGrowth at the moment of the tick (mood score, stress, energy, curiosity, social fulfillment, growth stage)",
+    "AppraisalInput carries a world_context sub-model that includes the fields available from WorldSnapshot at tick time (headline, trending topic, influencer opinion source and quote, dominant district, signal carryover, yesterday headline)",
+    "AppraisalInput carries an optional relational_context sub-model populated only for T2 and T4, holding target relationship metadata (target_id, target_name, relationship_type, closeness, trust, influence_strength)",
+    "AppraisalInput carries an optional social_event_context sub-model populated only when a SocialEventSpec is present on the world snapshot, forwarding the event_type, intensity, reciprocity, and expectedness fields",
+    "AppraisalInput carries an optional player_context sub-model populated only for T7, holding the action_type of the applied InfluenceAction",
+    "AppraisalInput includes a world_day integer field and an agent_id string field for traceability",
+    "A Pydantic model_validator enforces that relational_context is only non-None for tick_type values relationship_shift and social_interaction",
+    "A Pydantic model_validator enforces that player_context is only non-None for tick_type player_influence",
+    "The schema can be instantiated for each of the 8 tick types using data from the existing seed models without raising validation errors"
+  ],
+  "required_tests": [
+    "A new test file back/tests/test_appraisal_input_schema.py must exist",
+    "The schema must instantiate successfully for a T1 tick using realistic seed values (world headline, trending topic, agent mood/stress, no relational context, no player context)",
+    "The schema must instantiate successfully for a T2 tick with relational_context populated for the influencer relationship",
+    "The schema must instantiate successfully for a T4 tick with relational_context populated for the targeted relationship",
+    "The schema must instantiate successfully for T3, T5, T6, T8 ticks with no relational_context and no player_context",
+    "The schema must instantiate successfully for a T7 tick with player_context populated and no relational_context",
+    "A T1 tick with relational_context set to a non-None value must raise a Pydantic ValidationError",
+    "A T7 tick with player_context set to None must raise a Pydantic ValidationError",
+    "A T4 tick with no relational_context must raise a Pydantic ValidationError",
+    "All pre-existing tests continue to pass after the new file is introduced"
+  ],
+  "non_goals": [
+    "Wiring AppraisalInput into the bridge or settlement call path",
+    "Replacing or modifying AppraisalSignal",
+    "Adding LLM prompt construction or routing logic",
+    "Granting live appraisal authority to T3, T5, T6, T7, or T8",
+    "Modifying world_continuity.py, tick_bridge.py, appraisal_settlement.py, day_simulator.py, or any existing model",
+    "Creating a translation function from AppraisalInput to AppraisalSignal (that is a later task)",
+    "Changing the DaySnapshot or ResidualEntry persistence contract"
+  ],
+  "allowed_files": [
+    "back/app/domain/appraisal_input.py",
+    "back/app/domain/__init__.py",
+    "back/tests/test_appraisal_input_schema.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/day_simulator.py",
+    "back/app/domain/models.py",
+    "back/app/domain/enums.py"
+  ]
+}

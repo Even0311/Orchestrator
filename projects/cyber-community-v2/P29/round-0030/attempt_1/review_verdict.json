@@ -1,0 +1,84 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "task_key": "P29-T1",
+  "met_criteria": [
+    "back/app/domain/appraisal_input.py exists and is importable without errors",
+    "AppraisalInput has a tick_type field accepting all 8 EventCategory values",
+    "AppraisalInput carries agent_context sub-model (AgentContextSlice) with mood_score, stress, energy, curiosity, social_fulfillment, growth_stage",
+    "AppraisalInput carries world_context sub-model (WorldContextSlice) with headline, trending_topic, influencer_opinion_source, influencer_opinion_quote, dominant_district, signal_carryover, yesterday_headline",
+    "AppraisalInput carries optional relational_context sub-model (RelationalContextSlice) for T2/T4 with target_id, target_name, relationship_type, closeness, trust, influence_strength",
+    "AppraisalInput carries optional social_event_context sub-model (SocialEventContextSlice) with event_type, intensity, reciprocity, expectedness",
+    "AppraisalInput carries optional player_context sub-model (PlayerContextSlice) with action_type, only for T7",
+    "AppraisalInput includes world_day integer field (ge=1) and agent_id string field",
+    "model_validator enforces relational_context is only non-None for relationship_shift and social_interaction",
+    "model_validator enforces player_context is only non-None for player_influence",
+    "Schema can be instantiated for all 8 tick types using realistic seed values without validation errors"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [],
+  "criteria_checked": [
+    {
+      "criterion": "back/app/domain/appraisal_input.py exists and is importable without errors",
+      "status": "met",
+      "notes": "File exists as untracked new file; python -c import confirmed OK"
+    },
+    {
+      "criterion": "tick_type accepts all 8 EventCategory values",
+      "status": "met",
+      "notes": "tick_type: EventCategory covers all 8 values; tests instantiate each individually"
+    },
+    {
+      "criterion": "agent_context sub-model with required fields",
+      "status": "met",
+      "notes": "AgentContextSlice has mood_score, stress, energy, curiosity, social_fulfillment, growth_stage all with ge=0, le=100 bounds except growth_stage"
+    },
+    {
+      "criterion": "world_context sub-model with required fields",
+      "status": "met",
+      "notes": "WorldContextSlice has all 7 required fields; signal_carryover and yesterday_headline are Optional"
+    },
+    {
+      "criterion": "optional relational_context sub-model for T2 and T4",
+      "status": "met",
+      "notes": "RelationalContextSlice has target_id, target_name, relationship_type, closeness, trust, influence_strength"
+    },
+    {
+      "criterion": "optional social_event_context sub-model when SocialEventSpec is present",
+      "status": "met",
+      "notes": "SocialEventContextSlice has event_type, intensity, reciprocity, expectedness; optional on any tick"
+    },
+    {
+      "criterion": "optional player_context sub-model for T7 only",
+      "status": "met",
+      "notes": "PlayerContextSlice has action_type; enforced by model_validator"
+    },
+    {
+      "criterion": "world_day and agent_id traceability fields",
+      "status": "met",
+      "notes": "world_day: int with ge=1, agent_id: str — both present and tested"
+    },
+    {
+      "criterion": "model_validator enforces relational_context only non-None for T2/T4",
+      "status": "met",
+      "notes": "_validate_relational_context raises ValueError on violation; test_t1_with_relational_context_raises and test_t4_without_relational_context_raises confirm both directions"
+    },
+    {
+      "criterion": "model_validator enforces player_context only non-None for T7",
+      "status": "met",
+      "notes": "_validate_player_context raises ValueError on violation; test_t7_without_player_context_raises and test_t1_with_player_context_raises confirm both directions"
+    },
+    {
+      "criterion": "Schema instantiates for all 8 tick types with seed-realistic data",
+      "status": "met",
+      "notes": "All 8 tick-type instantiation tests pass with realistic values"
+    }
+  ],
+  "test_count": 510,
+  "new_test_count": 24,
+  "issues": [],
+  "rationale": "All 11 acceptance criteria are met. The implementation introduces the schema-only AppraisalInput model with 5 sub-models and two model_validators exactly as specified. No forbidden files were modified — only the two allowed new files were added as untracked files. All 510 tests pass (486 pre-existing + 24 new), with the 24 new tests covering all 8 tick-type instantiations, validator enforcement in both directions for relational_context and player_context, social_event_context optionality, traceability fields, and sub-model boundary validation.",
+  "summary": "The executor created back/app/domain/appraisal_input.py and back/tests/test_appraisal_input_schema.py without modifying any existing file. The schema correctly models all 8 tick types with appropriate sub-models and model_validators, all 24 new tests pass alongside the 486 pre-existing tests for a total of 510 passing. The implementation is fully schema-only with no engine wiring, satisfying all contract constraints."
+}

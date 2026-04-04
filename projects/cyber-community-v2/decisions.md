@@ -670,3 +670,10 @@ T4 当前仍然在真实 simulation 中为 inactive，原因已从"结构上无 
 **Outcome:** Create a dedicated test file that formally locks the calibrated signal intensity ranges for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) T4 relational apprais
 **Hard gates:** all passed
 **Notes:** Created back/tests/test_p28_t6_signal_calibration.py with 32 tests that formally lock the calibrated signal intensity ranges for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilate
+
+## 2026-04-04 13:30 UTC — round-0030: P29-T1
+**Phase:** P29
+**Task:** Define unified AppraisalInput schema for all 8 tick types
+**Outcome:** Introduce a new Pydantic model called AppraisalInput in back/app/domain/ that represents the structured context slice each of the 8 ticks passes to the appraisal layer. The schema must accommodate all
+**Hard gates:** all passed
+**Notes:** Created AppraisalInput Pydantic v2 schema with 5 sub-models (AgentContextSlice, WorldContextSlice, RelationalContextSlice, SocialEventContextSlice, PlayerContextSlice) and model_validators enforcing t

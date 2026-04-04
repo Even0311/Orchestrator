@@ -21,7 +21,7 @@ Make the appraisal layer an explicit seam in the architecture, without yet intro
 - no granting live authority to T3/T5/T6/T7/T8 (schema accommodation only)
 
 ## Task Queue
-- [ ] P29-T1: Define a unified AppraisalInput schema that represents all 8 tick types with their context slices
+- [x] P29-T1: Define a unified AppraisalInput schema that represents all 8 tick types with their context slices — Round round-0030 — Define unified AppraisalInput schema for all 8 tick types
 - [ ] P29-T2: Formalize the AppraisalOutput contract, marking each field as advisory or contract-bearing
 - [ ] P29-T3: Define deterministic fallback mappings for T3/T5/T6/T7/T8 that produce valid AppraisalOutput without external appraisal
 - [ ] P29-T4: Refactor existing T1/T2/T4 bridges to emit through the new AppraisalInput → AppraisalOutput boundary

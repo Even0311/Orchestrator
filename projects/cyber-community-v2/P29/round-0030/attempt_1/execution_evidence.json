@@ -1,0 +1,23 @@
+{
+  "task_key": "P29-T1",
+  "summary": "Created AppraisalInput Pydantic v2 schema with 5 sub-models (AgentContextSlice, WorldContextSlice, RelationalContextSlice, SocialEventContextSlice, PlayerContextSlice) and model_validators enforcing that relational_context is only non-None for T2/T4 and player_context is only non-None for T7.",
+  "files_changed": [],
+  "files_created": [
+    "back/app/domain/appraisal_input.py",
+    "back/tests/test_appraisal_input_schema.py"
+  ],
+  "files_modified": [],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v"
+  ],
+  "test_results": "510 passed in 0.33s (486 pre-existing + 24 new tests)",
+  "test_results_summary": "All 510 tests passed. 24 new tests cover all 8 tick type instantiations, validator enforcement for relational_context (required T2/T4, forbidden elsewhere), validator enforcement for player_context (required T7, forbidden elsewhere), optional social_event_context, traceability fields, and sub-model boundary validation.",
+  "diff_summary": "New file back/app/domain/appraisal_input.py defines AppraisalInput with AgentContextSlice, WorldContextSlice, RelationalContextSlice, SocialEventContextSlice, PlayerContextSlice sub-models and two model_validators. New file back/tests/test_appraisal_input_schema.py provides 24 tests. No existing files were modified.",
+  "notes": [
+    "AppraisalSignal in appraisal_settlement.py was not touched (frozen).",
+    "No engine call paths were wired; this is schema-only introduction.",
+    "domain/__init__.py left unchanged (it was empty; re-export not required).",
+    "typing_extensions.Self used for model_validator return type annotation, consistent with Pydantic v2 best practices."
+  ],
+  "unresolved_issues": []
+}
