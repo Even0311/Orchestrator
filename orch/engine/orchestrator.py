@@ -1,18 +1,35 @@
-"""Main orchestration loop — runs rounds until completion or human intervention."""
+"""Main orchestration loop — control plane only.
+
+The orchestrator manages SOT, selects work items, invokes Claude Code once
+per round, runs post-round hard gates, and updates state on PASS.
+All internal round coordination (designer/executor/reviewer) is handled
+by Claude Code via subagent definitions.
+"""
+from __future__ import annotations
+
+import json
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import click
 
-from orch.agents.designer import DesignerAgent
-from orch.agents.executor import ExecutorAgent
-from orch.agents.reviewer import ReviewerAgent
-from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT
+from orch.briefing import generate_round_brief, read_artifacts
+from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT, PROJECTS_DIR
 from orch.db.database import get_connection, now_iso, update_round_commits
-from orch.engine.round_runner import RoundResult, run_round, inject_recent_rounds, cleanup_round_docs
-from orch.providers.factory import get_provider
-from orch.utils.claudemd_manager import generate_claudemd
+from orch.engine.claude_round_driver import run_attempt, subagents_available
+from orch.engine.hard_gates import run_hard_gates, validate_proposed_scope, HardGateResults, snapshot_sot_dir, detect_sot_mutation
+from orch.models import (
+    AttemptRecord,
+    ExecutionEvidence,
+    ReviewVerdict,
+    RoundResult,
+    TaskContract,
+    Verdict,
+)
+from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, append_decision_entry, PhaseInfo
+from orch.utils.evidence_collector import collect_git_evidence
 from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, GitError
 
 
@@ -26,41 +43,47 @@ class EscalationEvent:
 
 
 def run_project(project_row, run_once: bool = False) -> None:
-    """Main loop: runs rounds for the active project until escalation or human intervention."""
+    """Main loop: run rounds for the active project until escalation or completion."""
     config = load_config()
     project_id = project_row["id"]
     project_name = project_row["name"]
     codebase_path = Path(project_row["codebase_path"])
-    state_dir = Path(project_row["state_dir"])
-    test_cmd = project_row["test_cmd"]  # may be None
+    test_cmd = project_row["test_cmd"]
+
+    # SOT lives in orchestrator repo under projects/<name>/
+    sot_dir = PROJECTS_DIR / project_name
+    if not sot_dir.exists():
+        # Fallback to state_dir from DB for backward compat
+        sot_dir = Path(project_row["state_dir"])
 
     click.echo(f"\n{'='*60}")
     click.echo(f"  Orchestrator starting: {project_name}")
     click.echo(f"  Codebase : {codebase_path}")
     click.echo(f"{'='*60}\n")
 
-    designer_provider = get_provider("designer", config)
-    designer = DesignerAgent(designer_provider, state_dir)
-    executor = ExecutorAgent(codebase_path=codebase_path, model=config.agents.executor_model)
-    reviewer = ReviewerAgent(codebase_path=codebase_path, model=config.agents.reviewer_model)
+    if not subagents_available(codebase_path):
+        raise click.ClickException(
+            "Subagent definitions not found in target repo.\n"
+            "Ensure .claude/agents/ contains: designer.md, executor.md, reviewer.md, round-driver.md\n"
+            "Run 'orch new' or manually create them."
+        )
 
-    if _needs_bootstrap(state_dir):
-        click.echo(f"[{_ts()}] Bootstrap mode: generating initial phase plan from vision.md...")
-        _run_bootstrap(designer, state_dir, config)
-        click.echo(f"[{_ts()}] Bootstrap complete. Proceeding to first round.\n")
-
-    phase_id = _ensure_active_phase(project_id, state_dir)
+    phase_id = _ensure_active_phase(project_id, sot_dir)
     round_number = _next_round_number(project_id)
 
     while True:
         round_id = f"round-{round_number:04d}"
-        round_dir = state_dir / "phases" / phase_id / round_id
 
+        # Handle pending human resolutions
         resolution = _get_pending_human_resolution(project_id)
         if resolution and resolution["status"] == "accepted_by_human":
             click.echo(f"\n{'─'*60}")
             click.echo(f"[{_ts()}] Applying human acceptance for {resolution['id']}")
-            _apply_human_acceptance(designer, state_dir, resolution)
+
+            # Mark task complete in SOT if we know the task key
+            task_desc = resolution["task_description"] or ""
+            _try_mark_task_complete(sot_dir, task_desc, "accepted by human")
+
             orch_hash, target_hash = _commit_both(
                 codebase_path,
                 f"[orch] {resolution['id']}: accepted by human",
@@ -69,67 +92,61 @@ def run_project(project_row, run_once: bool = False) -> None:
             update_round_commits(resolution["id"], orch_hash, target_hash)
             _set_round_status(resolution["id"], "accepted_applied")
 
-            if _is_phase_complete(state_dir):
-                click.echo(f"\n{'='*60}")
-                click.echo(f"  Phase complete: {phase_id}")
-                click.echo(f"{'='*60}")
-                _close_phase(project_id, phase_id)
-                _notify_phase_complete(project_name, phase_id, config)
-                click.echo(f"  [{_ts()}] Planning next phase...")
-                try:
-                    _run_phase_plan(designer, state_dir)
-                except Exception as e:
-                    click.echo(f"  ⚠ Phase planning failed: {e}", err=True)
-                    click.echo("  Next phase must be planned manually before re-running.", err=True)
+            if is_phase_complete(sot_dir):
+                _handle_phase_complete(project_id, phase_id, project_name, config)
                 break
 
             if run_once:
-                click.echo(f"[{_ts()}] --once: stopping after applying human acceptance for {resolution['id']}.")
+                click.echo(f"[{_ts()}] --once: stopping after human acceptance.")
                 break
 
             round_number = _next_round_number(project_id)
             continue
 
+        # Parse SOT to find next task
+        phase_info = parse_current_phase(sot_dir)
+        if phase_info.all_done:
+            _handle_phase_complete(project_id, phase_id, project_name, config)
+            break
+
+        if not phase_info.next_task_key:
+            raise click.ClickException(
+                "No tasks found in current_phase.md Task Queue. "
+                "Add tasks or mark the phase complete."
+            )
+
         click.echo(f"\n{'─'*60}")
         click.echo(f"[{_ts()}] Starting {round_id}")
+        click.echo(f"  Task: {phase_info.next_task_key} — {phase_info.next_task_desc[:80]}")
 
-        try:
-            generate_claudemd(state_dir, codebase_path)
-        except Exception as e:
-            click.echo(f"  ⚠ CLAUDE.md generation failed: {e}", err=True)
+        # Determine round directory
+        rounds_base = sot_dir / "rounds"
+        round_dir = rounds_base / round_id
 
-        try:
-            recent = _build_recent_rounds_summary(project_id)
-            inject_recent_rounds(codebase_path, recent)
-        except Exception as e:
-            click.echo(f"  ⚠ recent_rounds injection failed: {e}", err=True)
-
-        instruction = (
-            _build_resolution_instruction(state_dir, resolution, round_id)
-            if resolution and resolution["status"] in ("resume_requested", "rejected_by_human")
-            else _get_next_instruction(state_dir, round_id)
-        )
+        # Build resolution instruction if applicable
+        prior_failure = ""
         if resolution and resolution["status"] in ("resume_requested", "rejected_by_human"):
+            prior_failure = _build_resolution_context(resolution)
             consumed_status = "resume_consumed" if resolution["status"] == "resume_requested" else "redo_consumed"
             _set_round_status(resolution["id"], consumed_status)
 
-        result = run_round(
+        # Build recent rounds summary
+        recent = _build_recent_rounds_summary(project_id)
+
+        # Run round (up to 2 attempts)
+        result = _run_round(
             round_id=round_id,
-            instruction=instruction,
-            designer=designer,
-            executor=executor,
-            reviewer=reviewer,
             round_dir=round_dir,
             codebase_path=codebase_path,
+            sot_dir=sot_dir,
+            phase_info=phase_info,
             test_cmd=test_cmd,
+            model=config.agents.executor_model,
+            prior_failure=prior_failure,
+            recent_rounds=recent,
         )
 
         _save_round(project_id, phase_id, round_id, result)
-
-        try:
-            cleanup_round_docs(codebase_path)
-        except Exception as e:
-            click.echo(f"  ⚠ .orch/runtime cleanup failed: {e}", err=True)
 
         if result.final_passed:
             click.echo(
@@ -137,26 +154,40 @@ def run_project(project_row, run_once: bool = False) -> None:
                 f"({len(result.attempts)} attempt(s), ${result.total_cost_usd:.4f})"
             )
 
-            click.echo(f"  [{_ts()}] Updating project documents...")
-            _update_documents(designer, state_dir, result)
+            # Mark task complete in SOT
+            task_key = result.task.task_key
+            if task_key:
+                marked = mark_task_complete(
+                    sot_dir, task_key,
+                    f"Round {round_id} — {result.task.title[:60]}",
+                )
+                if marked:
+                    click.echo(f"  [{_ts()}] Marked {task_key} complete in current_phase.md")
 
-            commit_msg = f"[orch] {round_id}: {result.task.description[:60]}"
+            # Append decision entry (C: restore decisions.md update on PASS)
+            last_attempt = result.attempts[-1] if result.attempts else None
+            gate_summary = ""
+            if last_attempt:
+                gate_summary = "all passed"
+            append_decision_entry(
+                sot_dir,
+                round_id=round_id,
+                phase_id=result.task.phase_id,
+                task_key=result.task.task_key,
+                task_title=result.task.title,
+                outcome_summary=result.task.objective[:200],
+                hard_gate_summary=gate_summary,
+                notes=last_attempt.execution_evidence.summary[:200] if last_attempt else "",
+            )
+            click.echo(f"  [{_ts()}] Appended decision entry to decisions.md")
+
+            # Commit both orchestrator SOT and target repo
+            commit_msg = f"[orch] {round_id}: {result.task.title[:60]}"
             orch_hash, target_hash = _commit_both(codebase_path, commit_msg, round_id)
             update_round_commits(round_id, orch_hash, target_hash)
 
-            if _is_phase_complete(state_dir):
-                click.echo(f"\n{'='*60}")
-                click.echo(f"  Phase complete: {phase_id}")
-                click.echo(f"{'='*60}")
-                _close_phase(project_id, phase_id)
-                _notify_phase_complete(project_name, phase_id, config)
-
-                click.echo(f"  [{_ts()}] Planning next phase...")
-                try:
-                    _run_phase_plan(designer, state_dir)
-                except Exception as e:
-                    click.echo(f"  ⚠ Phase planning failed: {e}", err=True)
-                    click.echo("  Next phase must be planned manually before re-running.", err=True)
+            if is_phase_complete(sot_dir):
+                _handle_phase_complete(project_id, phase_id, project_name, config)
                 break
 
             if run_once:
@@ -165,6 +196,7 @@ def run_project(project_row, run_once: bool = False) -> None:
 
             round_number += 1
         else:
+            # Escalate
             event = EscalationEvent(
                 project_name=project_name,
                 round_id=round_id,
@@ -187,103 +219,248 @@ def run_project(project_row, run_once: bool = False) -> None:
     click.echo(f"\n[{_ts()}] Orchestrator stopped. Use 'orch review' to see pending escalations.")
 
 
-def _needs_bootstrap(state_dir: Path) -> bool:
-    phase_path = state_dir / "current_phase.md"
-    if not phase_path.exists():
-        return True
-    content = phase_path.read_text()
-    return "bootstrap_needed" in content or "待规划" in content
-
-
-def _run_phase_plan(designer: DesignerAgent, state_dir: Path) -> None:
-    result = designer.plan_phase()
-
-    if result.current_phase_md:
-        (state_dir / "current_phase.md").write_text(result.current_phase_md)
-        click.echo("  ✓ current_phase.md — next phase planned")
-
-    if result.designer_context_md:
-        (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
-        click.echo("  ✓ context/designer.md updated")
-
-    if result.cost_usd:
-        click.echo(f"  Phase planning cost: ${result.cost_usd:.4f}")
-
-
-def _run_bootstrap(designer: DesignerAgent, state_dir: Path, config: OrchestratorConfig) -> None:
-    vision_path = state_dir / "vision.md"
-    if not vision_path.exists():
-        raise click.ClickException(
-            "vision.md not found. Edit the vision file before running:\n"
-            f"  {vision_path}"
-        )
-
-    vision_content = vision_path.read_text()
-    if "<!-- " in vision_content and len(vision_content) < 500:
-        raise click.ClickException(
-            "vision.md appears to still be the template. Please fill in your project vision before running.\n"
-            f"  {vision_path}"
-        )
-
-    result = designer.bootstrap_phase(vision_content)
-
-    if result.current_phase_md:
-        (state_dir / "current_phase.md").write_text(result.current_phase_md)
-        click.echo("  ✓ current_phase.md generated")
-
-    if result.designer_context_md:
-        (state_dir / "context" / "designer.md").write_text(result.designer_context_md)
-        click.echo("  ✓ context/designer.md generated")
-
-    if result.cost_usd:
-        click.echo(f"  Bootstrap cost: ${result.cost_usd:.4f}")
-
-
-def _update_documents(designer: DesignerAgent, state_dir: Path, result: RoundResult) -> None:
-    last_attempt = result.attempts[-1]
-    ev = last_attempt.executor_evidence
-
-    summary = (
-        f"Round {result.round_id} completed successfully.\n"
-        f"Task: {result.task.title} — {result.task.objective}\n\n"
-        f"Execution summary: {ev.summary}\n"
-        f"Files changed: {', '.join(ev.files_changed) or '(none)'}\n"
-        f"Commands run: {', '.join(ev.commands_run) or '(none)'}\n"
-        f"Test results: {ev.test_results or '(not run)'}\n"
-        f"Unresolved issues: {', '.join(ev.unresolved_issues) or '(none)'}"
+def _run_round(
+    *,
+    round_id: str,
+    round_dir: Path,
+    codebase_path: Path,
+    sot_dir: Path,
+    phase_info: PhaseInfo,
+    test_cmd: str | None,
+    model: str,
+    prior_failure: str = "",
+    recent_rounds: str = "",
+    max_attempts: int = 2,
+) -> RoundResult:
+    """Execute a complete round with up to max_attempts."""
+    placeholder_task = TaskContract(
+        phase_id=phase_info.phase_id,
+        task_key=phase_info.next_task_key,
+        title=phase_info.next_task_desc[:80],
+        objective=phase_info.next_task_desc,
     )
-    _apply_document_update(designer, state_dir, summary)
+    result = RoundResult(round_id=round_id, task=placeholder_task)
+
+    for attempt_num in range(1, max_attempts + 1):
+        attempt_dir = round_dir / f"attempt_{attempt_num}"
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+
+        click.echo(f"\n  [{_ts()}] --- Attempt {attempt_num}/{max_attempts} ---")
+
+        # Generate briefing
+        generate_round_brief(
+            round_dir=attempt_dir,
+            sot_dir=sot_dir,
+            phase_info=phase_info,
+            round_id=round_id,
+            attempt_num=attempt_num,
+            prior_failure=prior_failure,
+            recent_rounds_summary=recent_rounds,
+        )
+
+        # Snapshot canonical SOT state BEFORE Claude runs.
+        # The only allowed write area is the current attempt_dir.
+        sot_snapshot = snapshot_sot_dir(sot_dir, allowed_write_prefix=attempt_dir)
+
+        # Invoke Claude
+        click.echo(f"  [{_ts()}] Claude round driver running...", nl=False)
+        t0 = time.time()
+        attempt = run_attempt(
+            codebase_path=codebase_path,
+            round_dir=attempt_dir,
+            round_id=round_id,
+            attempt_num=attempt_num,
+            model=model,
+        )
+        elapsed = time.time() - t0
+        elapsed_str = f"{elapsed:.0f}s" if elapsed < 60 else f"{elapsed / 60:.1f}m"
+        click.echo(f" done ({elapsed_str}, ${attempt.claude_cost_usd:.4f})")
+
+        if attempt.execution_evidence.summary:
+            click.echo(f"           Summary: {attempt.execution_evidence.summary[:120]}")
+
+        # Update task from what Claude produced
+        if attempt.task.title and attempt.task.title != "(task contract not produced)":
+            result.task = attempt.task
+
+        # Validate Claude-proposed file scope (D: not self-authoritative)
+        scope = validate_proposed_scope(
+            proposed_allowed=attempt.task.allowed_files or [],
+            proposed_forbidden=attempt.task.forbidden_files or [],
+            git_evidence=attempt.git_evidence,
+        )
+        if not scope.valid:
+            click.echo(f"  [{_ts()}] Scope policy rejected Claude's proposed file scope:")
+            for v in scope.violations:
+                click.echo(f"           {v}")
+
+        # Run hard gates with sanitized scope
+        click.echo(f"  [{_ts()}] Hard gates...", nl=False)
+        t0 = time.time()
+        gate_results = run_hard_gates(
+            codebase_path=codebase_path,
+            git_evidence=attempt.git_evidence,
+            round_dir=attempt_dir,
+            allowed_files=scope.sanitized_allowed or None,
+            forbidden_files=scope.sanitized_forbidden or None,
+            test_cmd=test_cmd,
+        )
+        # Canonical SOT mutation detection (before/after comparison)
+        sot_gate = detect_sot_mutation(sot_snapshot, sot_dir, allowed_write_prefix=attempt_dir)
+        gate_results.gates.append(sot_gate)
+
+        # Merge scope violations into gate results
+        if not scope.valid:
+            from orch.engine.hard_gates import GateResult
+            gate_results.gates.append(GateResult(
+                name="scope_policy",
+                passed=False,
+                detail="; ".join(scope.violations),
+            ))
+        elapsed = time.time() - t0
+        elapsed_str = f"{elapsed:.0f}s" if elapsed < 60 else f"{elapsed / 60:.1f}m"
+
+        if gate_results.all_passed:
+            click.echo(f" {click.style('ALL PASS', fg='green')} ({elapsed_str})")
+        else:
+            click.echo(f" {click.style('FAIL', fg='red')} ({elapsed_str})")
+            for g in gate_results.failures:
+                click.echo(f"           {g.name}: {g.detail[:120]}")
+
+        # Adjudicate: hard gates override Claude's internal review
+        hard_gate_verdict = gate_results.to_verdict()
+        if hard_gate_verdict:
+            attempt = AttemptRecord(
+                attempt_number=attempt.attempt_number,
+                task=attempt.task,
+                execution_evidence=attempt.execution_evidence,
+                git_evidence=attempt.git_evidence,
+                review_verdict=hard_gate_verdict,
+                claude_cost_usd=attempt.claude_cost_usd,
+                is_token_exhausted=attempt.is_token_exhausted,
+                claude_output=attempt.claude_output,
+            )
+            click.echo(f"  [{_ts()}] Hard gate overrides internal review → FAIL")
+        else:
+            # Hard gates pass — use Claude's internal review
+            verdict_color = "green" if attempt.review_verdict.passed else "red"
+            verdict_text = click.style(attempt.review_verdict.verdict.value, fg=verdict_color, bold=True)
+            click.echo(f"  [{_ts()}] Internal reviewer verdict: {verdict_text}")
+
+        # Write attempt artifacts
+        _write_attempt_report(attempt_dir, attempt, gate_results)
+
+        result.attempts.append(attempt)
+
+        if attempt.passed:
+            result.final_passed = True
+            break
+
+        # Build prior_failure for next attempt
+        prior_failure = _build_failure_context(attempt, gate_results)
+        if attempt_num == max_attempts:
+            click.echo(f"\n  [{_ts()}] Max attempts reached — escalating")
+            result.escalation_reason = _build_escalation_reason(result)
+
+    _write_audit_file(round_dir / "audit.md", result)
+    return result
 
 
-def _apply_human_acceptance(designer: DesignerAgent, state_dir: Path, resolution_row) -> None:
+# ── Helper functions ─────────────────────────────────────────────────────────
+
+def _build_failure_context(attempt: AttemptRecord, gate_results: HardGateResults) -> str:
+    lines = [f"Previous attempt {attempt.attempt_number} failed."]
+    if attempt.task.title:
+        lines.append(f"Task: {attempt.task.title}")
+    lines.append(f"Review rationale: {attempt.review_verdict.rationale}")
+    for c in attempt.review_verdict.unmet_criteria:
+        lines.append(f"Unmet: {c}")
+    for f in attempt.review_verdict.blocker_fixes:
+        lines.append(f"Fix required: {f}")
+    for g in gate_results.failures:
+        lines.append(f"Hard gate {g.name}: {g.detail}")
+    return "\n".join(lines)
+
+
+def _build_resolution_context(resolution_row) -> str:
     round_id = resolution_row["id"]
-    task_description = resolution_row["task_description"] or "(task description unavailable)"
     note = resolution_row["resolution_note"] or "(no note)"
-    summary = (
-        f"Round {round_id} was accepted by human override.\n"
-        f"Task description: {task_description}\n"
-        f"Human rationale: {note}\n\n"
-        f"Treat this round as accepted and update current_phase.md / context/designer.md accordingly."
+    task_desc = resolution_row["task_description"] or "(unknown)"
+    action = resolution_row["resolution_action"] or resolution_row["status"]
+
+    if resolution_row["status"] == "resume_requested":
+        header = f"Human requested continuation after escalated round {round_id}."
+    else:
+        header = f"Human rejected round {round_id} and requested a redo."
+
+    return f"{header}\nAction: {action}\nHuman note: {note}\nOriginal task: {task_desc}"
+
+
+def _try_mark_task_complete(sot_dir: Path, task_desc: str, note: str) -> None:
+    """Try to extract task_key from description and mark complete."""
+    import re
+    m = re.search(r"(P\d+-T\d+)", task_desc)
+    if m:
+        mark_task_complete(sot_dir, m.group(1), note)
+
+
+def _write_attempt_report(attempt_dir: Path, attempt: AttemptRecord, gate_results: HardGateResults) -> None:
+    report = {
+        "attempt": attempt.attempt_number,
+        "passed": attempt.passed,
+        "cost_usd": attempt.claude_cost_usd,
+        "is_token_exhausted": attempt.is_token_exhausted,
+        "task": attempt.task.to_dict() if hasattr(attempt.task, "to_dict") else {},
+        "execution_evidence": attempt.execution_evidence.to_dict(),
+        "review_verdict": attempt.review_verdict.to_dict(),
+        "hard_gates": [
+            {"name": g.name, "passed": g.passed, "detail": g.detail}
+            for g in gate_results.gates
+        ],
+        "git_evidence": {
+            "files_modified": getattr(attempt.git_evidence, "files_modified", []),
+            "files_added": getattr(attempt.git_evidence, "files_added", []),
+            "files_deleted": getattr(attempt.git_evidence, "files_deleted", []),
+            "diff_stat": getattr(attempt.git_evidence, "diff_stat", ""),
+            "has_changes": getattr(attempt.git_evidence, "has_changes", False),
+        },
+        "claude_output_truncated": attempt.claude_output[:2000],
+    }
+    (attempt_dir / "attempt_report.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False)
     )
-    _apply_document_update(designer, state_dir, summary)
 
 
-def _apply_document_update(designer: DesignerAgent, state_dir: Path, summary: str) -> None:
-    update = designer.update_documents(summary)
+def _write_audit_file(path: Path, result: RoundResult) -> None:
+    from datetime import timezone
+    status = "PASSED" if result.final_passed else "ESCALATED"
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    content = (
+        f"# Audit — Round {result.round_id}\n\n"
+        f"**Status:** {status}  \n"
+        f"**Completed:** {ts}  \n"
+        f"**Total cost:** ${result.total_cost_usd:.4f}  \n"
+        f"**Attempts:** {len(result.attempts)}\n\n"
+        f"## Task\n**{result.task.task_key}** — {result.task.title}\n"
+        f"{result.task.objective}\n\n"
+    )
+    if result.escalated:
+        content += f"## Escalation Reason\n```\n{result.escalation_reason}\n```\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
 
-    if update.decisions_entry and update.decisions_entry.strip():
-        decisions_path = state_dir / "decisions.md"
-        existing = decisions_path.read_text() if decisions_path.exists() else ""
-        decisions_path.write_text(existing.rstrip() + "\n\n" + update.decisions_entry.strip() + "\n")
-        click.echo("  ✓ decisions.md updated (appended)")
 
-    if update.current_phase_md:
-        (state_dir / "current_phase.md").write_text(update.current_phase_md)
-        click.echo("  ✓ current_phase.md updated")
-
-    if update.designer_context_md:
-        (state_dir / "context" / "designer.md").write_text(update.designer_context_md)
-        click.echo("  ✓ context/designer.md updated")
+def _build_escalation_reason(result: RoundResult) -> str:
+    lines = [f"Round {result.round_id} failed after {len(result.attempts)} attempt(s)."]
+    for a in result.attempts:
+        exhausted = " [TOKEN EXHAUSTED]" if a.is_token_exhausted else ""
+        lines.append(f"\nAttempt {a.attempt_number}{exhausted}:")
+        lines.append(f"  Task: {a.task.title}")
+        lines.append(f"  Verdict: {a.review_verdict.verdict.value} (confidence: {a.review_verdict.confidence})")
+        lines.append(f"  Rationale: {a.review_verdict.rationale}")
+        for fix in a.review_verdict.blocker_fixes:
+            lines.append(f"  Fix required: {fix}")
+    return "\n".join(lines)
 
 
 def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
@@ -295,60 +472,27 @@ def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
         ).fetchall()
 
     if not rows:
-        return "# Recent Rounds\n\nNo previous rounds.\n"
+        return ""
 
-    lines = ["# Recent Rounds", "", "Most recent first:", ""]
+    lines = ["Most recent rounds (do not redo completed work):"]
     for row in rows:
         status = row["status"].upper()
         desc = (row["task_description"] or "")[:80]
         lines.append(f"- **{row['id']}** [{status}] — {desc}")
-
-    lines.append("")
-    lines.append("Do not redo work that was already completed in a previous round.")
-    lines.append("")
     return "\n".join(lines)
 
 
-def _get_next_instruction(state_dir: Path, round_id: str) -> str:
-    phase_path = state_dir / "current_phase.md"
-    if phase_path.exists():
-        content = phase_path.read_text()
-        return (
-            "Based on the current phase document, determine the next concrete task to implement.\n\n"
-            f"Round ID: {round_id}\n\n"
-            f"Current phase:\n{content}"
-        )
-    return f"Review the project vision and plan the next implementation task. Round ID: {round_id}"
+def _handle_phase_complete(project_id: str, phase_id: str, project_name: str, config: OrchestratorConfig) -> None:
+    click.echo(f"\n{'='*60}")
+    click.echo(f"  Phase complete: {phase_id}")
+    click.echo(f"{'='*60}")
+    _close_phase(project_id, phase_id)
+    _notify_phase_complete(project_name, phase_id, config)
+    click.echo("  Next phase must be planned manually before re-running.")
+    click.echo("  Edit current_phase.md in the SOT directory to define the next phase.")
 
 
-def _build_resolution_instruction(state_dir: Path, resolution_row, next_round_id: str) -> str:
-    phase_content = (state_dir / "current_phase.md").read_text() if (state_dir / "current_phase.md").exists() else ""
-    round_id = resolution_row["id"]
-    task_description = resolution_row["task_description"] or "(task description unavailable)"
-    note = resolution_row["resolution_note"] or "(no note)"
-    action = resolution_row["resolution_action"] or resolution_row["status"]
-
-    if resolution_row["status"] == "resume_requested":
-        resolution_header = (
-            f"Human requested continuation after escalated round {round_id}.\n"
-            f"Treat this as a follow-up continuation request, not a fresh unrelated task.\n"
-        )
-    else:
-        resolution_header = (
-            f"Human rejected the result of escalated round {round_id} and requested a redo.\n"
-            f"Treat this as a fresh replacement attempt for the same intended outcome.\n"
-        )
-
-    return (
-        f"{resolution_header}\n"
-        f"Previous round: {round_id}\n"
-        f"Recorded action: {action}\n"
-        f"Human note: {note}\n"
-        f"Original task description: {task_description}\n\n"
-        f"Round ID: {next_round_id}\n\n"
-        f"Current phase:\n{phase_content}"
-    )
-
+# ── DB helpers ───────────────────────────────────────────────────────────────
 
 def _get_pending_human_resolution(project_id: str):
     with get_connection() as conn:
@@ -368,21 +512,7 @@ def _set_round_status(round_id: str, status: str) -> None:
         )
 
 
-def _is_phase_complete(state_dir: Path) -> bool:
-    import re
-    phase_path = state_dir / "current_phase.md"
-    if not phase_path.exists():
-        return False
-    content = phase_path.read_text()
-    if any(m in content.lower() for m in ("phase complete", "all tasks done", "phase finished")):
-        return True
-    queue_match = re.search(r"## Task Queue\s*(.*?)(?=\n##|\Z)", content, re.DOTALL)
-    if queue_match:
-        return "- [ ]" not in queue_match.group(1)
-    return False
-
-
-def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
+def _ensure_active_phase(project_id: str, sot_dir: Path) -> str:
     with get_connection() as conn:
         row = conn.execute(
             "SELECT id FROM phases WHERE project_id = ? AND status = 'in_progress' ORDER BY created_at DESC LIMIT 1",
@@ -401,7 +531,6 @@ def _ensure_active_phase(project_id: str, state_dir: Path) -> str:
             "INSERT INTO phases (id, project_id, name, status, created_at) VALUES (?, ?, ?, ?, ?)",
             (phase_id, project_id, f"Phase {next_num}", "in_progress", now_iso()),
         )
-        (state_dir / "phases" / phase_id).mkdir(parents=True, exist_ok=True)
         return phase_id
 
 
@@ -436,8 +565,8 @@ def _save_round(project_id: str, phase_id: str, round_id: str, result: RoundResu
                 round_id, project_id, phase_id, status,
                 len(result.attempts),
                 result.task.description,
-                last_attempt.executor_output[:500] if last_attempt else "",
-                "PASS" if result.final_passed else "FAIL",
+                last_attempt.claude_output[:500] if last_attempt else "",
+                last_attempt.review_verdict.verdict.value if last_attempt else "FAIL",
                 result.escalation_reason or None,
                 result.total_cost_usd,
                 now_iso(), now_iso(),
@@ -453,6 +582,32 @@ def _save_escalation(project_id: str, round_id: str, reason: str) -> None:
             (f"escalation-{round_id}", project_id, "Escalation", reason, "pending", now_iso()),
         )
 
+
+def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str, str]:
+    """Commit orchestrator SOT (projects/ dir) and target project."""
+    from orch.utils.git_ops import commit_projects_dir
+
+    try:
+        orch_hash = commit_projects_dir(REPO_ROOT, f"{message} (SOT)")
+    except (GitError, Exception) as e:
+        click.echo(f"  ⚠ Orchestrator SOT commit failed: {e}", err=True)
+        orch_hash = ""
+
+    try:
+        target_hash = commit_all(codebase_path, message)
+    except (GitError, Exception) as e:
+        click.echo(f"  ⚠ Target project commit failed: {e}", err=True)
+        target_hash = ""
+
+    if orch_hash and target_hash:
+        click.echo(f"  ✓ Committed — orch:{orch_hash[:7]}  target:{target_hash[:7]}")
+    elif target_hash:
+        click.echo(f"  ✓ Committed target — {target_hash[:7]}")
+
+    return orch_hash, target_hash
+
+
+# ── Notifications ────────────────────────────────────────────────────────────
 
 def _print_escalation_report(event: EscalationEvent) -> None:
     click.echo(f"\n{'!'*60}")
@@ -482,7 +637,7 @@ def _notify_escalation(event: EscalationEvent, config: OrchestratorConfig) -> No
             to_addr=email_cfg.to_addr,
             subject=f"[Orchestrator] Action required — {event.project_name} / {event.round_id}",
             body=(
-                f"Round {event.round_id} failed after 2 attempts and requires your attention.\n\n"
+                f"Round {event.round_id} failed after 2 attempts.\n\n"
                 f"Project: {event.project_name}\n"
                 f"Time: {event.timestamp}\n\n"
                 f"Reason:\n{event.reason}\n\n"
@@ -490,9 +645,8 @@ def _notify_escalation(event: EscalationEvent, config: OrchestratorConfig) -> No
                 f"Run 'orch review' and 'orch decide' to continue."
             ),
         )
-        click.echo(f"[{event.timestamp}] Email notification sent to {email_cfg.to_addr}")
     except Exception as e:
-        click.echo(f"[{event.timestamp}] Email notification failed: {e}", err=True)
+        click.echo(f"  ⚠ Email notification failed: {e}", err=True)
 
 
 def _notify_phase_complete(project_name: str, phase_id: str, config: OrchestratorConfig) -> None:
@@ -508,7 +662,7 @@ def _notify_phase_complete(project_name: str, phase_id: str, config: Orchestrato
             from_addr=email_cfg.from_addr,
             to_addr=email_cfg.to_addr,
             subject=f"[Orchestrator] Phase complete — {project_name} / {phase_id}",
-            body=f"Phase {phase_id} of project '{project_name}' has been completed successfully.",
+            body=f"Phase {phase_id} of project '{project_name}' has been completed.",
         )
     except Exception:
         pass
@@ -526,28 +680,6 @@ def _send_email(smtp_host: str, smtp_port: int, from_addr: str, to_addr: str, su
     with smtplib.SMTP(smtp_host, smtp_port) as server:
         server.starttls()
         server.sendmail(from_addr, [to_addr], msg.as_string())
-
-
-def _commit_both(codebase_path: Path, message: str, round_id: str) -> tuple[str, str]:
-    """Record orchestrator revision and commit target project state/code."""
-    try:
-        orch_hash = get_current_commit(REPO_ROOT)
-    except GitError as e:
-        click.echo(f"  ⚠ Orchestrator revision lookup failed: {e}", err=True)
-        orch_hash = ""
-
-    try:
-        target_hash = commit_all(codebase_path, message)
-    except GitError as e:
-        click.echo(f"  ⚠ Target project commit failed: {e}", err=True)
-        target_hash = ""
-
-    if orch_hash and target_hash:
-        click.echo(f"  ✓ Committed — orch:{orch_hash[:7]}  target:{target_hash[:7]}")
-    elif target_hash:
-        click.echo(f"  ✓ Committed target project — {target_hash[:7]}")
-
-    return orch_hash, target_hash
 
 
 def _ts() -> str:
