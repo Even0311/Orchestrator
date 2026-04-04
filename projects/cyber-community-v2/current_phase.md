@@ -26,4 +26,4 @@ Make the appraisal layer an explicit seam in the architecture, without yet intro
 - [x] P29-T3: Define deterministic fallback mappings for T3/T5/T6/T7/T8 that produce valid AppraisalOutput without external appraisal — Round round-0032 — Tick-type-aware deterministic fallback mappings for T3/T5/T6
 - [x] P29-T4: Refactor existing T1/T2/T4 bridges to emit through the new AppraisalInput → AppraisalOutput boundary — Round round-0033 — Wire T1/T2/T4 bridge builders to emit AppraisalInput and ret
 - [x] P29-T5: Extract settlement as a pure consumer of AppraisalOutput, decoupled from tick-specific knowledge — Round round-0034 — Settlement as pure AppraisalOutput consumer, tick-specific k
-- [ ] P29-T6: Add boundary contract tests that verify schema completeness, fallback correctness, and settlement isolation
+- [x] P29-T6: Add boundary contract tests that verify schema completeness, fallback correctness, and settlement isolation — Round round-0035 — Boundary contract tests: schema completeness, fallback corre

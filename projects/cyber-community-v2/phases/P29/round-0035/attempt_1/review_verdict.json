@@ -1,0 +1,49 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "task_id": "P29-T6",
+  "met_criteria": [
+    "File back/tests/test_p29_t6_boundary_contract.py exists and all 23 tests pass with pytest.",
+    "All 8 tick types (T1-T8) have at least one test asserting that a valid AppraisalInput can be constructed — covered by parametrized test_all_tick_types_produce_valid_appraisal_input.",
+    "All 8 tick types have at least one test asserting from_deterministic_fallback returns fallback_used=True and confidence=1.0 — T1/T2/T4 via named tests, T3/T5/T6/T7/T8 via parametrized test_deferred_ticks_fallback_absorption_is_none.",
+    "Deferred ticks T3, T5, T6, T7, T8 each assert absorption=none, growth=[], aftershock_days=0 in test_deferred_ticks_fallback_absorption_is_none.",
+    "T1 and T2 fallback outputs assert absorption=surface in test_t1_fallback_absorption_is_surface and test_t2_fallback_absorption_is_surface.",
+    "T4 without social_event_context asserts absorption=none in test_t4_fallback_without_social_event_absorption_is_none; T4 with social_event_context asserts absorption=surface in test_t4_fallback_with_social_event_absorption_is_surface.",
+    "Settlement isolation verified by two tests: test_settlement_identical_for_different_tick_type_advisory (differs only in tick_type) and test_settlement_identical_for_different_narrative_and_fallback_flag (differs in narrative_summary and fallback_used) — both confirm identical SettlementResult numeric values.",
+    "End-to-end pipeline tests present for all three active ticks: T1 (test_e2e_pipeline_t1_completes_without_error), T2 (test_e2e_pipeline_t2_with_relational_context_completes), T4 (test_e2e_pipeline_t4_no_social_event_residual_is_none). T4 pipeline additionally asserts residual=None when absorption=none.",
+    "Full test suite 652/652 passes with no modification to any other file.",
+    "New test file has 23 test functions, within the 30-function limit.",
+    "DEFERRED_FALLBACK_DISPATCH coverage verified by test_deferred_fallback_dispatch_covers_exactly_five_deferred_ticks asserting exactly the 5 deferred EventCategory keys and absence of T1/T2/T4.",
+    "No production code modified — only the allowed file back/tests/test_p29_t6_boundary_contract.py was added; git working tree is clean.",
+    "AppraisalSignal v1 not modified, no bridge wiring added for deferred ticks, settlement functions remain pure with no tick_type inspection."
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The test_settlement_identical_for_different_narrative_and_fallback_flag test has a redundant local import of Arousal and GuidanceResonance (already imported at the top of the file via from app.engines.appraisal_settlement import ...). This is harmless but could be cleaned up."
+  ],
+  "criteria_results": {
+    "file_exists_all_tests_pass": "PASS",
+    "all_8_tick_types_schema_completeness": "PASS",
+    "all_8_tick_types_fallback_flag_and_confidence": "PASS",
+    "deferred_ticks_absorption_none_growth_empty_aftershock_zero": "PASS",
+    "t1_t2_fallback_absorption_surface": "PASS",
+    "t4_without_event_absorption_none_with_event_absorption_surface": "PASS",
+    "settlement_isolation_tick_type_advisory": "PASS",
+    "settlement_isolation_narrative_fallback_advisory": "PASS",
+    "e2e_pipeline_t1": "PASS",
+    "e2e_pipeline_t2_with_relational_context": "PASS",
+    "e2e_pipeline_t4_no_event_residual_none": "PASS",
+    "deferred_fallback_dispatch_exactly_five": "PASS",
+    "full_suite_passes_no_other_files_modified": "PASS",
+    "test_count_within_30": "PASS",
+    "hard_rules_not_violated": "PASS"
+  },
+  "test_counts": {
+    "new_tests_added": 23,
+    "full_suite_total": 652,
+    "full_suite_passing": 652
+  },
+  "rationale": "All 10 acceptance criteria from the task contract are met. The test file covers all required test cases: 8 parametrized schema completeness tests, 4 named fallback absorption tests (T1, T2, T4-no-event, T4-with-event), 5 parametrized deferred-tick fallback tests, 2 settlement isolation tests, 3 end-to-end pipeline tests, and 1 DEFERRED_FALLBACK_DISPATCH dispatch-table coverage test. The 23 test functions are well within the 30-function cap. Only the allowed file was added; the full 652-test suite passes with no regressions. No production code, frozen schemas, or forbidden files were touched."
+}

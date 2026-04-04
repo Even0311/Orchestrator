@@ -1,0 +1,160 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.0167689999999996,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P29",
+    "task_key": "P29-T6",
+    "title": "Boundary contract tests: schema completeness, fallback correctness, settlement isolation",
+    "objective": "Add a dedicated test file (test_p29_t6_boundary_contract.py) that validates the full AppraisalInput → AppraisalOutput → settlement pipeline as an integrated boundary contract, going beyond what the individual P29-T1 through P29-T5 tests already verify in isolation.",
+    "exact_scope": "One new test file covering four contract areas: (1) all 8 tick types can produce a valid AppraisalInput; (2) AppraisalOutput.from_deterministic_fallback produces a valid, fallback-flagged output for every tick type, with the correct absorption value per tick; (3) settlement receives only contract-bearing fields and is fully unaware of tick_type; (4) an end-to-end pipeline test that builds an AppraisalInput for each active tick (T1, T2, T4), calls from_deterministic_fallback, then calls settle_appraisal_output, and asserts the pipeline completes without error and produces a SettlementResult. No changes to any domain model, engine, or existing test file.",
+    "acceptance_criteria": [
+      "A file back/tests/test_p29_t6_boundary_contract.py exists and all tests in it pass with pytest.",
+      "All 8 tick types (T1–T8) have at least one test asserting that a valid AppraisalInput can be constructed for that tick type.",
+      "All 8 tick types have at least one test asserting that from_deterministic_fallback returns a valid AppraisalOutput with fallback_used=True and confidence=1.0.",
+      "Deferred ticks (T3, T5, T6, T7, T8) each assert absorption=none in their fallback output.",
+      "T1 and T2 fallback outputs assert absorption=surface.",
+      "T4 fallback with no social_event_context asserts absorption=none; T4 fallback with social_event_context present asserts absorption=surface.",
+      "At least one test verifies that settle_appraisal_output does not inspect the tick_type advisory field: two AppraisalOutput instances that differ only in tick_type must produce identical SettlementResult values.",
+      "At least one end-to-end pipeline test per active tick (T1, T2, T4) builds an AppraisalInput, calls from_deterministic_fallback to obtain an AppraisalOutput, calls settle_appraisal_output, and asserts the result is a SettlementResult with no exception raised.",
+      "The full test suite (all existing tests plus the new file) continues to pass without modification to any other file.",
+      "The new test file has no more than 30 test functions total."
+    ],
+    "required_tests": [
+      "For each of the 8 tick types: building an AppraisalInput with the correct required context slices succeeds and the resulting object has tick_type matching that tick.",
+      "For each of the 8 tick types: calling AppraisalOutput.from_deterministic_fallback with a valid AppraisalInput returns an AppraisalOutput where fallback_used is True and confidence is 1.0.",
+      "For deferred ticks T3, T5, T6, T7, T8: the fallback output has absorption equal to none, growth is an empty list, and aftershock_days is 0.",
+      "For T1 and T2: the fallback output has absorption equal to surface.",
+      "For T4 without social_event_context: fallback output has absorption equal to none.",
+      "For T4 with social_event_context present: fallback output has absorption equal to surface.",
+      "Two AppraisalOutput instances that are identical on all contract-bearing fields but differ on tick_type (advisory) produce identical numeric results from settle_appraisal_output — same mood score, stress, growth buffer, and residual shape.",
+      "Two AppraisalOutput instances that are identical on all contract-bearing fields but differ on narrative_summary and fallback_used produce identical numeric results from settle_appraisal_output.",
+      "End-to-end pipeline for T1: AppraisalInput constructed, from_deterministic_fallback called, settle_appraisal_output called, result is a SettlementResult — no exception raised.",
+      "End-to-end pipeline for T2: same pipeline as T1, with a relational_context slice included in the input.",
+      "End-to-end pipeline for T4 with no social_event_context: pipeline completes, SettlementResult.residual is None (absorption=none means no residual).",
+      "DEFERRED_FALLBACK_DISPATCH covers exactly the five deferred EventCategory values and no others."
+    ],
+    "non_goals": [
+      "Do not wire any deferred tick (T3, T5, T6, T7, T8) to the bridge or settlement path.",
+      "Do not test or modify the existing four individual settlement functions (apply_appraisal_to_state, accumulate_growth_from_appraisal, apply_appraisal_to_relationship, create_residual_from_appraisal) directly — those are covered by test_p29_t5_settlement_boundary.py.",
+      "Do not test tick_bridge builder functions (build_signal_from_t1_world_tick etc.) — those are covered by test_p29_t4_bridge_boundary.py.",
+      "Do not add integration tests that run the full day_simulator 8-tick loop.",
+      "Do not add performance or load tests.",
+      "Do not introduce any new domain model fields or enums.",
+      "Do not modify vision.md or road_map.md."
+    ],
+    "constraints": [
+      "AppraisalSignal v1 must not be modified — it is frozen.",
+      "No bridge wiring may be added for deferred ticks (T3, T5, T6, T7, T8) — schema accommodation only.",
+      "Settlement functions must remain pure functions with no side effects.",
+      "from_deterministic_fallback must not be called with arguments beyond an AppraisalInput instance.",
+      "The new test file must not duplicate assertions already present in test_appraisal_input_schema.py, test_appraisal_output_schema.py, test_p29_t3_deferred_fallback.py, test_p29_t4_bridge_boundary.py, or test_p29_t5_settlement_boundary.py.",
+      "No LLM runtime code may be introduced.",
+      "T4 old deterministic path must not be reactivated through gate manipulation."
+    ],
+    "allowed_files": [
+      "back/tests/test_p29_t6_boundary_contract.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/deterministic_fallback.py",
+      "back/app/engines/tick_bridge.py",
+      "back/tests/test_appraisal_input_schema.py",
+      "back/tests/test_appraisal_output_schema.py",
+      "back/tests/test_p29_t3_deferred_fallback.py",
+      "back/tests/test_p29_t4_bridge_boundary.py",
+      "back/tests/test_p29_t5_settlement_boundary.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created test_p29_t6_boundary_contract.py with 23 tests covering schema completeness for all 8 tick types, fallback absorption correctness per tick type via from_deterministic_fallback, settlement isolation from advisory fields, and end-to-end pipelines for T1/T2/T4.",
+    "files_changed": [
+      "back/tests/test_p29_t6_boundary_contract.py"
+    ],
+    "commands_run": [
+      "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/test_p29_t6_boundary_contract.py -v",
+      "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -q"
+    ],
+    "test_results": "23/23 new tests passed; full suite 652/652 passed",
+    "diff_summary": "New file back/tests/test_p29_t6_boundary_contract.py added with 23 test functions: 8 parametrized schema completeness tests (one per tick type), 4 fallback absorption correctness tests (T1 surface, T2 surface, T4-no-event none, T4-with-event surface), 5 parametrized deferred tick fallback tests (T3/T5/T6/T7/T8 absorption=none), 2 settlement isolation tests (tick_type advisory and narrative_summary/fallback_used advisory), 3 end-to-end pipeline tests (T1, T2, T4), and 1 DEFERRED_FALLBACK_DISPATCH coverage test.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "File back/tests/test_p29_t6_boundary_contract.py exists and all 23 tests pass with pytest.",
+      "All 8 tick types (T1-T8) have at least one test asserting that a valid AppraisalInput can be constructed — covered by parametrized test_all_tick_types_produce_valid_appraisal_input.",
+      "All 8 tick types have at least one test asserting from_deterministic_fallback returns fallback_used=True and confidence=1.0 — T1/T2/T4 via named tests, T3/T5/T6/T7/T8 via parametrized test_deferred_ticks_fallback_absorption_is_none.",
+      "Deferred ticks T3, T5, T6, T7, T8 each assert absorption=none, growth=[], aftershock_days=0 in test_deferred_ticks_fallback_absorption_is_none.",
+      "T1 and T2 fallback outputs assert absorption=surface in test_t1_fallback_absorption_is_surface and test_t2_fallback_absorption_is_surface.",
+      "T4 without social_event_context asserts absorption=none in test_t4_fallback_without_social_event_absorption_is_none; T4 with social_event_context asserts absorption=surface in test_t4_fallback_with_social_event_absorption_is_surface.",
+      "Settlement isolation verified by two tests: test_settlement_identical_for_different_tick_type_advisory (differs only in tick_type) and test_settlement_identical_for_different_narrative_and_fallback_flag (differs in narrative_summary and fallback_used) — both confirm identical SettlementResult numeric values.",
+      "End-to-end pipeline tests present for all three active ticks: T1 (test_e2e_pipeline_t1_completes_without_error), T2 (test_e2e_pipeline_t2_with_relational_context_completes), T4 (test_e2e_pipeline_t4_no_social_event_residual_is_none). T4 pipeline additionally asserts residual=None when absorption=none.",
+      "Full test suite 652/652 passes with no modification to any other file.",
+      "New test file has 23 test functions, within the 30-function limit.",
+      "DEFERRED_FALLBACK_DISPATCH coverage verified by test_deferred_fallback_dispatch_covers_exactly_five_deferred_ticks asserting exactly the 5 deferred EventCategory keys and absence of T1/T2/T4.",
+      "No production code modified — only the allowed file back/tests/test_p29_t6_boundary_contract.py was added; git working tree is clean.",
+      "AppraisalSignal v1 not modified, no bridge wiring added for deferred ticks, settlement functions remain pure with no tick_type inspection."
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "The test_settlement_identical_for_different_narrative_and_fallback_flag test has a redundant local import of Arousal and GuidanceResonance (already imported at the top of the file via from app.engines.appraisal_settlement import ...). This is harmless but could be cleaned up."
+    ],
+    "rationale": "All 10 acceptance criteria from the task contract are met. The test file covers all required test cases: 8 parametrized schema completeness tests, 4 named fallback absorption tests (T1, T2, T4-no-event, T4-with-event), 5 parametrized deferred-tick fallback tests, 2 settlement isolation tests, 3 end-to-end pipeline tests, and 1 DEFERRED_FALLBACK_DISPATCH dispatch-table coverage test. The 23 test functions are well within the 30-function cap. Only the allowed file was added; the full 652-test suite passes with no regressions. No production code, frozen schemas, or forbidden files were touched."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/tests/test_p29_t6_boundary_contract.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three subagents have completed successfully. Here is the round summary:\n\n---\n\n## Round-0035 Summary — P29-T6: Boundary Contract Tests\n\n**Verdict: PASS ✅**\n\n### What was done\nA new test file `back/tests/test_p29_t6_boundary_contract.py` was created with **23 tests** covering the four contract areas:\n\n1. **Schema completeness** — All 8 tick types (T1–T8) successfully instantiate valid `AppraisalInput` objects (parametrized over all `EventCategory` values)\n\n2. **Fallback correctness** — T1/T2 → `surface` absorption; T4-with-event → `surface`; T4-without-event → `none`; deferred T3/T5/T6/T7/T8 → `none` with `growth=[]` and `aftershock_days=0`\n\n3. **Settlement isolation** — Two tests prove that advisory-field differences (`tick_type`, `narrative_summary`, `fallback_used`) produce identical `SettlementResult` numeric values\n\n4. **End-to-end pipeline** — T1, T2, and T4 complete the full `AppraisalInput → from_deterministic_fallback → settle_appraisal_output → SettlementResult` chain\n\n### Test counts\n- 23 new tests added, all passing\n- Full suite: **652/652 tests pass** (no regressions)\n\n### Constraints respected\n- No production code modified (test-only deliverable)\n- No `AppraisalSignal` v1 modifications\n- No tick-type awareness added to settlement\n- Hard rules from `CLAUDE.md` all observed"
+}
