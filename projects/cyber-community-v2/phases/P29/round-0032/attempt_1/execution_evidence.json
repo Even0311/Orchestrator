@@ -1,0 +1,13 @@
+{
+  "summary": "Created appraisal_fallback.py with tick-type-aware deterministic fallback mappings for T3/T5/T6/T7/T8 and 36 tests covering all required_tests items.",
+  "files_changed": [
+    "back/app/engines/appraisal_fallback.py",
+    "back/tests/test_p29_t3_appraisal_fallback.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v 2>&1 | tail -40"
+  ],
+  "test_results": "all passed — 576 total (36 new tests in test_p29_t3_appraisal_fallback.py, 540 pre-existing)",
+  "diff_summary": "Two new files created. appraisal_fallback.py: public function get_fallback_output(input: AppraisalInput) -> AppraisalOutput with per-tick builders for T3 (expression growth, partial absorption), T5 (emotional_stability growth, surface absorption, medium arousal), T6 (curiosity growth, partial absorption), T7 (action_type dispatch table covering all 7 ActionType values with distinct growth dimensions and guidance_resonance), T8 (emotional_stability growth, surface absorption); raises ValueError for T1/T2/T4. No imports from tick_bridge/day_simulator/world. test file: 36 tests covering all 14 required_tests items plus bonus assertions.",
+  "unresolved_issues": []
+}

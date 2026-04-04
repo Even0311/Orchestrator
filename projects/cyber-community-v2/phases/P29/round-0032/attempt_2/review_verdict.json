@@ -1,0 +1,85 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "hard_gates_passed": [
+    {
+      "gate": "sot_mutation",
+      "status": "PASS",
+      "detail": "docs/decisions.md, docs/decisions_summary.md, docs/vision.md, docs/road_map.md and all forbidden files are unmodified. git diff and git status confirm no changes to any SOT or forbidden file."
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "A new module back/app/engines/deterministic_fallback.py exists with five individually named fallback functions",
+      "status": "PASS",
+      "detail": "Module present with fallback_t3_self_initiated_action, fallback_t5_emotional_shift, fallback_t6_learning_work, fallback_t7_player_influence, fallback_t8_reflection, and DEFERRED_FALLBACK_DISPATCH dict."
+    },
+    {
+      "criterion": "AppraisalOutput.from_deterministic_fallback delegates deferred-tick branch to named mappings, eliminating anonymous else block",
+      "status": "PASS",
+      "detail": "The else-branch in from_deterministic_fallback now imports DEFERRED_FALLBACK_DISPATCH and calls fallback_fn(input) via dispatch table. No anonymous catch-all for T3/T5/T6/T7/T8 remains."
+    },
+    {
+      "criterion": "back/tests/test_p29_t3_deferred_fallback.py exists with at least 10 test functions covering all five deferred tick types",
+      "status": "PASS",
+      "detail": "29 test function definitions; 33 parametrized test cases total at runtime. All five deferred tick types are covered."
+    },
+    {
+      "criterion": "For each of the five deferred tick types, at least one test asserts absorption==AbsorptionLevel.none",
+      "status": "PASS",
+      "detail": "test_t3/t5/t6/t7/t8_fallback_absorption_is_none each assert absorption == AbsorptionLevel.none."
+    },
+    {
+      "criterion": "For each of the five deferred tick types, at least one test asserts fallback_used is True",
+      "status": "PASS",
+      "detail": "test_t3/t5/t6/t7/t8_fallback_sets_fallback_used_true each assert fallback_used is True."
+    },
+    {
+      "criterion": "For each of the five deferred tick types, at least one test asserts the output tick_type advisory field matches the input tick type",
+      "status": "PASS",
+      "detail": "test_t3/t5/t6/t7/t8_fallback_echoes_tick_type each assert out.tick_type == EventCategory.<tick>."
+    },
+    {
+      "criterion": "For each of the five deferred tick types, at least one test asserts narrative_summary is a non-empty string containing a tick-type identifier",
+      "status": "PASS",
+      "detail": "test_t3/t5/t6/t7/t8_fallback_narrative_summary_identifies_tick_type each assert narrative_summary is non-None, len > 0, and contains the tick type string literal."
+    },
+    {
+      "criterion": "For each of the five deferred tick types, at least one test asserts confidence==1.0",
+      "status": "PASS",
+      "detail": "test_t3/t5/t6/t7/t8_fallback_confidence_equals_one each assert confidence == 1.0."
+    },
+    {
+      "criterion": "All 5 deferred fallback outputs pass AppraisalOutput model validation without raising ValidationError",
+      "status": "PASS",
+      "detail": "test_deferred_fallbacks_pass_pydantic_validation iterates all five tick types and fails on ValidationError. 573 tests pass with no exceptions."
+    },
+    {
+      "criterion": "All existing tests continue to pass — no regressions",
+      "status": "PASS",
+      "detail": "python -m pytest back/tests/ -q reports 573 passed in 0.28s."
+    },
+    {
+      "criterion": "Running python -m pytest back/tests/ -v exits with code 0",
+      "status": "PASS",
+      "detail": "Verified: 573 passed, exit code 0."
+    }
+  ],
+  "scope_violations": [],
+  "met_criteria": [
+    "sot_mutation (hard gate): no SOT or forbidden files modified",
+    "module_exists: back/app/engines/deterministic_fallback.py with 5 named functions and dispatch table",
+    "delegation_updated: appraisal_output.py else-branch delegates to DEFERRED_FALLBACK_DISPATCH",
+    "test_file_exists: 29 test function definitions (33 parametrized runs), >= 10 required",
+    "all_tests_pass: 573 passed, 0 failed",
+    "per_tick_coverage: all five tick types covered for absorption=none, fallback_used=True, tick_type echo, narrative_summary identifier, confidence=1.0",
+    "no_field_mutations: AppraisalInput and AppraisalOutput field definitions unchanged",
+    "no_bridge_expansion: no AppraisalSignal wiring or engine settlement changes"
+  ],
+  "unmet_criteria": [],
+  "blocking_issues": [],
+  "non_blocking_suggestions": [
+    "The implementation files are present in the working tree but not yet committed. The orchestrator should commit them as part of the normal round-close process."
+  ],
+  "rationale": "All acceptance criteria and the SOT mutation hard gate are satisfied. The new deterministic_fallback.py module contains five individually documented fallback functions and a dispatch table. The from_deterministic_fallback else-branch properly delegates to the dispatch table, eliminating the anonymous catch-all. The test file provides comprehensive coverage (33 parametrized tests across 29 function definitions) for all five deferred tick types against all required assertion categories. No forbidden files were touched, no field definitions were changed, and no bridge wiring was added. 573 tests pass with no regressions."
+}

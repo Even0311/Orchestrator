@@ -664,23 +664,3 @@ T4 当前仍然在真实 simulation 中为 inactive，原因已从"结构上无 
 > T4 relational continuity 在旧 deterministic path 下 frozen；已批准 Phase 26B 通过 social event-aware activation 作为唯一解冻路径。
 > Stage 1 appraisal schema 按 8 tick 设计，但 first live LLM authority 仅限 T1/T2/T4；deferred ticks 进入 live path 留给 Stage 2。
 
-## 2026-04-04 08:48 UTC — round-0029: P28-T6
-**Phase:** P28
-**Task:** Lock calibrated signal intensity ranges for Pattern A and Pattern B T4 outputs in dedicated tests
-**Outcome:** Create a dedicated test file that formally locks the calibrated signal intensity ranges for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) T4 relational apprais
-**Hard gates:** all passed
-**Notes:** Created back/tests/test_p28_t6_signal_calibration.py with 32 tests that formally lock the calibrated signal intensity ranges for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilate
-
-## 2026-04-04 13:30 UTC — round-0030: P29-T1
-**Phase:** P29
-**Task:** Define unified AppraisalInput schema for all 8 tick types
-**Outcome:** Introduce a new Pydantic model called AppraisalInput in back/app/domain/ that represents the structured context slice each of the 8 ticks passes to the appraisal layer. The schema must accommodate all
-**Hard gates:** all passed
-**Notes:** Created AppraisalInput Pydantic v2 schema with 5 sub-models (AgentContextSlice, WorldContextSlice, RelationalContextSlice, SocialEventContextSlice, PlayerContextSlice) and model_validators enforcing t
-
-## 2026-04-04 13:37 UTC — round-0031: P29-T2
-**Phase:** P29
-**Task:** Formalize AppraisalOutput contract with advisory vs contract-bearing field annotations
-**Outcome:** Introduce a new Pydantic v2 model called AppraisalOutput in back/app/domain/ that captures everything the appraisal layer returns after processing one tick. Each field must be annotated as either cont
-**Hard gates:** all passed
-**Notes:** Created AppraisalOutput Pydantic v2 model with contract-bearing and advisory field annotations, deterministic fallback classmethod, and 30 tests covering all required cases.

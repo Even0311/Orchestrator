@@ -1,0 +1,184 @@
+{
+  "attempt": 2,
+  "passed": true,
+  "cost_usd": 0.8532254999999997,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P29",
+    "task_key": "P29-T3",
+    "title": "Tick-type-aware deterministic fallback mappings for T3/T5/T6/T7/T8",
+    "objective": "Extract the deferred-tick fallback logic from the generic else-branch in AppraisalOutput.from_deterministic_fallback into a dedicated module that maps each of T3, T5, T6, T7, and T8 to an explicit, individually documented AppraisalOutput. Each mapping must be independently testable and must produce a valid AppraisalOutput that passes all existing AppraisalOutput model validators.",
+    "exact_scope": "Create one new Python module under back/app/engines/ (or back/app/domain/) that houses tick-type-aware fallback mapping functions for the five deferred tick types (self_initiated_action, emotional_shift, learning_work, player_influence, reflection). Update AppraisalOutput.from_deterministic_fallback to delegate the deferred-tick branch to these named mappings rather than a single anonymous else block. Add a dedicated test file under back/tests/ that covers each of the five tick types individually with at minimum 2 assertions per tick type. No other files are in scope.",
+    "acceptance_criteria": [
+      "A new module exists (e.g., back/app/engines/deterministic_fallback.py or back/app/domain/deterministic_fallback.py) that contains five individually named functions or a mapping dict, one per deferred tick type (T3, T5, T6, T7, T8), each returning a valid AppraisalOutput.",
+      "AppraisalOutput.from_deterministic_fallback delegates the deferred-tick branch to the new module's per-tick logic, eliminating the anonymous else block for those five types.",
+      "A dedicated test file back/tests/test_p29_t3_deferred_fallback.py exists and contains at least 10 test functions covering all five deferred tick types.",
+      "For each of the five deferred tick types, at least one test asserts absorption==AbsorptionLevel.none.",
+      "For each of the five deferred tick types, at least one test asserts fallback_used is True.",
+      "For each of the five deferred tick types, at least one test asserts the output tick_type advisory field matches the input tick type.",
+      "For each of the five deferred tick types, at least one test asserts narrative_summary is a non-empty string containing a tick-type identifier.",
+      "For each of the five deferred tick types, at least one test asserts confidence==1.0.",
+      "All 5 deferred fallback outputs pass AppraisalOutput model validation without raising ValidationError.",
+      "All existing tests continue to pass — no regressions.",
+      "Running python -m pytest back/tests/ -v exits with code 0."
+    ],
+    "required_tests": [
+      "T3 (self_initiated_action) fallback returns absorption=none",
+      "T3 fallback sets fallback_used=True",
+      "T3 fallback echoes self_initiated_action in the tick_type advisory field",
+      "T3 fallback narrative_summary is non-empty and identifies the tick type",
+      "T3 fallback confidence equals 1.0",
+      "T5 (emotional_shift) fallback returns absorption=none",
+      "T5 fallback sets fallback_used=True",
+      "T5 fallback echoes emotional_shift in the tick_type advisory field",
+      "T5 fallback narrative_summary is non-empty and identifies the tick type",
+      "T5 fallback confidence equals 1.0",
+      "T6 (learning_work) fallback returns absorption=none",
+      "T6 fallback sets fallback_used=True",
+      "T6 fallback echoes learning_work in the tick_type advisory field",
+      "T6 fallback narrative_summary is non-empty and identifies the tick type",
+      "T6 fallback confidence equals 1.0",
+      "T7 (player_influence) fallback returns absorption=none",
+      "T7 fallback sets fallback_used=True",
+      "T7 fallback echoes player_influence in the tick_type advisory field",
+      "T7 fallback narrative_summary is non-empty and identifies the tick type",
+      "T7 fallback confidence equals 1.0",
+      "T8 (reflection) fallback returns absorption=none",
+      "T8 fallback sets fallback_used=True",
+      "T8 fallback echoes reflection in the tick_type advisory field",
+      "T8 fallback narrative_summary is non-empty and identifies the tick type",
+      "T8 fallback confidence equals 1.0",
+      "Calling from_deterministic_fallback with any of the five deferred tick types produces a valid AppraisalOutput that passes all Pydantic validators without raising ValidationError",
+      "The deferred fallback outputs for all five tick types are distinguishable by their narrative_summary strings (no two deferred ticks share the same narrative_summary)"
+    ],
+    "non_goals": [
+      "Do not wire the fallback outputs into any engine settlement or tick bridge path.",
+      "Do not activate live appraisal authority for any deferred tick type.",
+      "Do not expand the AppraisalSignal v1 schema.",
+      "Do not add prompt engineering, LLM calls, or any non-deterministic logic.",
+      "Do not modify existing test files.",
+      "Do not modify decisions.md, vision.md, road_map.md, or any orchestrator file.",
+      "Do not change the AppraisalInput or AppraisalOutput field definitions.",
+      "Do not add growth contributions or aftershock to any deferred tick fallback.",
+      "Do not add relational blocks to T3/T5/T6/T8 fallback outputs.",
+      "Do not produce a frontend change of any kind."
+    ],
+    "constraints": [
+      "All five deferred tick types must each have an individually named, documented fallback mapping — no shared catch-all else branch may remain for T3/T5/T6/T7/T8.",
+      "Every fallback output for a deferred tick must set absorption=AbsorptionLevel.none, growth=[], aftershock_days=0, and fallback_used=True.",
+      "Every fallback output must echo the correct tick_type in the advisory tick_type field.",
+      "Every fallback output must have confidence=1.0 (fully deterministic).",
+      "narrative_summary for each tick type must be a non-empty string that names the tick type, so log consumers can distinguish outputs without parsing enum values.",
+      "No bridge expansion for deferred ticks — these mappings are schema accommodation only; no new AppraisalSignal wiring, no engine settlement path changes.",
+      "AppraisalSignal v1 must not be modified.",
+      "The AppraisalInput model must not be modified.",
+      "The AppraisalOutput model fields and validators must not be modified (the from_deterministic_fallback body may be updated to delegate; no field changes).",
+      "HARD GATE — SOT MUTATION FORBIDDEN: decisions.md, vision.md, road_map.md, and any file under the orchestrator directory must not be read for editing and must not be written, appended, or otherwise mutated. Any modification to these files is an immediate hard gate failure regardless of content.",
+      "No LLM runtime integration — all logic is purely deterministic Python.",
+      "Do not modify any existing test file; only add new test files.",
+      "Do not add new enums or new domain fields beyond what is needed for the fallback module."
+    ],
+    "allowed_files": [
+      "back/app/engines/deterministic_fallback.py",
+      "back/app/domain/deterministic_fallback.py",
+      "back/app/domain/appraisal_output.py",
+      "back/tests/test_p29_t3_deferred_fallback.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "docs/decisions.md",
+      "docs/decisions_summary.md",
+      "back/app/domain/appraisal_input.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py",
+      "back/app/engines/day_simulator.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created deterministic_fallback.py with five individually named per-tick fallback functions for T3/T5/T6/T7/T8, updated appraisal_output.py to delegate the deferred-tick else-branch to the new dispatch table, and added 33 tests in test_p29_t3_deferred_fallback.py covering all required contract assertions.",
+    "files_changed": [
+      "back/app/engines/deterministic_fallback.py",
+      "back/app/domain/appraisal_output.py",
+      "back/tests/test_p29_t3_deferred_fallback.py"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_p29_t3_deferred_fallback.py -v",
+      "python -m pytest tests/ -q"
+    ],
+    "test_results": "573 passed in 0.29s (all existing tests plus 33 new tests, no regressions)",
+    "diff_summary": "New module back/app/engines/deterministic_fallback.py: five named functions (fallback_t3_self_initiated_action, fallback_t5_emotional_shift, fallback_t6_learning_work, fallback_t7_player_influence, fallback_t8_reflection) plus DEFERRED_FALLBACK_DISPATCH dict. appraisal_output.py: replaced anonymous else-block for deferred ticks with a two-line delegation to DEFERRED_FALLBACK_DISPATCH. New test file with 33 tests covering all 5 tick types across all required assertion categories.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "sot_mutation (hard gate): no SOT or forbidden files modified",
+      "module_exists: back/app/engines/deterministic_fallback.py with 5 named functions and dispatch table",
+      "delegation_updated: appraisal_output.py else-branch delegates to DEFERRED_FALLBACK_DISPATCH",
+      "test_file_exists: 29 test function definitions (33 parametrized runs), >= 10 required",
+      "all_tests_pass: 573 passed, 0 failed",
+      "per_tick_coverage: all five tick types covered for absorption=none, fallback_used=True, tick_type echo, narrative_summary identifier, confidence=1.0",
+      "no_field_mutations: AppraisalInput and AppraisalOutput field definitions unchanged",
+      "no_bridge_expansion: no AppraisalSignal wiring or engine settlement changes"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "The implementation files are present in the working tree but not yet committed. The orchestrator should commit them as part of the normal round-close process."
+    ],
+    "rationale": "All acceptance criteria and the SOT mutation hard gate are satisfied. The new deterministic_fallback.py module contains five individually documented fallback functions and a dispatch table. The from_deterministic_fallback else-branch properly delegates to the dispatch table, eliminating the anonymous catch-all. The test file provides comprehensive coverage (33 parametrized tests across 29 function definitions) for all five deferred tick types against all required assertion categories. No forbidden files were touched, no field definitions were changed, and no bridge wiring was added. 573 tests pass with no regressions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/domain/appraisal_output.py"
+    ],
+    "files_added": [
+      "back/app/engines/deterministic_fallback.py",
+      "back/tests/test_p29_t3_deferred_fallback.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/domain/appraisal_output.py | 19 +++++--------------\n 1 file changed, 5 insertions(+), 14 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are present and verified. Here is the round-0032 (attempt 2) outcome:\n\n---\n\n## Round-0032 Summary — **PASSED**\n\n**Task:** P29-T3 — Tick-type-aware deterministic fallback mappings for T3/T5/T6/T7/T8\n\n### What was done\n\n1. **`back/app/engines/deterministic_fallback.py`** (new) — Five individually named fallback functions (`fallback_t3_self_initiated_action`, `fallback_t5_emotional_shift`, `fallback_t6_learning_work`, `fallback_t7_player_influence`, `fallback_t8_reflection`) plus a `DEFERRED_FALLBACK_DISPATCH` dict.\n\n2. **`back/app/domain/appraisal_output.py`** (modified) — The anonymous `else` block in `from_deterministic_fallback` was replaced with a two-line dispatch to the new named functions. No field definitions were touched.\n\n3. **`back/tests/test_p29_t3_deferred_fallback.py`** (new) — 29 test functions (33 parametrized runs) covering all five deferred tick types with assertions for `absorption=none`, `fallback_used=True`, `tick_type` echo, non-empty `narrative_summary`, and `confidence=1.0`.\n\n### Results\n- **Hard gate (sot_mutation):** PASS — `decisions.md`, `vision.md`, `road_map.md` and all SOT files untouched\n- **All acceptance criteria:** PASS\n- **Test suite:** 573 tests passed, 0 failures, exit code 0\n- **Blocking issues:** None"
+}

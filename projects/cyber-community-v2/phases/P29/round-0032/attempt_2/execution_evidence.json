@@ -1,0 +1,24 @@
+{
+  "summary": "Created deterministic_fallback.py with five individually named per-tick fallback functions for T3/T5/T6/T7/T8, updated appraisal_output.py to delegate the deferred-tick else-branch to the new dispatch table, and added 33 tests in test_p29_t3_deferred_fallback.py covering all required contract assertions.",
+  "files_changed": [
+    "back/app/engines/deterministic_fallback.py",
+    "back/app/domain/appraisal_output.py",
+    "back/tests/test_p29_t3_deferred_fallback.py"
+  ],
+  "commands_run": [
+    "python -m pytest tests/test_p29_t3_deferred_fallback.py -v",
+    "python -m pytest tests/ -q"
+  ],
+  "test_results": "573 passed in 0.29s (all existing tests plus 33 new tests, no regressions)",
+  "diff_summary": "New module back/app/engines/deterministic_fallback.py: five named functions (fallback_t3_self_initiated_action, fallback_t5_emotional_shift, fallback_t6_learning_work, fallback_t7_player_influence, fallback_t8_reflection) plus DEFERRED_FALLBACK_DISPATCH dict. appraisal_output.py: replaced anonymous else-block for deferred ticks with a two-line delegation to DEFERRED_FALLBACK_DISPATCH. New test file with 33 tests covering all 5 tick types across all required assertion categories.",
+  "unresolved_issues": [],
+  "status": "success",
+  "files_created": [
+    "back/app/engines/deterministic_fallback.py",
+    "back/tests/test_p29_t3_deferred_fallback.py"
+  ],
+  "files_modified": [
+    "back/app/domain/appraisal_output.py"
+  ],
+  "notes": "The dispatch table approach eliminates the anonymous else-block for T3/T5/T6/T7/T8 while keeping each tick's fallback independently named and documented. No AppraisalInput, AppraisalOutput field definitions, AppraisalSignal, or any forbidden files were modified."
+}
