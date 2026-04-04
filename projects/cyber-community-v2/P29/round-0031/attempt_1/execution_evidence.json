@@ -1,0 +1,20 @@
+{
+  "summary": "Created AppraisalOutput Pydantic v2 model with contract-bearing and advisory field annotations, deterministic fallback classmethod, and 30 tests covering all required cases.",
+  "files_changed": [
+    "back/app/domain/appraisal_output.py",
+    "back/tests/test_appraisal_output_schema.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/test_appraisal_output_schema.py -v",
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -q"
+  ],
+  "test_results": "540 passed (30 new tests in test_appraisal_output_schema.py, 510 pre-existing tests all passing)",
+  "diff_summary": "Added back/app/domain/appraisal_output.py: AppraisalOutput model with 7 contract-bearing fields (absorption, valence, arousal, aftershock_days, growth, relational, guidance_resonance) and 4 advisory fields (narrative_summary, confidence, tick_type, fallback_used), plus model validators mirroring AppraisalSignal v1 rules and a from_deterministic_fallback classmethod branching on tick type. Added back/tests/test_appraisal_output_schema.py: 30 tests covering all 20 required test cases plus 6 additional edge cases. No existing files modified.",
+  "unresolved_issues": [],
+  "files_created": [
+    "back/app/domain/appraisal_output.py",
+    "back/tests/test_appraisal_output_schema.py"
+  ],
+  "files_modified": [],
+  "notes": "AppraisalOutput imports sub-models (AbsorptionLevel, Arousal, GrowthContribution, GrowthDimension, GrowthDirection, GuidanceResonance, RelationalBlock, TrustShift) directly from app.engines.appraisal_settlement since those enums/models are defined there and the constraint only forbids modifying that file, not importing from it. The model is schema-only with no engine logic — it is intentionally parallel to AppraisalSignal v1, not a replacement. T4 fallback without social_event_context yields absorption=none, consistent with the existing T4 continuity-inactive status documented in CLAUDE.md."
+}

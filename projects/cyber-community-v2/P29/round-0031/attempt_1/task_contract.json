@@ -1,0 +1,74 @@
+{
+  "phase_id": "P29",
+  "task_key": "P29-T2",
+  "title": "Formalize AppraisalOutput contract with advisory vs contract-bearing field annotations",
+  "objective": "Introduce a new Pydantic v2 model called AppraisalOutput in back/app/domain/ that captures everything the appraisal layer returns after processing one tick. Each field must be annotated as either contract-bearing (the settlement engine reads it and may not ignore it) or advisory (provides interpretive context but the engine is not obligated to act on it). The model must also specify deterministic fallback behavior: when no external appraisal source is available, every field has a well-defined default or derivation rule so the engine can always produce a valid AppraisalOutput without external input.",
+  "exact_scope": "Create one new file: back/app/domain/appraisal_output.py containing the AppraisalOutput Pydantic v2 model and its sub-models. Create one new test file: back/tests/test_appraisal_output_schema.py that validates the schema, annotation semantics, and fallback construction. No existing files may be modified. AppraisalSignal v1 (in appraisal_settlement.py) must remain untouched — AppraisalOutput is a separate, forward-looking seam contract that sits above it. The two models are intentionally independent at this phase.",
+  "constraints": [
+    "AppraisalSignal v1 is frozen — do not modify any field on the existing AppraisalSignal class in appraisal_settlement.py",
+    "AppraisalOutput must be a pure Pydantic v2 BaseModel in back/app/domain/ — no engine logic, no imports from engines/",
+    "Every field on AppraisalOutput must carry a field-level annotation string (via Field description or a class-level docstring table) that declares it as either 'contract-bearing' or 'advisory'",
+    "Contract-bearing fields are those the settlement engine uses to write numeric state: absorption, valence, arousal, aftershock_days, growth contributions, relational block, guidance_resonance",
+    "Advisory fields are those that provide interpretive or diagnostic context but do not gate any numeric settlement: narrative_summary, confidence, tick_type echo, fallback_used flag",
+    "Deterministic fallback must be expressible as a static factory method or class method on AppraisalOutput that accepts an AppraisalInput and returns a valid AppraisalOutput with fallback_used=True — no randomness, no I/O",
+    "The fallback method must produce outputs consistent with the calibrated signal ranges already locked in test_p28_t6_signal_calibration.py for T4 Pattern A and Pattern B — it must not contradict those locked ranges",
+    "Do not add any live call path wiring to tick_bridge.py, day_simulator.py, or any engine module — schema only at this phase",
+    "Deferred ticks T3, T5, T6, T8 may appear in the schema as accommodated types but must not gain live authority or bridge wiring",
+    "All new code must be Python 3.11+ compatible, use Pydantic v2 syntax"
+  ],
+  "acceptance_criteria": [
+    "back/app/domain/appraisal_output.py exists and exports AppraisalOutput as a Pydantic v2 BaseModel",
+    "AppraisalOutput contains all contract-bearing fields: absorption, valence, arousal, aftershock_days, growth (list of GrowthContribution), relational (Optional RelationalBlock), guidance_resonance — mirroring the field surface of AppraisalSignal v1 so it can be translated to it without data loss",
+    "AppraisalOutput contains at least these advisory fields: narrative_summary (Optional str), confidence (Optional float 0.0-1.0), tick_type (EventCategory echo), fallback_used (bool, default False)",
+    "Every field has a Field(description=...) value that includes the word 'contract-bearing' or 'advisory' making the classification machine-readable",
+    "AppraisalOutput exposes a classmethod named from_deterministic_fallback(input: AppraisalInput) -> AppraisalOutput that produces a valid fallback with fallback_used=True",
+    "The fallback method branches on tick_type: T1 and T2 produce a non-zero absorption output; T4 with a social_event_context present produces a non-zero absorption output; all deferred ticks (T3, T5, T6, T7, T8) produce absorption=none as their fallback",
+    "Model validators on AppraisalOutput enforce the same internal consistency rules already present on AppraisalSignal v1: absorption=none forbids non-empty growth list; absorption=none forbids aftershock_days > 0; duplicate growth dimensions are rejected; aftershock_days is bounded 0-3; closeness_delta is bounded -2 to +2; risk_delta is bounded -10 to +10",
+    "The new test file contains at least 20 passing tests covering: schema construction for each of the 8 tick types, field annotation presence check, fallback_used flag default, from_deterministic_fallback produces valid output for T1/T2/T4 active paths, from_deterministic_fallback produces absorption=none for deferred ticks, all model validator rejection cases",
+    "All existing tests (pytest back/tests/) continue to pass without modification"
+  ],
+  "required_tests": [
+    "Constructing an AppraisalOutput with all contract-bearing fields populated and fallback_used=False must succeed for a T1 (information_exposure) tick",
+    "Constructing an AppraisalOutput with all contract-bearing fields populated and fallback_used=False must succeed for a T2 (social_interaction) tick",
+    "Constructing an AppraisalOutput with all contract-bearing fields populated and fallback_used=False must succeed for a T4 (relationship_shift) tick",
+    "Constructing an AppraisalOutput for each of the 5 deferred tick types (T3, T5, T6, T7, T8) with absorption=none, empty growth, aftershock_days=0 must succeed",
+    "Every field on AppraisalOutput must have a Field description attribute that contains the text 'contract-bearing' or 'advisory' — verified programmatically via model_fields inspection",
+    "The fallback_used field must default to False when not explicitly provided",
+    "Calling from_deterministic_fallback with a T1 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption != 'none'",
+    "Calling from_deterministic_fallback with a T2 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption != 'none'",
+    "Calling from_deterministic_fallback with a T4 AppraisalInput that includes a social_event_context must return an AppraisalOutput with fallback_used=True and absorption != 'none'",
+    "Calling from_deterministic_fallback with a T3 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption == 'none'",
+    "Calling from_deterministic_fallback with a T5 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption == 'none'",
+    "Calling from_deterministic_fallback with a T6 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption == 'none'",
+    "Calling from_deterministic_fallback with a T8 AppraisalInput must return an AppraisalOutput with fallback_used=True and absorption == 'none'",
+    "Setting absorption=none with a non-empty growth list must raise a ValidationError",
+    "Setting absorption=none with aftershock_days > 0 must raise a ValidationError",
+    "Setting a growth list with two entries for the same dimension must raise a ValidationError",
+    "Setting aftershock_days=4 must raise a ValidationError",
+    "Setting closeness_delta=3 on a RelationalBlock must raise a ValidationError",
+    "Setting risk_delta=11 on a RelationalBlock must raise a ValidationError",
+    "The from_deterministic_fallback output for T1 must be convertible to an AppraisalSignal v1 instance without error, confirming the field surface is compatible"
+  ],
+  "non_goals": [
+    "Do not wire AppraisalOutput into any live call path in tick_bridge.py, day_simulator.py, or any engine module",
+    "Do not modify or replace AppraisalSignal v1 — AppraisalOutput is a parallel schema at the seam layer, not a replacement",
+    "Do not grant live bridge authority to T3, T5, T6, T7, or T8 ticks",
+    "Do not add LLM prompt construction, LLM call logic, or any non-deterministic path",
+    "Do not produce a narrative generation system — narrative_summary is an optional advisory string, not a templated engine output",
+    "Do not modify existing test files"
+  ],
+  "allowed_files": [
+    "back/app/domain/appraisal_output.py",
+    "back/tests/test_appraisal_output_schema.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/day_simulator.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/domain/models.py",
+    "back/app/domain/enums.py"
+  ]
+}

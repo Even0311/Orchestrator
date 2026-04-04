@@ -677,3 +677,10 @@ T4 当前仍然在真实 simulation 中为 inactive，原因已从"结构上无 
 **Outcome:** Introduce a new Pydantic model called AppraisalInput in back/app/domain/ that represents the structured context slice each of the 8 ticks passes to the appraisal layer. The schema must accommodate all
 **Hard gates:** all passed
 **Notes:** Created AppraisalInput Pydantic v2 schema with 5 sub-models (AgentContextSlice, WorldContextSlice, RelationalContextSlice, SocialEventContextSlice, PlayerContextSlice) and model_validators enforcing t
+
+## 2026-04-04 13:37 UTC — round-0031: P29-T2
+**Phase:** P29
+**Task:** Formalize AppraisalOutput contract with advisory vs contract-bearing field annotations
+**Outcome:** Introduce a new Pydantic v2 model called AppraisalOutput in back/app/domain/ that captures everything the appraisal layer returns after processing one tick. Each field must be annotated as either cont
+**Hard gates:** all passed
+**Notes:** Created AppraisalOutput Pydantic v2 model with contract-bearing and advisory field annotations, deterministic fallback classmethod, and 30 tests covering all required cases.
