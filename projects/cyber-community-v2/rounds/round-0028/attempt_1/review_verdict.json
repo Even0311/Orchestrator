@@ -1,0 +1,64 @@
+{
+  "task_key": "P28-T6",
+  "verdict": "PASS",
+  "criteria_results": [
+    {
+      "criterion": "Each of the three negative T4 patterns (P0, Pattern A, Pattern B) has an explicit, independently stated base signal field table in docs/t4_negative_behavior_contract.md — no pattern's specification may say 'identical to' another",
+      "result": "pass",
+      "notes": "P0 has its table in Section 2. Pattern A has a full 9-row table in Section 8.1.2. Pattern B has a full 9-row table in Section 8.2.2 — the prior 'Identical to Pattern A' shorthand was replaced with a complete standalone table. Section 8.2.2 opens with a one-sentence note that the shape is uniform, but the explicit table is present and independently states all field values. The criterion is met."
+    },
+    {
+      "criterion": "The behavior contract document states a written calibration rationale for why each pattern's arousal, trust_shift, and closeness_delta values were chosen as-is (uniform or differentiated)",
+      "result": "pass",
+      "notes": "A dedicated 'Calibration Rationale (P28-T6)' subsection appears before Section 8.1, with a table listing each pattern and its arousal value with a per-row rationale, followed by three numbered points justifying the uniform arousal=low decision. The rationale is substantive and addresses the double-encoding argument, Phase 23 gate behavior, and settlement safety constraints."
+    },
+    {
+      "criterion": "If Pattern A or Pattern B signal shapes are changed from the current uniform values, the updated values must remain within: absorption=surface, valence=negative, arousal in {low, medium}, trust_shift in {mild_decrease}, closeness_delta in {-1, -2} (base only), risk_delta=0, aftershock_days=0, guidance_resonance=neutral",
+      "result": "pass",
+      "notes": "The calibration decision was to retain uniform arousal=low for all three patterns. Pattern A and Pattern B base signals: absorption=surface, valence=negative, arousal=low, trust_shift=mild_decrease, closeness_delta=-1, risk_delta=0, aftershock_days=0, guidance_resonance=neutral. All values are within the required envelope."
+    },
+    {
+      "criterion": "The tick_bridge.py AppraisalSignal return blocks for Pattern A and Pattern B reflect the calibrated values from the contract document — the code and the doc are in agreement",
+      "result": "pass",
+      "notes": "Pattern A block (lines 1065-1078): absorption=surface, valence=negative, arousal=low, trust_shift=mild_decrease, closeness_delta=-1, risk_delta=0, aftershock_days=0, guidance_resonance=neutral. Pattern B block (lines 1089-1102): identical values. Both match the contract doc tables exactly."
+    },
+    {
+      "criterion": "All 454 existing tests continue to pass after any changes",
+      "result": "pass",
+      "notes": "484 tests collected (suite grew since contract was written), 484 passed, 0 failed. All previously existing tests continue to pass."
+    },
+    {
+      "criterion": "New tests exist that verify the exact base signal field values for Pattern A independently (not inferred from P0 or Pattern B)",
+      "result": "pass",
+      "notes": "TestPatternABaseSignalCalibration has 8 independent tests covering all 8 required fields (absorption, valence, arousal, trust_shift, closeness_delta, risk_delta, aftershock_days, guidance_resonance). Each test builds the signal directly from a contested endorsement event and asserts one field independently."
+    },
+    {
+      "criterion": "New tests exist that verify the exact base signal field values for Pattern B independently",
+      "result": "pass",
+      "notes": "TestPatternBBaseSignalCalibration has 9 tests covering all 8 required fields plus a uniform-calibration cross-check. Each test builds the signal from a high-intensity unilateral disclosure event. Tests are independent of P0/Pattern A."
+    },
+    {
+      "criterion": "New tests exist that verify post-_adjust_t4() hard caps still hold for Pattern A and Pattern B when a carried negative relational residual is present",
+      "result": "pass",
+      "notes": "TestPatternAPostAdjustHardCaps (3 tests) and TestPatternBPostAdjustHardCaps (4 tests) each call _adjust_t4() directly with a constructed negative relational residual and assert trust_shift <= mild_decrease, closeness_delta >= -2, and absorption within the valid set."
+    },
+    {
+      "criterion": "New tests exist that confirm Pattern A does not activate when reciprocity is not contested (mutual or unilateral endorsements fall through to default positive path)",
+      "result": "pass",
+      "notes": "TestPatternANonActivation covers both cases: endorsement+mutual (Test 5) and endorsement+unilateral (Test 6). Each test calls both the detection function directly (asserting None) and builds the full T4 signal (asserting valence=positive)."
+    },
+    {
+      "criterion": "New tests exist that confirm Pattern B does not activate when intensity is low or moderate, or when reciprocity is not unilateral",
+      "result": "pass",
+      "notes": "TestPatternBNonActivation covers all 4 non-qualifying combinations: disclosure+low+unilateral (Test 7), disclosure+moderate+unilateral (Test 8), disclosure+high+mutual (Test 9), disclosure+high+contested (Test 10). Each test calls the detection function and full signal builder."
+    }
+  ],
+  "test_results": {
+    "total": 484,
+    "passed": 484,
+    "failed": 0
+  },
+  "issues": [],
+  "scope_violations": [],
+  "summary": "All 10 acceptance criteria are met. The behavior contract doc now has explicit, standalone field tables for all three negative T4 patterns (P0 in Section 2, Pattern A in Section 8.1.2, Pattern B in Section 8.2.2). A substantive calibration rationale justifies the uniform arousal=low decision. The tick_bridge.py Pattern A and Pattern B signal blocks match the contract doc values exactly. The new test file (back/tests/test_p28_t6_signal_calibration.py) contains 30 tests covering all 10 required test scenarios. All 484 tests pass. Only allowed files were modified."
+}

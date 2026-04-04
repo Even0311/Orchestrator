@@ -1,0 +1,8 @@
+{
+  "task_key": "P28-T6",
+  "files_modified": [],
+  "tests_run": "python3 -m pytest tests/ -q (from back/)",
+  "tests_passed": true,
+  "test_count": 484,
+  "notes": "All deliverables were already present in the working tree from prior partial work. The 30 tests in test_p28_t6_signal_calibration.py all pass. tick_bridge.py contains the arousal=low comment rationale block for Pattern B (lines 1080-1087). docs/t4_negative_behavior_contract.md Section 8 contains the calibration rationale table covering Pattern A and Pattern B uniform arousal=low decision, post-adjustment bounds, and hard magnitude caps. Full suite of 484 tests passes with no regressions. No files required modification."
+}

@@ -1,0 +1,30 @@
+{
+  "task_key": "P28-T6",
+  "status": "completed",
+  "files_modified": [
+    "back/app/engines/tick_bridge.py",
+    "docs/t4_negative_behavior_contract.md"
+  ],
+  "files_created": [
+    "back/tests/test_p28_t6_signal_calibration.py"
+  ],
+  "calibration_decision": "UNIFORM signal shape across P0, Pattern A, and Pattern B. All three negative patterns use arousal=low on the base signal. Rationale: (1) Pattern B's elevated trigger intensity (intensity=high) is already encoded at the event detection layer — propagating it into signal arousal would double-encode information that belongs to the event spec. (2) Uniform arousal=low preserves identical Phase 23 aftershock gate behavior across all negative paths (gate depends on valence, trust_shift, absorption — not arousal). (3) An existing contract test (test_pattern_b_signal_matches_p0_output_shape in test_p28_t2_t4_pattern_expansion.py) already encodes the uniform-shape invariant, confirming this is the correct calibrated state. The tick_bridge.py Pattern B block comment was updated to document this rationale inline.",
+  "test_results": {
+    "total": 484,
+    "passed": 484,
+    "failed": 0
+  },
+  "notes": "30 new tests added in test_p28_t6_signal_calibration.py covering: (1) Pattern A exact calibrated base signal fields (8 tests), (2) Pattern B exact calibrated base signal fields including arousal=low and cross-check confirming uniform shape with Pattern A (9 tests), (3) Pattern A post-_adjust_t4 hard caps (3 tests), (4) Pattern B post-_adjust_t4 hard caps (4 tests), (5) Pattern A non-activation boundary conditions for mutual and unilateral endorsement (2 tests), (6) Pattern B non-activation boundary conditions for all 4 non-qualifying combinations (4 tests). Section 8 of docs/t4_negative_behavior_contract.md was updated to: replace the 'Identical to Pattern A' shorthand in Section 8.2.2 with an explicit field table, add a P28-T6 calibration rationale preamble with a 3-point justification for the uniform shape decision, and update Section 8.4 to accurately reflect that all patterns share uniform base signal shape. tick_bridge.py Pattern B block comment updated to document the calibration rationale inline.",
+  "summary": "Calibrated T4 Pattern A and Pattern B signal shapes as uniform (arousal=low for all three negative patterns), documented the rationale in the behavior contract and code, and added 30 new tests confirming exact field values, post-adjustment hard caps, and boundary non-activation conditions.",
+  "files_changed": [
+    "back/app/engines/tick_bridge.py",
+    "docs/t4_negative_behavior_contract.md",
+    "back/tests/test_p28_t6_signal_calibration.py"
+  ],
+  "commands_run": [
+    "cd back && python3 -m pytest tests/test_p28_t6_signal_calibration.py -v",
+    "cd back && python3 -m pytest tests/ -v"
+  ],
+  "diff_summary": "tick_bridge.py: Pattern B signal block comment expanded to document uniform arousal=low calibration rationale (no arousal value change). docs/t4_negative_behavior_contract.md Section 8: preamble updated to version 2.1 with explicit calibration rationale table; Section 8.2.2 'Identical to Pattern A' shorthand replaced with explicit field table (arousal=low explicitly stated); Section 8.2.3 and 8.2.4 added as standalone tables; Section 8.4 updated to reflect uniform shape. back/tests/test_p28_t6_signal_calibration.py: new file with 30 tests across 6 test classes.",
+  "unresolved_issues": []
+}

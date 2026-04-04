@@ -68,6 +68,12 @@ def run_project(project_row, run_once: bool = False) -> None:
             "Run 'orch new' or manually create them."
         )
 
+    # Ensure target repo has a clean baseline before running rounds.
+    # Subagent files (.claude/agents/*.md) may have been just created by
+    # _setup_subagents() and not yet committed — commit them now so
+    # collect_git_evidence() only sees Claude's actual changes.
+    _ensure_clean_baseline(codebase_path)
+
     phase_id = _ensure_active_phase(project_id, sot_dir)
     round_number = _next_round_number(project_id)
 
@@ -356,6 +362,15 @@ def _run_round(
             result.final_passed = True
             break
 
+        # Clean target working tree between attempts so the next attempt
+        # starts from a committed baseline (no leftover changes from this attempt).
+        if not attempt.passed and attempt_num < max_attempts:
+            try:
+                clean_working_tree(codebase_path)
+                click.echo(f"  [{_ts()}] Cleaned target working tree for next attempt")
+            except Exception as e:
+                click.echo(f"  ⚠ Working tree cleanup between attempts failed: {e}", err=True)
+
         # Build prior_failure for next attempt
         prior_failure = _build_failure_context(attempt, gate_results)
         if attempt_num == max_attempts:
@@ -367,6 +382,22 @@ def _run_round(
 
 
 # ── Helper functions ─────────────────────────────────────────────────────────
+
+def _ensure_clean_baseline(codebase_path: Path) -> None:
+    """Commit any uncommitted files in the target repo to establish a clean baseline.
+
+    This ensures collect_git_evidence() only sees changes Claude actually made,
+    not pre-existing untracked files (e.g. .claude/agents/*.md just created by setup).
+    """
+    from orch.utils.git_ops import is_clean
+    if is_clean(codebase_path):
+        return
+    try:
+        commit_all(codebase_path, "[orch] establish clean baseline before round")
+        click.echo(f"  [{_ts()}] Committed pending changes to establish clean baseline")
+    except Exception as e:
+        click.echo(f"  ⚠ Baseline commit failed: {e}", err=True)
+
 
 def _build_failure_context(attempt: AttemptRecord, gate_results: HardGateResults) -> str:
     lines = [f"Previous attempt {attempt.attempt_number} failed."]
