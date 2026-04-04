@@ -1,0 +1,24 @@
+{
+  "task_key": "P29-T4",
+  "summary": "Refactored T1/T2/T4 bridge builders to return AppraisalOutput via an AppraisalInput intermediate, added appraisal_output_to_signal conversion helper, wired simulate_day_bridged through the new boundary, and created 37 new tests verifying the boundary contract.",
+  "files_changed": [
+    "back/app/engines/tick_bridge.py"
+  ],
+  "files_created": [
+    "back/tests/test_p29_t4_bridge_boundary.py"
+  ],
+  "commands_run": [
+    "pytest tests/ -q"
+  ],
+  "test_results": "610 passed (573 pre-existing + 37 new), 0 failed",
+  "diff_summary": "tick_bridge.py: added imports for AppraisalInput, AppraisalOutput, EventCategory, RelationshipType; refactored build_signal_from_t1_world_tick to construct AppraisalInput intermediate and return AppraisalOutput; refactored build_signal_from_t2_influencer_tick similarly with populated relational_context; refactored build_signal_from_t4_relationship_tick to return Optional[AppraisalOutput] with early None return before AppraisalInput construction when no relationship found; added appraisal_output_to_signal() conversion helper; updated simulate_day_bridged to wire builder -> AppraisalOutput -> appraisal_output_to_signal -> AppraisalSignal -> _apply_bridge_signal for T1, T2, and T4. test_p29_t4_bridge_boundary.py: 37 new tests covering return type assertions, boundary metadata (fallback_used, confidence), tick_type echo, conversion fidelity, and signal value parity for all T1/T2/T4 paths.",
+  "notes": [
+    "All three builders now construct AppraisalInput as intermediate boundary object before producing AppraisalOutput.",
+    "T2 builder uses a synthetic RelationalContextSlice placeholder when no influencer relationship exists (required by AppraisalInput validation for social_interaction tick type).",
+    "T4 builder returns None early before constructing AppraisalInput when no relationship is found, per acceptance criteria.",
+    "The _adjust_t1, _adjust_t2, _adjust_t4 residual adjustment functions continue to operate on AppraisalSignal as before — no changes to those functions.",
+    "Advisory fields (narrative_summary, confidence, tick_type, fallback_used) on AppraisalOutput are not carried into the converted AppraisalSignal, as intended.",
+    "SocialEventIntensity.medium does not exist — valid values are low/moderate/high; test corrected to use moderate."
+  ],
+  "unresolved_issues": []
+}

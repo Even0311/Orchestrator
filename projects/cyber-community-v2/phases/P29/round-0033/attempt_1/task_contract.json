@@ -1,0 +1,74 @@
+{
+  "phase_id": "P29",
+  "task_key": "P29-T4",
+  "title": "Wire T1/T2/T4 bridge builders to emit AppraisalInput and return AppraisalOutput",
+  "objective": "Refactor the three active bridge builders (build_signal_from_t1_world_tick, build_signal_from_t2_influencer_tick, build_signal_from_t4_relationship_tick) so that each one constructs an AppraisalInput, passes it through AppraisalOutput.from_deterministic_fallback (or a per-tick translation layer), and returns an AppraisalOutput instead of an AppraisalSignal. Add a thin adapter that converts an AppraisalOutput to the existing AppraisalSignal so that simulate_day_bridged can continue to call _apply_bridge_signal unchanged. All existing 441 tests must continue to pass.",
+  "exact_scope": "The refactor is limited to tick_bridge.py. The three signal-builder functions listed above must produce an AppraisalOutput as their primary return value. A new conversion helper (appraisal_output_to_signal) must translate AppraisalOutput to AppraisalSignal for the existing settlement path. The simulate_day_bridged orchestrator must wire each builder call through the new boundary: builder -> AppraisalOutput -> appraisal_output_to_signal -> AppraisalSignal -> _apply_bridge_signal. No changes to appraisal_settlement.py, day_simulator.py, appraisal_output.py, appraisal_input.py, or any test file. No new settlement logic. No changes to AppraisalSignal field definitions.",
+  "constraints": [
+    "AppraisalSignal v1 fields must not be added, removed, or renamed.",
+    "T4 old deterministic path is frozen: do not activate or introduce any new negative T4 branch beyond what already exists in build_signal_from_t4_relationship_tick.",
+    "Stage 1 deferred ticks (T3, T5, T6, T7, T8) must not receive any bridge wiring or settlement path changes.",
+    "Settlement belongs to the engine layer: AppraisalOutput is a boundary contract only; the conversion helper must translate faithfully without adding extra logic.",
+    "The fallback_used flag on AppraisalOutput must be set to True for all three builders because all current outputs are fully deterministic.",
+    "The confidence field must be set to 1.0 for all three builders.",
+    "The tick_type advisory field on AppraisalOutput must echo the EventCategory of the tick that produced the output.",
+    "The relational field on the AppraisalOutput returned by the T4 builder must be None when the builder would return None (no relationship found); the outer caller must handle the None-output case and skip settlement as before.",
+    "The relational_context slice in the AppraisalInput constructed for T2 and T4 must be populated from the actual influencer relationship data at call time.",
+    "No import of AppraisalInput or AppraisalOutput is allowed in test files that do not already import them (do not modify existing test files)."
+  ],
+  "acceptance_criteria": [
+    "build_signal_from_t1_world_tick returns an AppraisalOutput with fallback_used=True, confidence=1.0, tick_type=EventCategory.information_exposure, and signal fields matching the existing T1 mapping rules.",
+    "build_signal_from_t2_influencer_tick returns an AppraisalOutput with fallback_used=True, confidence=1.0, tick_type=EventCategory.social_interaction, and signal fields matching the existing T2 mapping rules.",
+    "build_signal_from_t4_relationship_tick returns an AppraisalOutput (or None) with fallback_used=True, confidence=1.0, tick_type=EventCategory.relationship_shift, and signal fields matching the existing T4 mapping rules for all three activation paths (default reinforcement, qualifying event, Pattern A, Pattern B).",
+    "A conversion helper appraisal_output_to_signal(output: AppraisalOutput) -> AppraisalSignal exists in tick_bridge.py and produces a structurally identical AppraisalSignal to the one the old builders produced for the same inputs.",
+    "simulate_day_bridged calls each builder, receives an AppraisalOutput, calls appraisal_output_to_signal, and passes the result to _apply_bridge_signal exactly as before.",
+    "All 441 existing tests pass without modification.",
+    "The three builder functions each construct an AppraisalInput as an intermediate object before producing their AppraisalOutput, making the boundary visible in the call graph.",
+    "The AppraisalInput constructed for T1 has tick_type=information_exposure, no relational_context, and no player_context.",
+    "The AppraisalInput constructed for T2 has tick_type=social_interaction and a populated relational_context.",
+    "The AppraisalInput constructed for T4 has tick_type=relationship_shift and a populated relational_context when a relationship is found; the function returns None early (before constructing AppraisalInput) when no relationship exists."
+  ],
+  "required_tests": [
+    "A new test module (test_p29_t4_bridge_boundary.py) must verify that build_signal_from_t1_world_tick returns an AppraisalOutput instance, not an AppraisalSignal.",
+    "A new test must verify that build_signal_from_t2_influencer_tick returns an AppraisalOutput instance.",
+    "A new test must verify that build_signal_from_t4_relationship_tick returns an AppraisalOutput when a relationship is found, and None when none is found.",
+    "A new test must verify that appraisal_output_to_signal produces a valid AppraisalSignal with fields equal to the corresponding fields on the source AppraisalOutput.",
+    "A new test must verify that the AppraisalOutput returned by each of the three builders carries fallback_used=True and confidence=1.0.",
+    "A new test must verify that the tick_type field on each builder's output echoes the expected EventCategory.",
+    "A new test must verify that the T1 builder output's absorption, valence, arousal, growth, relational, and aftershock_days fields are identical to what the old build_signal_from_t1_world_tick produced for the same aligned and non-aligned inputs.",
+    "A new test must verify that the T2 builder output's relational block (trust_shift, closeness_delta) matches the old T2 signal for both the high-influence and low-influence cases.",
+    "A new test must verify that the T4 builder output for the default positive reinforcement path, the confrontation path, Pattern A, and Pattern B each produce an AppraisalOutput whose appraisal_output_to_signal translation equals the expected AppraisalSignal.",
+    "All pre-existing tests in test_tick_bridge.py, test_residual_aware_bridge.py, test_residual_continuity_audit.py, test_residual_persistence.py, test_t4_social_event_detection.py, test_t4_behavior_contract.py, and test_p28_t4_comprehensive_coverage.py must pass without any changes to those files."
+  ],
+  "non_goals": [
+    "Do not introduce LLM runtime or any external appraisal source.",
+    "Do not change the field definitions of AppraisalSignal v1.",
+    "Do not wire T3, T5, T6, T7, or T8 to the new boundary.",
+    "Do not alter AppraisalOutput.from_deterministic_fallback; the builders may use it as a reference but must produce equivalent output directly to avoid gratuitous indirection.",
+    "Do not modify appraisal_settlement.py, day_simulator.py, appraisal_output.py, appraisal_input.py, or deterministic_fallback.py.",
+    "Do not refactor _apply_bridge_signal or any settlement helper.",
+    "Do not change the residual-aware adjustment functions (_adjust_t1, _adjust_t2, _adjust_t4); they continue to operate on AppraisalSignal as today.",
+    "Do not add new audit record types or extend existing audit dataclasses.",
+    "Do not add or modify any API route, seed file, or frontend file."
+  ],
+  "allowed_files": [
+    "back/app/engines/tick_bridge.py",
+    "back/tests/test_p29_t4_bridge_boundary.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/day_simulator.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/engines/deterministic_fallback.py",
+    "back/tests/test_tick_bridge.py",
+    "back/tests/test_residual_aware_bridge.py",
+    "back/tests/test_residual_continuity_audit.py",
+    "back/tests/test_residual_persistence.py",
+    "back/tests/test_appraisal_input_schema.py",
+    "back/tests/test_appraisal_output_schema.py",
+    "back/tests/test_p29_t3_deferred_fallback.py"
+  ]
+}
