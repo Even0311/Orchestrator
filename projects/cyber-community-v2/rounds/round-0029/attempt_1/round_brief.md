@@ -118,10 +118,10 @@ Most recent rounds (do not redo completed work):
 
 ## Prior Attempt Failed
 The previous attempt for this task failed. Fix the issues below:
-Human rejected round round-0001 and requested a redo.
+Human rejected round round-0002 and requested a redo.
 Action: reject_and_redo
-Human note: redo with clean baseline fix
-Original task: Create a structured markdown document that accurately summarizes the current backbone continuity state, explicitly categorizing T1/T2/T4 paths as active/inactive/partially active, documenting the 60-day audit findings (18 residuals: 12/6/0 distribution), and distinguishing between established contracts and temporary phase calibrations.
+Human note: redo - previous failure was due to untracked subagent files bug, now fixed
+Original task: Create a comprehensive markdown document summarizing the current backbone continuity state, clearly distinguishing active paths (T1/T2), inactive paths (T4), 60-day audit findings, and separating established contracts from temporary calibration results.
 
 ## Instructions
 1. The designer subagent should read this brief and produce a task_contract.json

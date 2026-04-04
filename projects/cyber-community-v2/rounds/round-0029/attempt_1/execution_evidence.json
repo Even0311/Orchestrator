@@ -1,0 +1,21 @@
+{
+  "task_id": "P28-T6",
+  "status": "complete",
+  "summary": "Created back/tests/test_p28_t6_signal_calibration.py with 32 tests that formally lock the calibrated signal intensity ranges for Pattern A (Contested Endorsement) and Pattern B (High-Intensity Unilateral Disclosure) T4 relational appraisal outputs, verifying exact field values, cross-pattern uniformity with P0, post-adjustment hard caps, and non-qualifying fallthrough behavior.",
+  "files_changed": [
+    "back/tests/test_p28_t6_signal_calibration.py"
+  ],
+  "files_created": [
+    "back/tests/test_p28_t6_signal_calibration.py"
+  ],
+  "files_modified": [],
+  "commands_run": [
+    "python3 -m pytest tests/test_p28_t6_signal_calibration.py -v",
+    "python3 -m pytest tests/ -v --tb=short 2>&1 | tail -20"
+  ],
+  "test_results": "32 new tests all passed; full suite 486 passed, 0 failed, 0 regressions",
+  "new_test_count": 32,
+  "total_test_count": 486,
+  "notes": "The 32 tests cover: 9 Pattern A base signal field assertions, 9 Pattern B base signal field assertions plus 1 cross-field identity check, 1 three-way uniformity test (P0/A/B), 2 Pattern A post-adjustment cap tests, 2 Pattern B post-adjustment cap tests, 3 Pattern A non-qualifying fallthrough tests, and 5 Pattern B non-qualifying fallthrough tests. All required_tests from the contract are covered. No files were modified — only the new test file was created.",
+  "unresolved_issues": []
+}

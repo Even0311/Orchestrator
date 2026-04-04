@@ -18,7 +18,7 @@ Expand deterministic relational appraisal coverage beyond the single minimal act
 - no attempt to model full human social complexity
 
 ## Task Queue
-- [ ] P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes
+- [x] P28-T6: Calibrate signal intensity ranges for new relational appraisal output shapes — Round round-0029 — Lock calibrated signal intensity ranges for Pattern A and Pa
 
 ## Completed Tasks
 - [x] P28-T5: Audit same-day composition safety between T2 and expanded T4 coverage — Extended composition audit instrumentation verified safe interaction between T2 influencer signals and expanded T4 patterns (Pattern A and Pattern B) targeting same relationships within single days
