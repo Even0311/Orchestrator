@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from orch.models import TaskContract
-from orch.sot import PhaseInfo
+from orch.sot import PhaseInfo, _split_h2_sections
 
 
 def generate_round_brief(
@@ -54,6 +54,17 @@ def generate_round_brief(
         f"**Phase Goal:** {phase_info.phase_goal}",
         "",
     ])
+    if phase_info.in_scope:
+        parts.extend(["**In Scope:**", phase_info.in_scope, ""])
+    if phase_info.out_of_scope:
+        parts.extend(["**Out of Scope:**", phase_info.out_of_scope, ""])
+
+    # ── Recently Completed Tasks ────────────────────────────────────────
+    if phase_info.recent_completed:
+        parts.append("## Recently Completed Tasks (same phase)")
+        for item in phase_info.recent_completed:
+            parts.append(f"- {item}")
+        parts.append("")
 
     # ── Selected Task ────────────────────────────────────────────────────
     parts.extend([
@@ -210,26 +221,6 @@ def _extract_roadmap_context(roadmap_text: str, current_phase_id: str) -> str:
         text = text[:2000] + "\n...(truncated)"
     return text
 
-
-def _split_h2_sections(text: str) -> list[tuple[str, str]]:
-    """Split markdown text into (heading, body) pairs at ## boundaries."""
-    sections: list[tuple[str, str]] = []
-    current_heading = ""
-    current_body_lines: list[str] = []
-
-    for line in text.splitlines():
-        if line.strip().startswith("## "):
-            if current_heading:
-                sections.append((current_heading, "\n".join(current_body_lines)))
-            current_heading = line.strip()
-            current_body_lines = []
-        else:
-            current_body_lines.append(line)
-
-    if current_heading:
-        sections.append((current_heading, "\n".join(current_body_lines)))
-
-    return sections
 
 
 def write_task_contract(round_dir: Path, contract: TaskContract) -> Path:

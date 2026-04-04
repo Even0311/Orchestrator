@@ -57,48 +57,49 @@ def review_cmd():
 @click.command("decide")
 @click.argument("instruction")
 @click.option("--action", type=click.Choice(RESOLUTION_ACTIONS), default="resume_round", show_default=True)
-def decide_cmd(instruction: str, action: str):
-    """Resolve the oldest escalated round and record the chosen action."""
+@click.option("--all", "resolve_all", is_flag=True, help="Apply the same decision to ALL escalated rounds at once.")
+def decide_cmd(instruction: str, action: str, resolve_all: bool):
+    """Resolve the most recent escalated round (or --all) and record the chosen action."""
     init_db()
     project = get_active_project()
     if not project:
         raise click.ClickException("No active project. Use: orch switch <name>")
 
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT id FROM rounds WHERE project_id = ? AND status = 'escalated' ORDER BY created_at LIMIT 1",
+        rows = conn.execute(
+            "SELECT id FROM rounds WHERE project_id = ? AND status = 'escalated' ORDER BY created_at DESC",
             (project["id"],),
-        ).fetchone()
+        ).fetchall()
 
-    if not row:
+    if not rows:
         raise click.ClickException("No escalated rounds to decide on.")
 
-    round_id = row["id"]
-    state_dir = Path(project["state_dir"])
-    phase_path = state_dir / "current_phase.md"
-    existing = phase_path.read_text() if phase_path.exists() else ""
-    resolution_block = (
-        f"\n\n## Human Resolution ({round_id})\n"
-        f"Action: {action}\n"
-        f"Note: {instruction}\n"
-    )
-    phase_path.write_text(existing.rstrip() + resolution_block)
+    targets = rows if resolve_all else [rows[0]]
 
-    resolve_round(
-        round_id=round_id,
-        status=STATUS_BY_ACTION[action],
-        action=action,
-        note=instruction,
-        resolved_by="human",
-    )
+    for row in targets:
+        round_id = row["id"]
+        resolve_round(
+            round_id=round_id,
+            status=STATUS_BY_ACTION[action],
+            action=action,
+            note=instruction,
+            resolved_by="human",
+        )
+        click.echo(f"✓ Resolution recorded for {round_id}")
 
-    click.echo(f"✓ Resolution recorded for {round_id}")
+    if len(targets) > 1:
+        click.echo(f"  Resolved {len(targets)} escalated rounds.")
+
+    remaining = len(rows) - len(targets)
+    if remaining > 0:
+        click.echo(f"  {remaining} older escalated round(s) still pending. Use --all to resolve them.")
+
     if action == "accept_and_close":
-        click.echo("  Current round is marked accepted_by_human.")
+        click.echo("  Marked accepted_by_human.")
     elif action == "reject_and_redo":
-        click.echo("  Current round is marked rejected_by_human. Run 'orch run' to start a fresh replacement round.")
+        click.echo("  Marked rejected_by_human. Run 'orch run' to start a fresh replacement round.")
     else:
-        click.echo("  Current round is marked resume_requested. Run 'orch run' to continue with the recorded human note.")
+        click.echo("  Marked resume_requested. Run 'orch run' to continue with the recorded human note.")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

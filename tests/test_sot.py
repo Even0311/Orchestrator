@@ -18,15 +18,10 @@ Expand deterministic relational appraisal coverage.
 - no freeform NLP
 
 ## Task Queue
+- [x] P28-T4: Add comprehensive test coverage
+- [x] P28-T5: Audit same-day composition safety
 - [ ] P28-T6: Calibrate signal intensity ranges for new output shapes
 - [ ] P28-T7: Some future task
-
-## Completed Tasks
-- [x] P28-T5: Audit same-day composition safety
-- [x] P28-T4: Add comprehensive test coverage
-
-## Current Status
-Ready for calibration.
 """
 
 SAMPLE_PHASE_ALL_DONE = """\
@@ -36,9 +31,6 @@ SAMPLE_PHASE_ALL_DONE = """\
 Expand stuff.
 
 ## Task Queue
-- [x] P28-T1: Done task
-
-## Completed Tasks
 - [x] P28-T1: Done task
 """
 
@@ -69,6 +61,33 @@ class TestParseCurrentPhase:
         info = _parse_phase_content(SAMPLE_PHASE_ALL_DONE)
         assert info.all_done is True
         assert info.next_task_key == ""
+
+    def test_extracts_recent_completed(self):
+        info = _parse_phase_content(SAMPLE_PHASE)
+        assert len(info.recent_completed) == 2
+        assert "P28-T4" in info.recent_completed[0]
+        assert "P28-T5" in info.recent_completed[1]
+
+    def test_recent_completed_caps_at_five(self):
+        many_tasks = "# P28: Test\n\n## Task Queue\n"
+        for i in range(1, 9):
+            many_tasks += f"- [x] P28-T{i}: Task {i}\n"
+        many_tasks += "- [ ] P28-T9: Next task\n"
+        info = _parse_phase_content(many_tasks)
+        assert len(info.recent_completed) == 5
+        assert "P28-T4" in info.recent_completed[0]
+        assert "P28-T8" in info.recent_completed[4]
+
+    def test_recent_completed_empty_when_none(self):
+        no_completed = "# P28: Test\n\n## Task Queue\n- [ ] P28-T1: First task\n"
+        info = _parse_phase_content(no_completed)
+        assert info.recent_completed == []
+
+    def test_all_done_includes_recent_completed(self):
+        info = _parse_phase_content(SAMPLE_PHASE_ALL_DONE)
+        assert info.all_done is True
+        assert len(info.recent_completed) == 1
+        assert "P28-T1" in info.recent_completed[0]
 
     def test_missing_file(self, tmp_path):
         info = parse_current_phase(tmp_path)

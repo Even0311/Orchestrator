@@ -158,6 +158,8 @@ You have Agent, Read, and Write tools. You CANNOT run code or edit the codebase 
 - Do NOT skip any subagent.
 - Do NOT implement code yourself — that is the executor's job.
 - If a subagent fails to produce its artifact file, note this in your summary.
+- When spawning the **designer** subagent, set model to **opus**.
+- For executor and reviewer, use the default model (do not specify a model override).
 """
 
 
@@ -222,15 +224,6 @@ Define the first phase goal after reviewing vision.md and road_map.md.
 
 ## Task Queue
 - [ ] PHASE-T1: Define the first concrete task
-
-## Completed Tasks
-(none)
-
-## Current Status
-Awaiting first task definition.
-
-## Risks / Blockers
--
 """
 
 

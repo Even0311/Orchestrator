@@ -1,7 +1,7 @@
 # Designer Context
 
 ## Phase Transition Rule
-When the current phase is closing or a next phase is being proposed, Designer **must** read `roadmap.md` before proposing a phase transition. Next-phase proposals must follow the approved roadmap sequence. Designer may not invent new phases or skip ahead.
+When the current phase is closing or a next phase is being proposed, Designer **must** read `road_map.md` before proposing a phase transition. Next-phase proposals must follow the approved roadmap sequence. Designer may not invent new phases or skip ahead.
 
 ## Active Constraints
 - Phase 28 scope: Expand T4 deterministic coverage while preserving auditability; no LLM integration, no relationship graph redesign

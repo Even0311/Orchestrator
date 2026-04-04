@@ -28,7 +28,7 @@ from orch.models import (
     TaskContract,
     Verdict,
 )
-from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, append_decision_entry, PhaseInfo
+from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, append_decision_entry, get_phase_status, PhaseInfo
 from orch.utils.evidence_collector import collect_git_evidence
 from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, GitError
 
@@ -73,6 +73,13 @@ def run_project(project_row, run_once: bool = False) -> None:
     # _setup_subagents() and not yet committed — commit them now so
     # collect_git_evidence() only sees Claude's actual changes.
     _ensure_clean_baseline(codebase_path)
+
+    # Block execution if phase is still in draft
+    phase_status = get_phase_status(sot_dir)
+    if phase_status == "draft":
+        raise click.ClickException(
+            "Phase is in draft status. Review current_phase.md and run 'orch phase approve' first."
+        )
 
     phase_id = _ensure_active_phase(project_id, sot_dir)
     round_number = _next_round_number(project_id)
@@ -416,7 +423,6 @@ def _build_failure_context(attempt: AttemptRecord, gate_results: HardGateResults
 def _build_resolution_context(resolution_row) -> str:
     round_id = resolution_row["id"]
     note = resolution_row["resolution_note"] or "(no note)"
-    task_desc = resolution_row["task_description"] or "(unknown)"
     action = resolution_row["resolution_action"] or resolution_row["status"]
 
     if resolution_row["status"] == "resume_requested":
@@ -424,7 +430,7 @@ def _build_resolution_context(resolution_row) -> str:
     else:
         header = f"Human rejected round {round_id} and requested a redo."
 
-    return f"{header}\nAction: {action}\nHuman note: {note}\nOriginal task: {task_desc}"
+    return f"{header}\nAction: {action}\nHuman note: {note}"
 
 
 def _try_mark_task_complete(sot_dir: Path, task_desc: str, note: str) -> None:
@@ -530,7 +536,7 @@ def _get_pending_human_resolution(project_id: str):
         return conn.execute(
             "SELECT * FROM rounds WHERE project_id = ? "
             "AND status IN ('accepted_by_human', 'resume_requested', 'rejected_by_human') "
-            "ORDER BY updated_at ASC, created_at ASC LIMIT 1",
+            "ORDER BY created_at DESC LIMIT 1",
             (project_id,),
         ).fetchone()
 

@@ -67,9 +67,15 @@ class TestGenerateRoundBrief:
             phase_id="P28",
             phase_title="P28: Expansion",
             phase_goal="Expand coverage",
+            in_scope="- expand T4 coverage",
+            out_of_scope="- no freeform NLP",
             next_task_key="P28-T6",
             next_task_desc="Calibrate signal intensity ranges",
             all_done=False,
+            recent_completed=[
+                "P28-T4: Add comprehensive test coverage",
+                "P28-T5: Audit same-day composition safety",
+            ],
         )
 
     def _make_sot_dir(self, tmp_path):
@@ -182,6 +188,40 @@ class TestGenerateRoundBrief:
         )
         content = path.read_text()
         assert "round-0026" in content
+
+    def test_includes_recently_completed_tasks(self, tmp_path):
+        """round_brief must include recently completed tasks from the same phase."""
+        round_dir = tmp_path / "round-0001"
+        sot_dir = self._make_sot_dir(tmp_path)
+
+        path = generate_round_brief(
+            round_dir=round_dir,
+            sot_dir=sot_dir,
+            phase_info=self._make_phase_info(),
+            round_id="round-0001",
+            attempt_num=1,
+        )
+        content = path.read_text()
+        assert "Recently Completed Tasks" in content
+        assert "P28-T4" in content
+        assert "P28-T5" in content
+
+    def test_no_recently_completed_when_empty(self, tmp_path):
+        """Brief should not include recently completed section when empty."""
+        round_dir = tmp_path / "round-0001"
+        sot_dir = self._make_sot_dir(tmp_path)
+        phase_info = self._make_phase_info()
+        phase_info.recent_completed = []
+
+        path = generate_round_brief(
+            round_dir=round_dir,
+            sot_dir=sot_dir,
+            phase_info=phase_info,
+            round_id="round-0001",
+            attempt_num=1,
+        )
+        content = path.read_text()
+        assert "Recently Completed Tasks" not in content
 
     def test_without_vision_or_roadmap(self, tmp_path):
         """Brief should still work if vision/roadmap don't exist."""

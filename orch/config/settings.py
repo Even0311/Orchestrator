@@ -34,7 +34,8 @@ class NotificationConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    executor_model: str = "sonnet"     # Model used for Claude Code invocations
+    executor_model: str = "sonnet"     # Model for round-driver/executor/reviewer
+    designer_model: str = "opus"       # Model for designer and phase planning
 
 
 class OrchestratorConfig(BaseModel):
@@ -88,8 +89,12 @@ def set_config_value(key: str, value: str) -> str:
             if value not in VALID_CLAUDE_MODELS:
                 raise ValueError(f"Invalid model '{value}'. Choose from: {', '.join(VALID_CLAUDE_MODELS)}")
             config.agents.executor_model = value
+        elif parts[1] == "designer_model":
+            if value not in VALID_CLAUDE_MODELS:
+                raise ValueError(f"Invalid model '{value}'. Choose from: {', '.join(VALID_CLAUDE_MODELS)}")
+            config.agents.designer_model = value
         else:
-            raise ValueError(f"Unknown agents key: {parts[1]}. Available: executor_model")
+            raise ValueError(f"Unknown agents key: {parts[1]}. Available: executor_model, designer_model")
 
     elif parts[0] == "notification" and parts[1] == "email":
         if config.notification.email is None:
