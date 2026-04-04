@@ -1,0 +1,35 @@
+{
+  "task_key": "P29-T5",
+  "files_modified": [
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py"
+  ],
+  "files_created": [
+    "back/tests/test_p29_t5_settlement_boundary.py"
+  ],
+  "tests_added": [
+    "test_settle_t1_aligned_same_numeric_outcome",
+    "test_settle_t1_non_aligned_same_numeric_outcome",
+    "test_settle_t2_high_influence_updates_relationship",
+    "test_settle_t4_default_positive_trust_delta",
+    "test_settle_absorption_none_returns_unchanged",
+    "test_advisory_fields_do_not_affect_settlement",
+    "test_advisory_confidence_extremes_no_effect",
+    "test_aftershock_days_zero_no_residual_surface",
+    "test_aftershock_days_zero_no_residual_partial",
+    "test_aftershock_days_zero_no_residual_deep",
+    "test_aftershock_days_2_partial_residual_shape",
+    "test_aftershock_days_2_positive_partial_residual_shape",
+    "test_returned_residual_no_kind_tag",
+    "test_returned_residual_no_target_id",
+    "test_settlement_result_is_named_container",
+    "test_settlement_result_relationships_list_type",
+    "test_only_targeted_relationship_updated",
+    "test_growth_buf_accumulates_correctly",
+    "test_guidance_resonance_aligned_multiplies_growth"
+  ],
+  "test_run_result": "pass",
+  "test_count_before": 610,
+  "test_count_after": 629,
+  "notes": "Added SettlementResult dataclass and settle_appraisal_output pure function to appraisal_settlement.py. Added TYPE_CHECKING guard to avoid circular import with appraisal_output.py. Updated _apply_bridge_signal in tick_bridge.py to wrap AppraisalSignal into AppraisalOutput and delegate all four settlement steps to settle_appraisal_output; tick-specific kind/target_id tagging is applied after the settlement call. All 19 new tests pass; all 610 pre-existing tests continue to pass."
+}

@@ -1,0 +1,63 @@
+{
+  "task_key": "P29-T5",
+  "verdict": "pass",
+  "criteria_results": [
+    {
+      "criterion": "settle_appraisal_output exists in appraisal_settlement.py with the correct signature",
+      "status": "pass",
+      "notes": "Function defined at line 520 with signature (output: AppraisalOutput, state: AgentState, growth_buf: GrowthBuffer, relationships: list[Relationship], known_rel_ids: set[str]) -> SettlementResult. AppraisalOutput imported under TYPE_CHECKING guard to avoid circular imports."
+    },
+    {
+      "criterion": "Returns SettlementResult with state, growth_buf, relationships, optional residual",
+      "status": "pass",
+      "notes": "SettlementResult is a dataclass with exactly those four fields. The residual field is Optional[ResidualEntry] with no tick-specific kind or target_id set by the settlement step."
+    },
+    {
+      "criterion": "tick_bridge._apply_bridge_signal calls settle_appraisal_output instead of the four individual functions directly",
+      "status": "pass",
+      "notes": "_apply_bridge_signal wraps the incoming AppraisalSignal into an AppraisalOutput and delegates all settlement to settle_appraisal_output. Tick-specific tagging (residual_kind, residual_target_id) is applied after the settlement call via model_copy."
+    },
+    {
+      "criterion": "Four individual settlement functions remain present with unchanged signatures",
+      "status": "pass",
+      "notes": "apply_appraisal_to_state, accumulate_growth_from_appraisal, apply_appraisal_to_relationship, and create_residual_from_appraisal are all present and still imported in tick_bridge.py without signature changes."
+    },
+    {
+      "criterion": "All previously passing tests still pass",
+      "status": "pass",
+      "notes": "629 total tests pass. Execution evidence states 610 pre-existing + 19 new. All pass in 0.38s."
+    },
+    {
+      "criterion": "New tests verify numeric equivalence for T1-aligned, T1-non-aligned, T2-high-influence, T4-default cases",
+      "status": "pass",
+      "notes": "test_settle_t1_aligned_same_numeric_outcome, test_settle_t1_non_aligned_same_numeric_outcome, test_settle_t2_high_influence_updates_relationship, and test_settle_t4_default_positive_trust_delta all present and non-trivial."
+    },
+    {
+      "criterion": "New tests verify advisory fields don't affect numeric settlement",
+      "status": "pass",
+      "notes": "test_advisory_fields_do_not_affect_settlement and test_advisory_confidence_extremes_no_effect both present. Tests compare settlement results with and without narrative_summary, confidence, tick_type, fallback_used populated."
+    },
+    {
+      "criterion": "New tests verify absorption=none produces no changes and no residual",
+      "status": "pass",
+      "notes": "test_settle_absorption_none_returns_unchanged verifies state, growth_buf, and relationships unchanged, residual is None. test_settlement_result_relationships_list_type also uses absorption=none."
+    },
+    {
+      "criterion": "New tests verify aftershock_days=0 returns no residual",
+      "status": "pass",
+      "notes": "Three tests cover this: test_aftershock_days_zero_no_residual_surface, test_aftershock_days_zero_no_residual_partial, test_aftershock_days_zero_no_residual_deep."
+    },
+    {
+      "criterion": "New tests verify aftershock_days=2 with partial absorption returns ResidualEntry with days_remaining=2",
+      "status": "pass",
+      "notes": "test_aftershock_days_2_partial_residual_shape asserts days_remaining=2, stress_per_day=2, mood_per_day=-2. test_aftershock_days_2_positive_partial_residual_shape covers positive valence case."
+    },
+    {
+      "criterion": "Returned ResidualEntry carries no residual_kind or target_id (tick-agnostic)",
+      "status": "pass",
+      "notes": "test_returned_residual_no_kind_tag asserts kind == ResidualKind.public (model default, not set by settlement). test_returned_residual_no_target_id asserts target_id is None even when a relational block is present."
+    }
+  ],
+  "scope_violations": [],
+  "overall_notes": "All 11 acceptance criteria are met. The implementation correctly introduces settle_appraisal_output as a pure unified entry point in appraisal_settlement.py, updates _apply_bridge_signal in tick_bridge.py to delegate settlement and tag residuals after the call, and provides 19 new non-trivial tests. No files outside the allowed list were modified. The four individual settlement functions and appraisal_output_to_signal remain intact. All 629 tests pass."
+}

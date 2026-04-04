@@ -1,0 +1,132 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.6290307499999999,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P29",
+    "task_key": "P29-T5",
+    "title": "Settlement as pure AppraisalOutput consumer, tick-specific knowledge removed",
+    "objective": "Refactor the settlement application path so that all four settlement functions (mood/stress, growth buffer, relationship, residual creation) accept AppraisalOutput directly instead of AppraisalSignal, and so that the _apply_bridge_signal dispatcher no longer carries tick-specific parameters (residual_kind, residual_target_id) inside the settlement step itself.",
+    "exact_scope": "The settlement layer is currently split: AppraisalOutput is produced by bridges, then immediately converted to AppraisalSignal via appraisal_output_to_signal, and the resulting signal is passed to settlement functions in appraisal_settlement.py. The tick-specific tagging (ResidualKind.public, ResidualKind.influencer, ResidualKind.relational, target_id) is threaded through _apply_bridge_signal as parameters. This task introduces a new settlement entry point — settle_appraisal_output — in appraisal_settlement.py (or as a pure function near the existing functions) that accepts AppraisalOutput and the minimal caller-supplied context (known_rel_ids, relationships, growth_buf), runs all four settlement steps, and returns updated state/growth/relationships/growth_buf plus an optional ResidualEntry. The residual returned from this entry point carries no tick-specific tagging; the caller (tick_bridge.py) attaches residual_kind and target_id after the fact when persisting into DayBridgeContext. The AppraisalSignal conversion path (appraisal_output_to_signal) and the individual settlement functions remain intact so all existing callers and tests continue to pass without modification.",
+    "acceptance_criteria": [
+      "A new function settle_appraisal_output exists in back/app/engines/appraisal_settlement.py (or an adjacent pure-function module imported from there) and accepts (output: AppraisalOutput, state: AgentState, growth_buf: GrowthBuffer, relationships: list[Relationship], known_rel_ids: set[str]) as arguments",
+      "settle_appraisal_output returns a named result carrying updated state, updated growth_buf, updated relationships list, and an optional ResidualEntry — the residual carries no tick-specific kind or target_id tag (those are attached by the caller)",
+      "tick_bridge._apply_bridge_signal is updated to call settle_appraisal_output instead of calling the four settlement functions individually, demonstrating that the settlement path no longer requires tick-specific parameters at the point of settlement",
+      "The four individual settlement functions remain present and their existing unit tests still pass",
+      "All previously passing tests still pass after the refactor",
+      "New tests verify that settle_appraisal_output produces the same numeric outcome as calling the four functions individually for at least T1-aligned, T1-non-aligned, T2-high-influence, and T4-default cases",
+      "New tests verify that advisory fields (narrative_summary, fallback_used, confidence) on AppraisalOutput have no effect on the numeric settlement result",
+      "New tests verify that absorption=none AppraisalOutput passed to settle_appraisal_output produces no state change, no growth buffer change, no relationship change, and no residual"
+    ],
+    "required_tests": [
+      "Calling settle_appraisal_output with a T1-aligned AppraisalOutput produces the same mood delta, stress delta, growth buffer delta, and residual as calling apply_appraisal_to_state + accumulate_growth_from_appraisal + create_residual_from_appraisal individually with the equivalent AppraisalSignal",
+      "Calling settle_appraisal_output with a T2-high-influence AppraisalOutput (which includes a relational block) updates the correct relationship's trust and closeness values",
+      "Calling settle_appraisal_output with a T4-default AppraisalOutput produces a positive trust delta on the targeted relationship",
+      "Calling settle_appraisal_output with absorption=none returns state, growth_buf, and relationships unchanged, and returns no residual",
+      "Changing only advisory fields (narrative_summary, confidence, tick_type, fallback_used) on an otherwise identical AppraisalOutput does not change any numeric output of settle_appraisal_output",
+      "settle_appraisal_output with aftershock_days=0 returns no residual regardless of absorption level",
+      "settle_appraisal_output with aftershock_days=2 and partial absorption returns a ResidualEntry with days_remaining=2 and the correct per-day magnitude",
+      "The returned ResidualEntry from settle_appraisal_output carries no residual_kind or target_id tag (those fields are left at their model defaults or None), confirming the settlement step is tick-agnostic"
+    ],
+    "non_goals": [
+      "Removing or deprecating AppraisalSignal v1",
+      "Removing appraisal_output_to_signal",
+      "Wiring deferred ticks (T3, T5, T6, T7, T8) into any live settlement path",
+      "Introducing live LLM appraisal authority",
+      "Changing the T4 activation conditions or the social event detection logic",
+      "Modifying DayBridgeContext or the residual lifecycle rules",
+      "Altering how residual_kind or target_id is attached to persisted residuals (that tagging stays in tick_bridge, after the settlement step)",
+      "Frontend changes of any kind"
+    ],
+    "constraints": [
+      "AppraisalSignal v1 definition must not be modified — it is a frozen contract",
+      "The existing four settlement functions (apply_appraisal_to_state, accumulate_growth_from_appraisal, apply_appraisal_to_relationship, create_residual_from_appraisal) must not be removed or have their signatures changed",
+      "appraisal_output_to_signal must remain available and unchanged",
+      "All 441 existing tests must continue to pass without modification",
+      "The new entry point must be a pure function: no I/O, no randomness, explicit arguments, returns new values rather than mutating",
+      "Advisory fields on AppraisalOutput (narrative_summary, confidence, tick_type, fallback_used) must not influence settlement arithmetic — settlement reads only contract-bearing fields",
+      "No LLM integration, no prompt logic, no removal of deterministic fallback behavior",
+      "T3/T5/T6/T7/T8 bridges must not be introduced or extended"
+    ],
+    "allowed_files": [
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py",
+      "back/tests/test_p29_t5_settlement_boundary.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/appraisal_input.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "medium",
+    "met_criteria": [],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": ""
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_p29_t5_settlement_boundary.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/engines/appraisal_settlement.py | 93 +++++++++++++++++++++++++++++++-\n back/app/engines/tick_bridge.py          | 72 ++++++++++++++-----------\n 2 files changed, 134 insertions(+), 31 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifacts are verified. Here is the round summary:\n\n---\n\n## Round round-0034 — Outcome: **PASS**\n\n**Task:** P29-T5 — Extract settlement as a pure consumer of AppraisalOutput, decoupled from tick-specific knowledge\n\n### What was done\n\n1. **`appraisal_settlement.py`** — Added a `SettlementResult` dataclass and a new pure function `settle_appraisal_output(output, state, growth_buf, relationships, known_rel_ids) → SettlementResult`. This function accepts `AppraisalOutput` directly, converts it to `AppraisalSignal` internally (dropping advisory fields), runs all four settlement steps, and returns an untagged result — with no tick-specific `kind` or `target_id` set by the settlement layer.\n\n2. **`tick_bridge.py`** — `_apply_bridge_signal` was refactored to call `settle_appraisal_output` instead of the four settlement functions individually. Tick-specific residual tagging (`residual_kind`, `residual_target_id`) is applied by the bridge caller **after** the settlement call returns, keeping the settlement layer fully tick-agnostic.\n\n3. **`test_p29_t5_settlement_boundary.py`** — 19 new tests created covering: numeric equivalence for T1/T2/T4, advisory field isolation, absorption=none no-op, aftershock_days=0 no-residual, aftershock_days=2 residual shape, and tick-agnostic residual tagging verification.\n\n### Test results\n- **Before:** 610 tests passing\n- **After:** 629 tests passing (19 new, 0 failures)\n- All constraints and acceptance criteria satisfied; no scope violations."
+}
