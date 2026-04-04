@@ -47,6 +47,9 @@ def init_db() -> None:
                 executor_result      TEXT,
                 reviewer_verdict     TEXT,
                 escalation_reason    TEXT,
+                resolution_action    TEXT,
+                resolution_note      TEXT,
+                resolved_by          TEXT,
                 cost_usd             REAL DEFAULT 0,
                 orchestrator_commit  TEXT,
                 target_commit        TEXT,
@@ -56,24 +59,20 @@ def init_db() -> None:
                 FOREIGN KEY (phase_id)   REFERENCES phases(id)
             );
         """)
-        # Migrate: add commit columns if upgrading from older schema
-        for col in ("orchestrator_commit", "target_commit"):
+        for col in ("orchestrator_commit", "target_commit", "resolution_action", "resolution_note", "resolved_by"):
             try:
                 conn.execute(f"ALTER TABLE rounds ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
-                pass  # column already exists
-        # Migrate: add test_cmd to projects
+                pass
         try:
             conn.execute("ALTER TABLE projects ADD COLUMN test_cmd TEXT")
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-
-# ---------- Project operations ----------
 
 def create_project(project_id: str, name: str, codebase_path: str, state_dir: str) -> None:
     with get_connection() as conn:
@@ -112,6 +111,14 @@ def update_project_path(project_id: str, new_path: str) -> None:
         )
 
 
+def update_project_state_dir(project_id: str, state_dir: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE projects SET state_dir = ? WHERE id = ?",
+            (state_dir, project_id),
+        )
+
+
 def update_project_test_cmd(project_id: str, test_cmd: str) -> None:
     with get_connection() as conn:
         conn.execute(
@@ -127,8 +134,6 @@ def delete_project(project_id: str) -> None:
         conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
 
 
-# ---------- Round operations ----------
-
 def get_round(round_id: str) -> sqlite3.Row | None:
     with get_connection() as conn:
         return conn.execute("SELECT * FROM rounds WHERE id = ?", (round_id,)).fetchone()
@@ -139,4 +144,12 @@ def update_round_commits(round_id: str, orchestrator_commit: str, target_commit:
         conn.execute(
             "UPDATE rounds SET orchestrator_commit = ?, target_commit = ?, updated_at = ? WHERE id = ?",
             (orchestrator_commit, target_commit, now_iso(), round_id),
+        )
+
+
+def resolve_round(round_id: str, status: str, action: str, note: str, resolved_by: str = "human") -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE rounds SET status = ?, resolution_action = ?, resolution_note = ?, resolved_by = ?, updated_at = ? WHERE id = ?",
+            (status, action, note, resolved_by, now_iso(), round_id),
         )
