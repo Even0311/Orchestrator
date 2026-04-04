@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 
 from orch.db.database import get_active_project, get_connection, init_db
+from orch.config.settings import PROJECTS_DIR
 
 
 @click.command("log")
@@ -45,8 +46,8 @@ def _show_round_list(project) -> None:
 
 
 def _show_round_detail(project, round_id: str) -> None:
-    state_dir = Path(project["state_dir"])
-    round_dir = _find_round_dir(state_dir, round_id)
+    sot_dir = PROJECTS_DIR / project["name"]
+    round_dir = _find_round_dir(sot_dir, round_id)
 
     if round_dir:
         _display_round_from_files(round_dir, round_id)
@@ -54,14 +55,16 @@ def _show_round_detail(project, round_id: str) -> None:
         _display_round_from_db(project, round_id)
 
 
-def _find_round_dir(state_dir: Path, round_id: str) -> Path | None:
-    phases_dir = state_dir / "phases"
-    if not phases_dir.exists():
-        return None
-    for phase_dir in sorted(phases_dir.iterdir()):
-        candidate = phase_dir / round_id
-        if candidate.exists():
-            return candidate
+def _find_round_dir(sot_dir: Path, round_id: str) -> Path | None:
+    """Find round directory under sot_dir/<phase_id>/<round_id> or legacy sot_dir/rounds/<round_id>."""
+    # New structure: sot_dir/P28/round-0029/
+    for child in sorted(sot_dir.iterdir()):
+        if child.is_dir() and (child / round_id).is_dir():
+            return child / round_id
+    # Legacy: sot_dir/rounds/round-0029/
+    legacy = sot_dir / "rounds" / round_id
+    if legacy.is_dir():
+        return legacy
     return None
 
 

@@ -132,8 +132,8 @@ def run_project(project_row, run_once: bool = False) -> None:
         click.echo(f"[{_ts()}] Starting {round_id}")
         click.echo(f"  Task: {phase_info.next_task_key} — {phase_info.next_task_desc[:80]}")
 
-        # Determine round directory
-        rounds_base = sot_dir / "rounds"
+        # Determine round directory — organized by phase
+        rounds_base = sot_dir / phase_info.phase_id
         round_dir = rounds_base / round_id
 
         # Build resolution instruction if applicable

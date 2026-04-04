@@ -246,7 +246,6 @@ def _setup_sot(name: str, codebase_path: Path) -> Path:
     sot_dir = PROJECTS_DIR / name
     sot_dir.mkdir(parents=True, exist_ok=True)
     (sot_dir / "context").mkdir(exist_ok=True)
-    (sot_dir / "rounds").mkdir(exist_ok=True)
 
     _maybe_write(sot_dir / "vision.md", VISION_TEMPLATE.format(name=name, codebase_path=str(codebase_path)))
     _maybe_write(sot_dir / "road_map.md", ROADMAP_TEMPLATE)
