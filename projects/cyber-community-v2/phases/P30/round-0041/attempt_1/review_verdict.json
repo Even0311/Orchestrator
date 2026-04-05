@@ -1,0 +1,53 @@
+{
+  "task_key": "P30-T6",
+  "verdict": "PASS",
+  "confidence": "high",
+  "criteria_results": {
+    "failure_taxonomy.py exists and is importable with no side effects": "pass",
+    "FailureModeCategory enum with at least 4 named categories derived from observed shadow results": "pass",
+    "BlockingClassification enum with exactly two values: BLOCKING and ACCEPTABLE": "pass",
+    "GuardrailPolicy model with fields: category, blocking_classification, description, required_guardrail": "pass",
+    "GUARDRAIL_POLICIES list containing one GuardrailPolicy entry per FailureModeCategory value": "pass",
+    "LLM connection/API failure category classified ACCEPTABLE": "pass",
+    "LLM parse failure category classified ACCEPTABLE": "pass",
+    "Valence sign-flip category classified BLOCKING": "pass",
+    "Zero-absorption override category classified BLOCKING": "pass",
+    "Semantic deviation same-sign classified ACCEPTABLE with stated guardrail": "pass",
+    "test_p30_t6_failure_taxonomy.py exists and all tests pass": "pass",
+    "All previously passing tests continue to pass (no regression)": "pass"
+  },
+  "met_criteria": [
+    "failure_taxonomy.py exists and is importable with no side effects",
+    "FailureModeCategory enum with at least 4 named categories derived from observed shadow results",
+    "BlockingClassification enum with exactly two values: BLOCKING and ACCEPTABLE",
+    "GuardrailPolicy model (Pydantic BaseModel) with fields: category, blocking_classification, description, required_guardrail",
+    "GUARDRAIL_POLICIES list containing one GuardrailPolicy entry per FailureModeCategory value (5 entries for 5 categories)",
+    "LLM_CONNECTION_FAILURE classified ACCEPTABLE (fallback handles it deterministically)",
+    "LLM_PARSE_FAILURE classified ACCEPTABLE (fallback handles it deterministically)",
+    "VALENCE_SIGN_FLIP classified BLOCKING for live handoff",
+    "ZERO_ABSORPTION_OVERRIDE classified BLOCKING",
+    "SEMANTIC_DEVIATION_SAME_SIGN classified ACCEPTABLE with a stated guardrail (rate threshold monitoring)",
+    "test_p30_t6_failure_taxonomy.py: 12/12 tests pass",
+    "No regressions: 759/759 total tests pass"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "test_summary": {
+    "new_tests_file": "back/tests/test_p30_t6_failure_taxonomy.py",
+    "new_tests_passed": 12,
+    "new_tests_total": 12,
+    "full_suite_passed": 759,
+    "full_suite_total": 759,
+    "regressions": 0
+  },
+  "blocking_issues": [],
+  "non_blocking_suggestions": [],
+  "notes": [
+    "FailureModeCategory has 5 values (exceeds minimum of 4): LLM_CONNECTION_FAILURE, LLM_PARSE_FAILURE, VALENCE_SIGN_FLIP, ZERO_ABSORPTION_OVERRIDE, SEMANTIC_DEVIATION_SAME_SIGN",
+    "VALENCE_SIGN_FLIP was not observed in T5 shadow results but is explicitly permitted by the contract as a categorically required safety classification derived from acceptance_rules.py severity=severe",
+    "All categories are derived from observed evidence in p30_t5_shadow_run_results.json or from acceptance_rules.py definitions as permitted by the implementation notes",
+    "Only allowed_files were created; no forbidden files were modified; new files are untracked (not yet committed)",
+    "Module is purely declarative with no network calls, no LLM invocations, and no side effects on import"
+  ],
+  "rationale": "The implementation fully satisfies all 12 acceptance criteria and all 12 required tests. The failure taxonomy defines 5 categories with correct blocking/acceptable classifications, proper GuardrailPolicy Pydantic model, and a complete GUARDRAIL_POLICIES list. The module is stateless and importable with no side effects. No forbidden files were modified and no regressions were introduced."
+}

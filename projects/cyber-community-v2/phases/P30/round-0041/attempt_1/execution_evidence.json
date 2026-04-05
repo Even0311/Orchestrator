@@ -1,0 +1,21 @@
+{
+  "task_key": "P30-T6",
+  "summary": "Created failure_taxonomy.py defining 5 failure mode categories (LLM_CONNECTION_FAILURE, LLM_PARSE_FAILURE, VALENCE_SIGN_FLIP, ZERO_ABSORPTION_OVERRIDE, SEMANTIC_DEVIATION_SAME_SIGN) with BlockingClassification enum, GuardrailPolicy Pydantic model, and GUARDRAIL_POLICIES list, plus 12 structural validation tests.",
+  "files_created": [
+    "back/app/llm/failure_taxonomy.py",
+    "back/tests/test_p30_t6_failure_taxonomy.py"
+  ],
+  "files_changed": [
+    "back/app/llm/failure_taxonomy.py",
+    "back/tests/test_p30_t6_failure_taxonomy.py"
+  ],
+  "commands_run": [
+    "cd back && python3 -m pytest tests/test_p30_t6_failure_taxonomy.py -v",
+    "cd back && python3 -m pytest tests/ -q"
+  ],
+  "test_results": "12/12 new tests passed; 759/759 total tests passed (no regressions)",
+  "diff_summary": "Added back/app/llm/failure_taxonomy.py (new module: FailureModeCategory enum with 5 values, BlockingClassification enum with 2 values, GuardrailPolicy Pydantic model, GUARDRAIL_POLICIES list with 5 entries derived from p30_t5_shadow_run_results.json evidence). Added back/tests/test_p30_t6_failure_taxonomy.py (12 tests covering all required_tests from task contract). No existing files modified.",
+  "status": "success",
+  "notes": "LLM_CONNECTION_FAILURE and LLM_PARSE_FAILURE are ACCEPTABLE (fallback handles deterministically). VALENCE_SIGN_FLIP and ZERO_ABSORPTION_OVERRIDE are BLOCKING. SEMANTIC_DEVIATION_SAME_SIGN is ACCEPTABLE with a stated guardrail (SEMANTIC_DEGRADED rate threshold monitoring). VALENCE_SIGN_FLIP was not observed in T5 shadow results but is categorically required per acceptance_rules.py severity=severe definition.",
+  "unresolved_issues": []
+}

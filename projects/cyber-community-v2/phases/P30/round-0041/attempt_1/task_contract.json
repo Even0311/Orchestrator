@@ -1,0 +1,70 @@
+{
+  "phase_id": "P30",
+  "task_key": "P30-T6",
+  "title": "Failure mode classification and guardrail definitions for shadow appraisal results",
+  "objective": "Analyze the 13 shadow comparison reports produced by P30-T5, classify each observed failure mode into named categories, define what guardrail must exist for each category, and formally declare which failure categories are blocking versus acceptable before any live handoff of LLM appraisal authority.",
+  "exact_scope": "Create one new Python module at back/app/llm/failure_taxonomy.py that defines the failure mode categories as typed constants/enums and the per-category guardrail policy as structured data. Create one new test file at back/tests/test_p30_t6_failure_taxonomy.py that validates the taxonomy structure and the blocking/acceptable classification. No changes to acceptance_rules.py, comparison_harness.py, shadow_runner.py, or any engine/settlement code.",
+  "constraints": [
+    "No modifications to acceptance_rules.py, comparison_harness.py, shadow_runner.py, or prompt_schema.py",
+    "No modifications to any engine, domain model, or settlement file",
+    "No modifications to vision.md or road_map.md",
+    "The taxonomy must derive its categories from evidence in back/tests/fixtures/p30_t5_shadow_run_results.json — no invented failure modes without observed support",
+    "AppraisalSignal v1 fields remain frozen — taxonomy must not propose field changes",
+    "The blocking/acceptable determination must reference the live handoff readiness criterion: LLM output must be safe to pass to the settlement engine without producing unbounded or sign-inverted state changes",
+    "All failure mode categories must be expressed as Python enums or typed string constants, not free-form strings"
+  ],
+  "acceptance_criteria": [
+    "back/app/llm/failure_taxonomy.py exists and is importable with no side effects",
+    "failure_taxonomy.py defines a FailureModeCategory enum (or equivalent) with at least 4 named categories derived from observed shadow results",
+    "failure_taxonomy.py defines a BlockingClassification enum with exactly two values: BLOCKING and ACCEPTABLE",
+    "failure_taxonomy.py defines a GuardrailPolicy model (Pydantic BaseModel or dataclass) with fields: category, blocking_classification, description, and required_guardrail",
+    "failure_taxonomy.py exports a GUARDRAIL_POLICIES list containing one GuardrailPolicy entry per FailureModeCategory value",
+    "The category for LLM connection/API failure is classified ACCEPTABLE (fallback handles it deterministically)",
+    "The category for LLM parse failure (bad JSON or invalid schema) is classified ACCEPTABLE (fallback handles it deterministically)",
+    "The category for valence sign-flip (positive vs negative disagreement) is classified BLOCKING for live handoff",
+    "The category for zero-absorption override (LLM returns absorption=none when context does not support it) is classified BLOCKING",
+    "The category for semantic deviation within the same valence sign (e.g. neutral vs positive when neither is negative) is classified ACCEPTABLE with a stated guardrail",
+    "back/tests/test_p30_t6_failure_taxonomy.py exists and all tests in it pass under: cd back && python -m pytest tests/test_p30_t6_failure_taxonomy.py -v",
+    "All previously passing tests continue to pass (no regression)"
+  ],
+  "required_tests": [
+    "Importing failure_taxonomy causes no side effects and no network calls",
+    "Every value in FailureModeCategory has a corresponding entry in GUARDRAIL_POLICIES",
+    "No two entries in GUARDRAIL_POLICIES share the same category value",
+    "LLM connection failure category has blocking_classification = ACCEPTABLE",
+    "LLM parse failure category has blocking_classification = ACCEPTABLE",
+    "Valence sign-flip category has blocking_classification = BLOCKING",
+    "Zero-absorption override category has blocking_classification = BLOCKING",
+    "Every GuardrailPolicy has a non-empty required_guardrail string",
+    "Every GuardrailPolicy has a non-empty description string",
+    "The set of BLOCKING categories is a strict subset of all categories (not all blocking, not all acceptable)",
+    "GUARDRAIL_POLICIES contains at least 4 entries",
+    "Each entry in GUARDRAIL_POLICIES is a valid GuardrailPolicy instance (fields present and correctly typed)"
+  ],
+  "non_goals": [
+    "Do not implement the guardrails themselves — this task only defines and classifies them",
+    "Do not modify the comparison harness or acceptance rules to enforce the guardrails",
+    "Do not execute new LLM calls or produce new shadow run results",
+    "Do not add new fields to AppraisalOutput or AppraisalSignal",
+    "Do not propose changes to the settlement engine",
+    "Do not handle deferred ticks (T3, T5, T6, T7, T8) — scope is T1/T2/T4 only"
+  ],
+  "allowed_files": [
+    "back/app/llm/failure_taxonomy.py",
+    "back/tests/test_p30_t6_failure_taxonomy.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/llm/acceptance_rules.py",
+    "back/app/llm/comparison_harness.py",
+    "back/app/llm/shadow_runner.py",
+    "back/app/llm/prompt_schema.py",
+    "back/app/llm/response_parser.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py"
+  ],
+  "implementation_notes": "The shadow results fixture at back/tests/fixtures/p30_t5_shadow_run_results.json contains 13 reports across T1/T2/T4. Observed failure modes are: (1) LLM API/network error causing fallback — seen in T1_failure_connection_error, T2_failure_connection_error, T4_event_failure_connection_error; (2) LLM returning unparseable JSON causing fallback — seen in T1_failure_bad_json, T2_failure_bad_json, T4_no_event_failure_bad_json; (3) Multi-field semantic deviation where LLM returns enriched signal (deep/positive/high) against a neutral baseline — seen in T1_success_deep_positive; (4) Single-field valence deviation not crossing the sign boundary (neutral vs negative, neutral vs positive) — seen in T2_success_surface_negative, T4_event_success_different_valence; (5) Absorption level disagreement when no social event context is present (LLM returns surface, baseline returns none) — seen in T4_no_event_surface_structural_fail. The valence sign-flip (positive vs negative) did not appear in the T5 results but is defined by acceptance_rules.py as a severe deviation and must be classified BLOCKING in the taxonomy. The GuardrailPolicy.required_guardrail field should state the concrete enforcement mechanism required before live handoff (for example: 'sign-flip must be caught by acceptance_rules.compare and must hard-block settlement invocation', or 'fallback path must be invoked and no LLM output may reach settlement')."
+}
