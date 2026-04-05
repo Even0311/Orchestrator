@@ -1,0 +1,60 @@
+{
+  "phase_id": "P31",
+  "task_key": "P31-T6",
+  "title": "Multi-day live simulation audit: LLM appraisal fallback rates, output stability, and deterministic-path regression",
+  "objective": "Write a test module that runs a multi-day simulation (3–5 days) with LLM appraisal active for T1/T2/T4, using mocked LLM responses to avoid real API calls, and asserts that fallback rates are within expected bounds, appraisal signals remain within valid ranges, deferred ticks always use the deterministic path, and the simulation completes without exceptions across all days.",
+  "exact_scope": "One new test file at back/tests/test_p31_t6_multiday_audit.py. The test uses unittest.mock to patch appraisal_router.route so that: (a) some calls return a mocked successful LLM result (llm_used=True), (b) some calls return a mocked fallback result (llm_used=False), simulating realistic mixed behavior. The test drives simulate_day_bridged for 3–5 consecutive world days, collects AppraisalAuditLog entries from each day, and makes the assertions described in acceptance criteria. No modifications to engine files, router, or audit logger. No real LLM calls.",
+  "constraints": [
+    "No real LLM calls — all appraisal_router.route invocations must be patched with unittest.mock",
+    "AppraisalSignal v1 is frozen — tests must not modify or extend its field definitions",
+    "T4 deterministic path is frozen — tests must not attempt to activate T4 negative residual branches",
+    "Settlement is engine-authoritative — test assertions on numeric outcomes must not bypass settlement arithmetic",
+    "Deferred ticks T3/T5/T6/T7/T8 must never appear as LLM-used entries in the audit log",
+    "The test file must be independently runnable via: cd back && python -m pytest tests/test_p31_t6_multiday_audit.py -v",
+    "The test must not break any existing passing tests"
+  ],
+  "acceptance_criteria": [
+    "A test asserts that simulate_day_bridged completes without raising an exception for each of at least 3 consecutive world days",
+    "A test asserts that across all days, the audit log contains entries only for tick types information_exposure, social_interaction, and relationship_shift (never T3/T5/T6/T7/T8 tick types)",
+    "A test asserts that the total count of audit log entries per day equals the number of active ticks attempted (T1 always present, T2 always present, T4 conditionally present based on world state)",
+    "A test asserts that LLM-path entries (llm_used=True) occur in at least one day's log when the mock is configured to return successful LLM output — confirming the LLM path is reachable",
+    "A test asserts that fallback entries (llm_used=False) occur when the mock is configured to simulate rejection — confirming fallback path is reachable",
+    "A test asserts that all AppraisalOutput values produced by LLM-path mock entries, when run through the settlement engine, produce numerically bounded state changes (no NaN, no out-of-range values)",
+    "A test asserts that the simulation result object returned from simulate_day_bridged each day exposes an audit_log attribute containing an AppraisalAuditLog instance",
+    "A test asserts that each AppraisalAuditEntry has a valid UTC ISO-8601 timestamp string in timestamp_iso",
+    "A test asserts that when 100% of route() calls fall back (mock always returns llm_used=False), the simulation still completes and produces valid final state — confirming graceful all-fallback operation"
+  ],
+  "required_tests": [
+    "Simulation completes without errors across 3 or more consecutive world days when LLM appraisal is mocked active",
+    "The audit log for each day records entries only for T1, T2, and T4 tick types — never for deferred ticks",
+    "At least one LLM-used entry appears when the mock is configured to succeed, confirming the LLM path executes",
+    "At least one fallback entry appears when the mock is configured to reject, confirming fallback path executes",
+    "Final agent state values after each day are numerically valid and within expected bounds after settlement",
+    "The simulation result exposes an audit_log containing an AppraisalAuditLog with correctly structured AppraisalAuditEntry records",
+    "Each audit entry carries a valid ISO-8601 UTC timestamp",
+    "When all route calls fall back (worst-case scenario), simulation completes and state remains coherent"
+  ],
+  "non_goals": [
+    "Making real LLM API calls or requiring an API key at test time",
+    "Testing the LLM prompt content or response quality",
+    "Activating T4 negative residual branches or modifying the T4 deterministic freeze",
+    "Extending bridge coverage to T3/T5/T6/T7/T8",
+    "Modifying tick_bridge.py, appraisal_router.py, appraisal_audit_log.py, or any engine file",
+    "Performance benchmarking or load testing",
+    "Frontend changes",
+    "Producing a long-running integration harness — this is a standard pytest test file"
+  ],
+  "allowed_files": [
+    "back/tests/test_p31_t6_multiday_audit.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/llm/appraisal_router.py",
+    "back/app/llm/appraisal_audit_log.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py"
+  ]
+}
