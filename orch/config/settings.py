@@ -11,12 +11,7 @@ CONFIG_PATH = ORCH_HOME / "config.yaml"
 # Orchestrator repo root (next to pyproject.toml)
 REPO_ROOT = Path(__file__).parent.parent.parent
 ENV_PATH = REPO_ROOT / ".env"
-# Legacy external state location kept for backward compatibility only.
 PROJECTS_DIR = REPO_ROOT / "projects"
-
-# Repo-local orchestration state (new default)
-REPO_STATE_DIRNAME = ".orch"
-RUNTIME_SUBDIR = "runtime"
 CLAUDE_AGENTS_SUBDIR = Path(".claude") / "agents"
 
 VALID_CLAUDE_MODELS = ("sonnet", "opus", "haiku")
@@ -67,16 +62,6 @@ def save_config(config: OrchestratorConfig) -> None:
             default_flow_style=False,
             allow_unicode=True,
         )
-
-
-def get_repo_state_dir(codebase_path: str | Path) -> Path:
-    """Return the repo-local orchestration state directory for a target codebase."""
-    return Path(codebase_path).resolve() / REPO_STATE_DIRNAME
-
-
-def get_runtime_dir(codebase_path: str | Path) -> Path:
-    """Return the transient runtime docs directory under the repo-local state dir."""
-    return get_repo_state_dir(codebase_path) / RUNTIME_SUBDIR
 
 
 def set_config_value(key: str, value: str) -> str:
