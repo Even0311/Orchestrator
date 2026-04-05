@@ -1,0 +1,16 @@
+{
+  "summary": "Created back/app/llm package with PromptTemplate and LlmAppraisalRequest (prompt_schema.py), ParseError and parse_llm_response (response_parser.py), and 26 tests covering all required_tests items; full suite of 678 tests passes with no regressions.",
+  "files_changed": [
+    "back/app/llm/__init__.py",
+    "back/app/llm/prompt_schema.py",
+    "back/app/llm/response_parser.py",
+    "back/tests/test_p30_t1_prompt_schema.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p30_t1_prompt_schema.py -v",
+    "python3 -m pytest tests/ -q"
+  ],
+  "test_results": "26 new tests all passed; full suite 678 passed, 0 failed, 0 regressions",
+  "diff_summary": "Added 4 new files only. back/app/llm/__init__.py exports the package. prompt_schema.py defines PromptTemplate (system_prompt, user_prompt_template, output_format_section fields) and LlmAppraisalRequest with a deterministic from_appraisal_input factory that renders all AppraisalInput slices and marks deferred ticks (T3/T5/T6/T7/T8) with [DEFERRED]. response_parser.py defines ParseError (reason, raw attributes) and parse_llm_response which JSON-parses the raw string, checks required contract-bearing fields, validates via AppraisalOutput constructor, sets fallback_used=False, and preserves confidence. No existing files were modified.",
+  "unresolved_issues": []
+}

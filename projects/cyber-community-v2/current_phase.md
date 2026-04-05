@@ -18,7 +18,7 @@ Validate LLM appraisal against the extracted appraisal seam without allowing it 
 - no prompt-only “magic” as a substitute for contract discipline
 
 ## Task Queue
-- [ ] P30-T1: Define the prompt schema and template contract for converting AppraisalInput into an LLM prompt and parsing the LLM response back into AppraisalOutput
+- [x] P30-T1: Define the prompt schema and template contract for converting AppraisalInput into an LLM prompt and parsing the LLM response back into AppraisalOutput — Round round-0036 — Prompt schema and template contract for LLM appraisal
 - [ ] P30-T2: Build a shadow appraisal runner that accepts AppraisalInput, invokes the LLM offline, and returns a parsed AppraisalOutput without touching the live path
 - [ ] P30-T3: Define acceptance rules that specify per-field comparison criteria between LLM-produced and deterministic AppraisalOutput, distinguishing structural validity from semantic quality
 - [ ] P30-T4: Build a comparison harness that runs both deterministic and shadow LLM paths on the same AppraisalInput, produces a structured diff report, and flags acceptance-rule violations

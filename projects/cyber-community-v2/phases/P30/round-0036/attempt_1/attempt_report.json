@@ -1,0 +1,168 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 0.9692018999999998,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P30",
+    "task_key": "P30-T1",
+    "title": "Prompt schema and template contract for LLM appraisal",
+    "objective": "Define the data schema and rendering contract that converts an AppraisalInput into a structured LLM prompt, and specify how an LLM text response is parsed back into a validated AppraisalOutput. No live LLM call path; schema and template only.",
+    "exact_scope": "Create two new modules: (1) back/app/llm/prompt_schema.py defining PromptTemplate and LlmAppraisalRequest as Pydantic models that capture the rendered prompt text plus all metadata needed to reconstruct context; (2) back/app/llm/response_parser.py containing a pure-function parser that accepts an LLM text response string and returns an AppraisalOutput or raises a structured ParseError. Create back/app/llm/__init__.py to make the package importable. Write tests in back/tests/test_p30_t1_prompt_schema.py covering prompt rendering correctness and response parsing. No engine wiring, no HTTP calls, no changes to existing files.",
+    "acceptance_criteria": [
+      "A PromptTemplate model exists in back/app/llm/prompt_schema.py and holds the system prompt string and one or more user prompt section templates as string fields",
+      "A LlmAppraisalRequest model exists in back/app/llm/prompt_schema.py and is constructable from any valid AppraisalInput via a factory function or classmethod; the rendered text fields are deterministic",
+      "The rendered user prompt includes: tick_type, world_day, agent_id, all AgentContextSlice fields, all WorldContextSlice fields, relational_context fields when present (None otherwise), social_event_context fields when present, player_context fields when present",
+      "The rendered prompt includes a clearly delimited output format section that specifies exactly which fields the LLM must return and in which format (JSON block with field names matching AppraisalOutput contract-bearing fields)",
+      "A ParseError exception class exists in back/app/llm/response_parser.py with at least a reason string field",
+      "A parse_llm_response function exists in back/app/llm/response_parser.py accepting a raw string and returning AppraisalOutput",
+      "parse_llm_response raises ParseError for inputs that are not valid JSON, missing required contract-bearing fields, or contain values that violate AppraisalOutput validators",
+      "parse_llm_response sets fallback_used=False and preserves confidence if present in the LLM response",
+      "All tests in back/tests/test_p30_t1_prompt_schema.py pass with the existing test suite (no regressions)"
+    ],
+    "required_tests": [
+      "Given a T1 (information_exposure) AppraisalInput, building a LlmAppraisalRequest succeeds and the rendered user prompt contains the headline, trending_topic, and tick_type label",
+      "Given a T2 (social_interaction) AppraisalInput, the rendered prompt contains relational_context fields (target_name, trust, closeness)",
+      "Given a T4 (relationship_shift) AppraisalInput with a social_event_context, the rendered prompt contains social event fields (event_type, intensity)",
+      "Given a deferred-tick AppraisalInput (e.g. T5 emotional_shift), building a LlmAppraisalRequest does not raise an error and produces a prompt that clearly marks the tick as deferred",
+      "The rendered user prompt always contains a clearly delimited output format section listing the contract-bearing output fields",
+      "parse_llm_response with a well-formed JSON string matching all required contract-bearing fields returns a valid AppraisalOutput with fallback_used=False",
+      "parse_llm_response with absorption=none and aftershock_days=1 raises ParseError (AppraisalOutput validator violation)",
+      "parse_llm_response with a JSON string that is missing the absorption field raises ParseError",
+      "parse_llm_response with a non-JSON string raises ParseError",
+      "parse_llm_response with absorption=deep, valid valence, arousal, and a growth list containing a duplicate dimension raises ParseError"
+    ],
+    "non_goals": [
+      "Making any actual HTTP or API call to an LLM service",
+      "Wiring the prompt or parser into the day_simulator or any live execution path",
+      "Defining a shadow-run comparison harness (that is a later P30 task)",
+      "Adding new fields to AppraisalInput or AppraisalOutput",
+      "Handling prompt caching, token counting, or cost estimation",
+      "Frontend changes of any kind",
+      "Modifying any existing test files"
+    ],
+    "constraints": [
+      "AppraisalSignal v1 is frozen — do not modify appraisal_settlement.py or any existing contract field",
+      "AppraisalOutput schema is frozen — do not add, remove, or rename fields on AppraisalOutput",
+      "AppraisalInput schema is frozen — do not modify appraisal_input.py",
+      "No live LLM call path may be created in this task — this is schema and template definition only",
+      "The prompt template must be deterministic — given the same AppraisalInput, it must always produce the same prompt text",
+      "The response parser must return a valid AppraisalOutput (passing all existing AppraisalOutput validators) or raise a clearly typed ParseError",
+      "The response parser must not write to any state model directly — it returns a value only",
+      "Deferred ticks T3/T5/T6/T7/T8 must be representable in the prompt schema even though they are not in scope for live appraisal",
+      "All enum values used in prompt rendering must be sourced from existing domain enums — no new string literals duplicating enum values",
+      "No new dependencies beyond the Python standard library and packages already in the project"
+    ],
+    "allowed_files": [
+      "back/app/llm/__init__.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/tests/test_p30_t1_prompt_schema.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/enums.py",
+      "back/app/domain/models.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py",
+      "back/app/engines/day_simulator.py",
+      "back/tests/test_appraisal_input_schema.py",
+      "back/tests/test_appraisal_output_schema.py",
+      "back/tests/test_appraisal_settlement.py",
+      "back/tests/test_tick_bridge.py",
+      "back/tests/test_residual_continuity_audit.py",
+      "back/tests/test_residual_persistence.py",
+      "back/tests/test_world_continuity.py",
+      "back/tests/test_social_event_schema.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created back/app/llm package with PromptTemplate and LlmAppraisalRequest (prompt_schema.py), ParseError and parse_llm_response (response_parser.py), and 26 tests covering all required_tests items; full suite of 678 tests passes with no regressions.",
+    "files_changed": [
+      "back/app/llm/__init__.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/tests/test_p30_t1_prompt_schema.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p30_t1_prompt_schema.py -v",
+      "python3 -m pytest tests/ -q"
+    ],
+    "test_results": "26 new tests all passed; full suite 678 passed, 0 failed, 0 regressions",
+    "diff_summary": "Added 4 new files only. back/app/llm/__init__.py exports the package. prompt_schema.py defines PromptTemplate (system_prompt, user_prompt_template, output_format_section fields) and LlmAppraisalRequest with a deterministic from_appraisal_input factory that renders all AppraisalInput slices and marks deferred ticks (T3/T5/T6/T7/T8) with [DEFERRED]. response_parser.py defines ParseError (reason, raw attributes) and parse_llm_response which JSON-parses the raw string, checks required contract-bearing fields, validates via AppraisalOutput constructor, sets fallback_used=False, and preserves confidence. No existing files were modified.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "PromptTemplate model exists in back/app/llm/prompt_schema.py with system_prompt, user_prompt_template, and output_format_section string fields",
+      "LlmAppraisalRequest model exists in back/app/llm/prompt_schema.py and is constructable from any valid AppraisalInput via from_appraisal_input classmethod; rendering is deterministic (verified by test_t1_rendering_is_deterministic)",
+      "Rendered user prompt includes tick_type, world_day, agent_id, all AgentContextSlice fields (mood_score, stress, energy, curiosity, social_fulfillment, growth_stage), all WorldContextSlice fields (headline, trending_topic, influencer_opinion_source/quote, dominant_district, signal_carryover, yesterday_headline), relational_context fields when present, social_event_context fields when present, player_context fields when present",
+      "Rendered prompt includes clearly delimited output format section (===BEGIN OUTPUT FORMAT=== ... ===END OUTPUT FORMAT===) listing all contract-bearing AppraisalOutput fields (absorption, valence, arousal, aftershock_days, growth, guidance_resonance, relational)",
+      "ParseError exception class exists in back/app/llm/response_parser.py with reason and raw attributes",
+      "parse_llm_response function exists in back/app/llm/response_parser.py accepting raw string and returning AppraisalOutput",
+      "parse_llm_response raises ParseError for non-JSON input, missing required fields (absorption, valence, arousal), and AppraisalOutput validator violations (absorption=none+aftershock_days>0, duplicate growth dimensions, invalid enum values)",
+      "parse_llm_response sets fallback_used=False and preserves confidence if present in LLM response",
+      "All 678 tests pass with no regressions; 26 new tests added covering all 10 required scenarios"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": ""
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/app/llm/__init__.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/tests/test_p30_t1_prompt_schema.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files exist and the round is complete. Here is the summary:\n\n---\n\n## Round-0036 Outcome: **PASS**\n\n### What was built\nA new `back/app/llm/` package implementing the P30-T1 prompt schema and template contract:\n\n- **`back/app/llm/__init__.py`** — package init, re-exports key symbols\n- **`back/app/llm/prompt_schema.py`** — `PromptTemplate` and `LlmAppraisalRequest` Pydantic models; `LlmAppraisalRequest.from_appraisal_input()` deterministically renders any `AppraisalInput` into a structured LLM prompt including all context slices (agent, world, relational, social event, player) and a clearly delimited `===BEGIN OUTPUT FORMAT===...===END OUTPUT FORMAT===` section; deferred ticks (T3/T5/T6/T7/T8) are labeled `[DEFERRED]`\n- **`back/app/llm/response_parser.py`** — `ParseError` exception (with `reason` and `raw` fields) and `parse_llm_response(raw: str) -> AppraisalOutput` pure function that JSON-parses, validates all required fields, runs `AppraisalOutput` validators, sets `fallback_used=False`, and raises `ParseError` on any failure\n- **`back/tests/test_p30_t1_prompt_schema.py`** — 26 new tests covering all 10 required scenarios\n\n### Test results\n- 678 total tests passed, 0 failed, 0 regressions\n- No existing files were modified; no forbidden files touched"
+}
