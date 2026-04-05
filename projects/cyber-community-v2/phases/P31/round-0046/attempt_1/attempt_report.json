@@ -1,0 +1,138 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.4164938000000002,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P31",
+    "task_key": "P31-T5",
+    "title": "Settlement engine contract compatibility tests for LLM-sourced appraisal output",
+    "objective": "Write a dedicated test module that feeds synthetic LLM-shaped AppraisalOutput values (no real LLM calls) into the settlement engines and asserts that outputs are numerically correct and within expected bounds, confirming full end-to-end contract compatibility between the LLM appraisal path and the engine settlement layer.",
+    "exact_scope": "One new test file covering: (1) mood and stress changes produced by settle_appraisal_output when given LLM-shaped AppraisalOutput instances across all absorption/valence/arousal combinations of interest; (2) growth buffer accumulation via accumulate_growth_from_appraisal for multi-contribution LLM outputs with varying guidance_resonance values; (3) relationship trust, closeness, and riskScore changes via apply_appraisal_to_relationship for LLM-shaped relational blocks; (4) residual creation from create_residual_from_appraisal for LLM outputs with aftershock_days > 0; (5) advisory fields (narrative_summary, confidence, tick_type, fallback_used) confirmed to have zero effect on any settlement arithmetic; (6) the full settle_appraisal_output entry point exercised with LLM-realistic synthetic outputs for T1, T2, and T4 tick types; (7) boundary checks confirming all settlement outputs stay within their declared bounds (mood 0–100, stress 0–100, trust 0–100, closeness 0–100, riskScore 0–100, aftershock_days 0–3). No modifications to any existing engine, model, or existing test file.",
+    "acceptance_criteria": [
+      "A new test file test_p31_t5_settlement_contract.py exists under back/tests/",
+      "All tests in the new file pass with python -m pytest back/tests/test_p31_t5_settlement_contract.py -v",
+      "All existing tests continue to pass after the new file is added",
+      "Tests cover settle_appraisal_output for at least one LLM-realistic T1 output, one T2 output with a relational block, and one T4 output with a relational block",
+      "Tests assert that mood/stress deltas match the values in the _MOOD_STRESS_TABLE lookup for the given (valence, arousal, absorption) triple",
+      "Tests assert that growth buffer accumulation reflects the correct weight and guidance_resonance multiplier for partial and deep absorption levels",
+      "Tests assert that relationship trust, closeness, and riskScore are updated correctly and remain in [0, 100]",
+      "Tests assert that residuals are created with the correct days_remaining, stress_per_day, and mood_per_day for LLM outputs with aftershock_days > 0",
+      "Tests confirm that supplying non-None narrative_summary, confidence, fallback_used=False, or tick_type does not alter any numeric settlement output",
+      "Tests confirm that absorption=none produces no state change, no growth accumulation, no residual, and no relationship change regardless of other field values",
+      "Tests confirm that all settlement outputs for extreme but valid input values (mood at 95, stress at 95, max absorption + high arousal + negative valence) stay within [0, 100]"
+    ],
+    "required_tests": [
+      "Given a T1-shaped AppraisalOutput with absorption=partial, valence=positive, arousal=medium, guidance_resonance=aligned, and two growth contributions, when settle_appraisal_output is called, mood increases by 4 and stress decreases by 1 (matching the lookup table), and the growth buffer reflects contributions multiplied by 0.6 * 1.3",
+      "Given a T2-shaped AppraisalOutput with a relational block (trust_shift=mild_increase, closeness_delta=+1, risk_delta=-3) and absorption=surface, when settle_appraisal_output is called, the target relationship's trust increases by 2 and closeness increases by 1 (subject to inertia) and riskScore decreases by 3",
+      "Given a T4-shaped AppraisalOutput with a relational block (trust_shift=strong_decrease, closeness_delta=-2, risk_delta=+5) and absorption=deep, when settle_appraisal_output is called, the strong_decrease inertia bypass applies and trust decreases by 5",
+      "Given a LLM-shaped AppraisalOutput with aftershock_days=2 and absorption=partial and valence=negative, when create_residual_from_appraisal is called, a ResidualEntry is returned with days_remaining=2, stress_per_day=+2, mood_per_day=-2",
+      "Given the same LLM-shaped AppraisalOutput but with narrative_summary set to a long string and confidence=0.85, when settle_appraisal_output is called, the numeric outputs are identical to the case where those advisory fields are None",
+      "Given a LLM-shaped AppraisalOutput with absorption=none (deferred fallback shape), when settle_appraisal_output is called, the returned state is unchanged, the growth buffer is unchanged, no residual is returned, and any relational block present is ignored",
+      "Given a LLM-shaped AppraisalOutput with absorption=deep, valence=negative, arousal=high applied to an agent with moodScore=5 and stress=95, when settle_appraisal_output is called, moodScore does not drop below 0 and stress does not exceed 100",
+      "Given a LLM-shaped AppraisalOutput with three growth contributions (maximum allowed) and guidance_resonance=resisted, when accumulate_growth_from_appraisal is called, all three dimensions accumulate at 50% of their raw weight",
+      "Given a LLM-shaped T1 AppraisalOutput with aftershock_days=0, when create_residual_from_appraisal is called, None is returned regardless of absorption level",
+      "Given a LLM-shaped T2 AppraisalOutput where the relational target_id does not match any known relationship, validate_appraisal_signal raises a ValueError identifying the unknown target"
+    ],
+    "non_goals": [
+      "Do not call the real LLM, shadow_runner, or appraisal_router in any test",
+      "Do not test T3, T5, T6, T7, or T8 tick paths in this module",
+      "Do not test the audit logging layer (covered by test_p31_t4_appraisal_audit_log.py)",
+      "Do not test the validation gate or acceptance_rules logic (covered by test_p31_t2_validation_gate.py)",
+      "Do not modify any settlement engine, model, or previously existing test file",
+      "Do not add any new production code — this task produces only a test file",
+      "Do not add end-to-end simulate_day_bridged integration tests — those belong to the router integration layer already covered by test_p31_t3_router_integration.py"
+    ],
+    "constraints": [
+      "All test inputs must be synthetic (hand-crafted) AppraisalOutput objects — no actual LLM calls, no mocked LLM infrastructure",
+      "AppraisalSignal v1 fields are frozen — tests must not attempt to add or remove fields from AppraisalSignal or AppraisalOutput",
+      "Tests must not modify any engine file (appraisal_settlement.py, growth_synthesizer.py, relationship_synthesizer.py, relationship_drift.py)",
+      "Tests must not modify any existing test file",
+      "T3, T5, T6, T7, T8 deferred ticks remain out of scope — do not write settlement tests for those tick types",
+      "Settlement engines are the sole authority for numeric writes — tests must assert engine outputs, not construct ledger values directly",
+      "Do not use real LLM infrastructure, shadow_runner, or appraisal_router in these tests — purely direct engine invocation with crafted inputs"
+    ],
+    "allowed_files": [
+      "back/tests/test_p31_t5_settlement_contract.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/growth_synthesizer.py",
+      "back/app/engines/relationship_synthesizer.py",
+      "back/app/engines/relationship_drift.py",
+      "back/app/domain/appraisal_output.py",
+      "back/tests/test_p31_t1_appraisal_router.py",
+      "back/tests/test_p31_t2_validation_gate.py",
+      "back/tests/test_p31_t3_router_integration.py",
+      "back/tests/test_p31_t4_appraisal_audit_log.py",
+      "back/tests/test_p29_t5_settlement_boundary.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "",
+    "files_changed": [],
+    "commands_run": [],
+    "test_results": "14 new tests all passed; full suite 847 passed in 8.23s",
+    "diff_summary": "",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "medium",
+    "met_criteria": [],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": ""
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/tests/test_p31_t5_settlement_contract.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are present. Here is the round-0046 summary:\n\n## Round-0046 — Summary\n\n**Task:** P31-T5 — Settlement contract compatibility verification for LLM-sourced appraisal output\n\n**Outcome: PASS ✅**\n\n### What Was Done\n- **Designer** defined a focused test-only contract: create `back/tests/test_p31_t5_settlement_contract.py` with 14 tests exercising the settlement engines directly via synthetic (LLM-shaped) AppraisalSignal inputs — no real LLM calls needed.\n\n- **Executor** implemented all 14 tests covering:\n  - Mood/stress delta settlement (T1, T2, T4 paths)\n  - Growth buffer accumulation with aligned/resisted resonance multipliers\n  - Relationship trust/closeness/riskScore updates including inertia bypass for strong_decrease + deep absorption\n  - Residual creation with correct days_remaining and per-day values\n  - Advisory field isolation (narrative_summary, confidence, tick_type, fallback_used have zero numeric effect)\n  - absorption=none no-op path (state, buffer, residual, relationships all unchanged)\n  - Boundary clamping at extreme values (stay within [0, 100])\n  - All 14 tests passed; full suite (847 tests) passed with no regressions\n\n- **Reviewer** confirmed all 11 acceptance criteria met, no regressions, no existing files modified, AppraisalSignal schema untouched."
+}

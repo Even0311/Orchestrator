@@ -1,0 +1,65 @@
+{
+  "task_key": "P31-T5",
+  "verdict": "PASS",
+  "criteria_results": [
+    {
+      "criterion": "A new test file test_p31_t5_settlement_contract.py exists under back/tests/",
+      "result": "PASS",
+      "notes": "File exists as the sole untracked file; no other files modified."
+    },
+    {
+      "criterion": "All tests in the new file pass with python -m pytest back/tests/test_p31_t5_settlement_contract.py -v",
+      "result": "PASS",
+      "notes": "14/14 tests passed in 0.08s."
+    },
+    {
+      "criterion": "All existing tests continue to pass after the new file is added",
+      "result": "PASS",
+      "notes": "Full suite: 847 passed in 8.22s, zero failures or regressions."
+    },
+    {
+      "criterion": "Tests cover settle_appraisal_output for at least one LLM-realistic T1 output, one T2 output with a relational block, and one T4 output with a relational block",
+      "result": "PASS",
+      "notes": "test_full_settle_t1_realistic_output, test_full_settle_t2_realistic_with_relational, test_full_settle_t4_realistic_with_relational all present and passing."
+    },
+    {
+      "criterion": "Tests assert that mood/stress deltas match the values in the _MOOD_STRESS_TABLE lookup for the given (valence, arousal, absorption) triple",
+      "result": "PASS",
+      "notes": "test_t1_partial_positive_medium_aligned_mood_stress_and_growth directly reads _MOOD_STRESS_TABLE and asserts exact deltas (+4, -1). test_extreme_inputs_stay_within_bounds verifies (-5, +5) for (negative, high, deep)."
+    },
+    {
+      "criterion": "Tests assert that growth buffer accumulation reflects the correct weight and guidance_resonance multiplier for partial and deep absorption levels",
+      "result": "PASS",
+      "notes": "test_t1_partial_positive_medium_aligned verifies 0.6*1.3=0.78 (partial+aligned); test_three_growth_contributions_resisted_resonance verifies 1.0*0.5=0.5 (deep+resisted)."
+    },
+    {
+      "criterion": "Tests assert that relationship trust, closeness, and riskScore are updated correctly and remain in [0, 100]",
+      "result": "PASS",
+      "notes": "test_t2_surface_mild_increase_relational_updates_correctly asserts trust=61, closeness=50, riskScore=27; test_t4_deep_strong_decrease_bypasses_inertia asserts trust=55; test_relationship_trust_closeness_risk_stay_in_bounds checks extreme cases; all include [0,100] assertions."
+    },
+    {
+      "criterion": "Tests assert that residuals are created with the correct days_remaining, stress_per_day, and mood_per_day for LLM outputs with aftershock_days > 0",
+      "result": "PASS",
+      "notes": "test_residual_created_with_correct_values_for_negative_partial asserts days_remaining=2, stress_per_day=2, mood_per_day=-2. T2 and T4 full-settle tests also assert specific residual field values."
+    },
+    {
+      "criterion": "Tests confirm that supplying non-None narrative_summary, confidence, fallback_used=False, or tick_type does not alter any numeric settlement output",
+      "result": "PASS",
+      "notes": "test_advisory_fields_do_not_affect_settlement runs settle_appraisal_output twice — once with all advisory fields None, once with a long narrative_summary and confidence=0.85 — and asserts all numeric outputs are identical."
+    },
+    {
+      "criterion": "Tests confirm that absorption=none produces no state change, no growth accumulation, no residual, and no relationship change regardless of other field values",
+      "result": "PASS",
+      "notes": "test_absorption_none_produces_no_changes verifies moodScore=50, stress=30, growth_buf.curiosity=0.5 (unchanged), residual=None, trust/closeness/riskScore all unchanged despite non-None relational block with strong_decrease."
+    },
+    {
+      "criterion": "Tests confirm that all settlement outputs for extreme but valid input values stay within [0, 100]",
+      "result": "PASS",
+      "notes": "test_extreme_inputs_stay_within_bounds (moodScore=5, stress=95, deep+negative+high) and test_relationship_trust_closeness_risk_stay_in_bounds (trust=99/1, riskScore=1/99) both assert [0,100] bounds."
+    }
+  ],
+  "test_summary": "14/14 tests passed (new file); 847/847 total suite passed",
+  "regressions": "none",
+  "issues": [],
+  "notes": "All acceptance criteria are met. Tests call settlement engines directly without mocking; advisory field no-op test uses a proper before/after comparison rather than only asserting plausibility; boundary tests cover both mood/stress and relationship fields; the required_tests coverage is complete (T1 partial+positive+medium+aligned, T2 surface mild_increase relational, T4 deep strong_decrease inertia bypass, negative partial residual creation, advisory fields no-op, absorption=none no-op, extreme boundary clamp, three contributions resisted resonance, aftershock_days=0 no residual, unknown target_id ValueError). No engine files or existing test files were modified — git status confirms only the new test file is present as untracked."
+}

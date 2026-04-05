@@ -1,0 +1,22 @@
+{
+  "task_key": "P31-T5",
+  "files_created": [
+    "back/tests/test_p31_t5_settlement_contract.py"
+  ],
+  "files_modified": [],
+  "test_results": "14 new tests all passed; full suite 847 passed in 8.23s",
+  "acceptance_criteria_met": [
+    "A new test file test_p31_t5_settlement_contract.py exists under back/tests/ — MET",
+    "All tests in the new file pass with python -m pytest back/tests/test_p31_t5_settlement_contract.py -v — MET (14/14 passed)",
+    "All existing tests continue to pass after the new file is added — MET (847 passed)",
+    "Tests cover settle_appraisal_output for at least one LLM-realistic T1 output, one T2 output with a relational block, and one T4 output with a relational block — MET (test_full_settle_t1_realistic_output, test_full_settle_t2_realistic_with_relational, test_full_settle_t4_realistic_with_relational)",
+    "Tests assert that mood/stress deltas match the values in the _MOOD_STRESS_TABLE lookup for the given (valence, arousal, absorption) triple — MET (test_t1_partial_positive_medium_aligned_mood_stress_and_growth, test_extreme_inputs_stay_within_bounds both verify the exact lookup values)",
+    "Tests assert that growth buffer accumulation reflects the correct weight and guidance_resonance multiplier for partial and deep absorption levels — MET (test_t1_partial_positive_medium_aligned_mood_stress_and_growth uses partial+aligned=0.6*1.3, test_three_growth_contributions_resisted_resonance uses deep+resisted=1.0*0.5)",
+    "Tests assert that relationship trust, closeness, and riskScore are updated correctly and remain in [0, 100] — MET (test_t2_surface_mild_increase_relational_updates_correctly, test_t4_deep_strong_decrease_bypasses_inertia, test_relationship_trust_closeness_risk_stay_in_bounds)",
+    "Tests assert that residuals are created with the correct days_remaining, stress_per_day, and mood_per_day for LLM outputs with aftershock_days > 0 — MET (test_residual_created_with_correct_values_for_negative_partial, test_full_settle_t2_realistic_with_relational, test_full_settle_t4_realistic_with_relational)",
+    "Tests confirm that supplying non-None narrative_summary, confidence, fallback_used=False, or tick_type does not alter any numeric settlement output — MET (test_advisory_fields_do_not_affect_settlement)",
+    "Tests confirm that absorption=none produces no state change, no growth accumulation, no residual, and no relationship change regardless of other field values — MET (test_absorption_none_produces_no_changes)",
+    "Tests confirm that all settlement outputs for extreme but valid input values (mood at 95, stress at 95, max absorption + high arousal + negative valence) stay within [0, 100] — MET (test_extreme_inputs_stay_within_bounds, test_relationship_trust_closeness_risk_stay_in_bounds)"
+  ],
+  "notes": "All required_tests from task_contract.json are covered: T1 partial+positive+medium+aligned with two growth contributions; T2 surface mild_increase relational; T4 deep strong_decrease inertia bypass; negative partial residual creation; advisory fields no-op; absorption=none no-op; extreme boundary clamp; three contributions resisted resonance; aftershock_days=0 no residual; unknown target_id ValueError. No engine files modified. No existing test files modified."
+}
