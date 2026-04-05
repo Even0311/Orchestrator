@@ -1,0 +1,168 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.4451127500000005,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P30",
+    "task_key": "P30-T2",
+    "title": "Shadow appraisal runner: AppraisalInput → LLM → AppraisalOutput",
+    "objective": "Create a shadow appraisal runner module at back/app/llm/shadow_runner.py that accepts an AppraisalInput, uses LlmAppraisalRequest to render the prompt, calls the Anthropic API offline, parses the raw response via parse_llm_response, and returns an AppraisalOutput. On any ParseError or API error, the runner must fall back to AppraisalOutput.from_deterministic_fallback and record the failure reason. No live engine path is touched.",
+    "exact_scope": "One new module: back/app/llm/shadow_runner.py containing a ShadowAppraisalRunner class (or equivalent top-level function) with a single public entry point run(input: AppraisalInput) -> ShadowRunResult. One new test file: back/tests/test_p30_t2_shadow_runner.py covering all required tests listed below. No changes to any existing module outside back/app/llm/. No changes to engines, settlement, tick_bridge, or any live simulation path.",
+    "acceptance_criteria": [
+      "A ShadowRunResult model (or dataclass) is defined in shadow_runner.py carrying: output (AppraisalOutput), llm_used (bool indicating whether the LLM path was taken), failure_reason (Optional[str] set when fallback was used), raw_response (Optional[str] the raw text returned by the LLM before parsing).",
+      "run(input) with a stubbed LLM that returns a valid JSON response produces a ShadowRunResult where llm_used=True, failure_reason=None, output.fallback_used=False, and output fields match the stubbed response.",
+      "run(input) with a stubbed LLM that returns malformed JSON produces a ShadowRunResult where llm_used=False, failure_reason contains a non-empty string, output.fallback_used=True, and output matches AppraisalOutput.from_deterministic_fallback.",
+      "run(input) with a stubbed LLM that raises an API-level exception produces a ShadowRunResult where llm_used=False, failure_reason is non-empty, and output.fallback_used=True.",
+      "run(input) with a T1 input and a valid stubbed LLM response sets output.tick_type to EventCategory.information_exposure in the returned output.",
+      "run(input) with a T2 input (relational_context present) and a valid stubbed response that includes a non-null relational block returns that relational block unmodified in output.relational.",
+      "run(input) with a T4 input (social_event_context present) and a valid stubbed response is handled without error.",
+      "The prompt sent to the LLM is the same string that LlmAppraisalRequest.from_appraisal_input produces for the same input — the runner must not construct prompts independently.",
+      "The runner is importable with no environment variable set and no network call occurring at import time.",
+      "All existing tests (back/tests/) continue to pass without modification."
+    ],
+    "required_tests": [
+      "When the LLM returns a valid surface-absorption neutral T1 response, the runner returns a result with llm_used=True and output.absorption equal to surface.",
+      "When the LLM returns unparseable text (not JSON), the runner returns a result with llm_used=False, a non-empty failure_reason, and output.fallback_used=True.",
+      "When the LLM call raises an exception (simulated API error), the runner returns a result with llm_used=False and output.fallback_used=True rather than propagating the exception.",
+      "The raw_response field on a successful LLM run contains the exact text that the LLM returned before parsing.",
+      "The raw_response field on a failed parse attempt contains the text that was returned but failed to parse.",
+      "The raw_response field is None when the LLM call itself raised an exception (no text was returned).",
+      "For a T1 input, the prompt text passed to the LLM contains the headline and trending_topic from the input's world_context.",
+      "For a T2 input, the prompt text passed to the LLM contains the target_name from the input's relational_context.",
+      "The runner never calls AppraisalOutput.from_deterministic_fallback when the LLM path succeeds and the response is valid.",
+      "When a valid LLM response contains absorption=deep with a growth list of two dimensions, the returned output carries all growth entries intact."
+    ],
+    "non_goals": [
+      "Wiring the shadow runner into any live API route or tick pipeline.",
+      "Adding retry logic or exponential backoff for the LLM call.",
+      "Streaming the LLM response.",
+      "Supporting any LLM provider other than Anthropic.",
+      "Adding a CLI or management interface for invoking the runner.",
+      "Logging or persisting run results to disk or any external store.",
+      "Modifying the deterministic fallback behavior or any settlement logic.",
+      "Adding confidence thresholds or gating settlement on runner output.",
+      "Supporting batch or parallel invocations in this task."
+    ],
+    "constraints": [
+      "Must not modify back/app/engines/appraisal_settlement.py or any other engine module.",
+      "Must not modify back/app/llm/prompt_schema.py or back/app/llm/response_parser.py.",
+      "Must not modify back/app/domain/appraisal_output.py — AppraisalOutput schema is frozen.",
+      "Must not modify back/app/domain/appraisal_input.py — AppraisalInput schema is frozen.",
+      "The runner must never write to any state — it is a pure read-then-return pipeline.",
+      "The runner must not be wired into the live tick pipeline (day_simulator, tick_bridge, or any API route).",
+      "The LLM call must be the Anthropic API (claude-sonnet-4-6 or equivalent current model). No OpenAI or other provider.",
+      "The runner must not use streaming — a single complete response per invocation.",
+      "On any failure (ParseError, API error, network error, timeout), the runner must return the deterministic fallback output via AppraisalOutput.from_deterministic_fallback rather than raising to the caller.",
+      "fallback_used on the returned AppraisalOutput must accurately reflect whether the LLM path succeeded (False) or the fallback was used (True).",
+      "The module must be importable with no side effects — no LLM call happens at import time.",
+      "API key must be read from the environment (ANTHROPIC_API_KEY); the key must not be hardcoded.",
+      "Tests must use monkeypatching or a fake/stub transport to simulate LLM responses — no real API calls in the test suite."
+    ],
+    "allowed_files": [
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/__init__.py",
+      "back/tests/test_p30_t2_shadow_runner.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py",
+      "back/app/engines/day_simulator.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/app/api/routes",
+      "back/tests/test_p30_t1_prompt_schema.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Fixed shadow_runner.py to propagate tick_type from AppraisalInput to AppraisalOutput after a successful LLM parse, and fixed the corresponding test to assert output.tick_type == EventCategory.information_exposure (adding a second tick_type propagation test for T2 as well).",
+    "files_changed": [
+      "back/app/llm/shadow_runner.py",
+      "back/tests/test_p30_t2_shadow_runner.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p30_t2_shadow_runner.py -v",
+      "python3 -m pytest tests/ --tb=short"
+    ],
+    "test_results": "all passed — 695 passed in 0.37s (17 shadow runner tests, 695 total)",
+    "diff_summary": "shadow_runner.py: added `output = output.model_copy(update={\"tick_type\": input.tick_type})` before the success ShadowRunResult return. test file: replaced test_t1_output_absorption_is_surface_from_valid_response (which was an absorption-only check) with test_t1_output_tick_type_matches_input (asserts output.tick_type == EventCategory.information_exposure) and added test_tick_type_propagated_from_input_on_llm_success (verifies T2 tick_type propagation).",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "ShadowRunResult model defined with output, llm_used, failure_reason, raw_response fields",
+      "run(input) with valid stubbed LLM returns llm_used=True, failure_reason=None, output.fallback_used=False, output fields match stubbed response",
+      "run(input) with malformed JSON returns llm_used=False, non-empty failure_reason, output.fallback_used=True",
+      "run(input) with API-level exception returns llm_used=False, output.fallback_used=True, no propagation",
+      "run(input) with T1 input and valid response sets output.tick_type to EventCategory.information_exposure — fix confirmed at shadow_runner.py line 142: output = output.model_copy(update={'tick_type': input.tick_type})",
+      "run(input) with T2 input and relational block in response returns relational block unmodified",
+      "run(input) with T4 input and valid response handled without error",
+      "Prompt sent to LLM is the same string that LlmAppraisalRequest.from_appraisal_input produces",
+      "Runner importable with no environment variable set and no network call at import time",
+      "All 10 required tests present and non-trivial",
+      "All 695 existing tests continue to pass without modification",
+      "No forbidden files modified — only shadow_runner.py and test_p30_t2_shadow_runner.py are new untracked files",
+      "API key read from ANTHROPIC_API_KEY environment variable; not hardcoded",
+      "Tests use monkeypatching — no real API calls in test suite"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": "The targeted tick_type fix is correctly applied. At shadow_runner.py line 142, in the success path after parse_llm_response succeeds, the code applies output = output.model_copy(update={'tick_type': input.tick_type}) before returning ShadowRunResult. The test test_t1_output_tick_type_matches_input (line 455) explicitly asserts result.output.tick_type == EventCategory.information_exposure and passes. A second test test_tick_type_propagated_from_input_on_llm_success covers T2 tick_type propagation. All 17 shadow runner tests pass (17 is up from 16 — the fix added tick_type tests). The full 695-test suite passes with no regressions. No forbidden files were modified per git status."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/app/llm/shadow_runner.py",
+      "back/tests/test_p30_t2_shadow_runner.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are in place and the round is complete. Here's the summary:\n\n---\n\n## Round-0037 Outcome: PASS\n\n**Task:** P30-T2 — Build a shadow appraisal runner\n\n### What was built\n\nA new module `back/app/llm/shadow_runner.py` implementing:\n- **`ShadowRunResult`** — Pydantic model carrying `output` (AppraisalOutput), `llm_used` (bool), `failure_reason` (Optional[str]), `raw_response` (Optional[str])\n- **`run(input: AppraisalInput) -> ShadowRunResult`** — the public entry point that:\n  - builds prompts exclusively via `LlmAppraisalRequest.from_appraisal_input()` (P30-T1 contract enforced)\n  - calls the Anthropic API (claude-sonnet-4-6) via a deferred-import `_call_llm()` helper\n  - parses via `parse_llm_response` and injects `tick_type` from the input on success\n  - falls back to `AppraisalOutput.from_deterministic_fallback` on any ParseError or API exception — never raises to caller\n\n### Test coverage\n\n17 tests in `back/tests/test_p30_t2_shadow_runner.py`, all using monkeypatching (no real API calls). **695/695 total tests pass.**\n\n### Reviewer iteration\n\nOne blocker was found in the first review pass (tick_type not injected from input on LLM success). The fix — `output.model_copy(update={\"tick_type\": input.tick_type})` — was applied and verified in a second review pass. Final verdict: **PASS**."
+}

@@ -1,0 +1,75 @@
+{
+  "phase_id": "P30",
+  "task_key": "P30-T2",
+  "title": "Shadow appraisal runner: AppraisalInput → LLM → AppraisalOutput",
+  "objective": "Create a shadow appraisal runner module at back/app/llm/shadow_runner.py that accepts an AppraisalInput, uses LlmAppraisalRequest to render the prompt, calls the Anthropic API offline, parses the raw response via parse_llm_response, and returns an AppraisalOutput. On any ParseError or API error, the runner must fall back to AppraisalOutput.from_deterministic_fallback and record the failure reason. No live engine path is touched.",
+  "exact_scope": "One new module: back/app/llm/shadow_runner.py containing a ShadowAppraisalRunner class (or equivalent top-level function) with a single public entry point run(input: AppraisalInput) -> ShadowRunResult. One new test file: back/tests/test_p30_t2_shadow_runner.py covering all required tests listed below. No changes to any existing module outside back/app/llm/. No changes to engines, settlement, tick_bridge, or any live simulation path.",
+  "constraints": [
+    "Must not modify back/app/engines/appraisal_settlement.py or any other engine module.",
+    "Must not modify back/app/llm/prompt_schema.py or back/app/llm/response_parser.py.",
+    "Must not modify back/app/domain/appraisal_output.py — AppraisalOutput schema is frozen.",
+    "Must not modify back/app/domain/appraisal_input.py — AppraisalInput schema is frozen.",
+    "The runner must never write to any state — it is a pure read-then-return pipeline.",
+    "The runner must not be wired into the live tick pipeline (day_simulator, tick_bridge, or any API route).",
+    "The LLM call must be the Anthropic API (claude-sonnet-4-6 or equivalent current model). No OpenAI or other provider.",
+    "The runner must not use streaming — a single complete response per invocation.",
+    "On any failure (ParseError, API error, network error, timeout), the runner must return the deterministic fallback output via AppraisalOutput.from_deterministic_fallback rather than raising to the caller.",
+    "fallback_used on the returned AppraisalOutput must accurately reflect whether the LLM path succeeded (False) or the fallback was used (True).",
+    "The module must be importable with no side effects — no LLM call happens at import time.",
+    "API key must be read from the environment (ANTHROPIC_API_KEY); the key must not be hardcoded.",
+    "Tests must use monkeypatching or a fake/stub transport to simulate LLM responses — no real API calls in the test suite."
+  ],
+  "acceptance_criteria": [
+    "A ShadowRunResult model (or dataclass) is defined in shadow_runner.py carrying: output (AppraisalOutput), llm_used (bool indicating whether the LLM path was taken), failure_reason (Optional[str] set when fallback was used), raw_response (Optional[str] the raw text returned by the LLM before parsing).",
+    "run(input) with a stubbed LLM that returns a valid JSON response produces a ShadowRunResult where llm_used=True, failure_reason=None, output.fallback_used=False, and output fields match the stubbed response.",
+    "run(input) with a stubbed LLM that returns malformed JSON produces a ShadowRunResult where llm_used=False, failure_reason contains a non-empty string, output.fallback_used=True, and output matches AppraisalOutput.from_deterministic_fallback.",
+    "run(input) with a stubbed LLM that raises an API-level exception produces a ShadowRunResult where llm_used=False, failure_reason is non-empty, and output.fallback_used=True.",
+    "run(input) with a T1 input and a valid stubbed LLM response sets output.tick_type to EventCategory.information_exposure in the returned output.",
+    "run(input) with a T2 input (relational_context present) and a valid stubbed response that includes a non-null relational block returns that relational block unmodified in output.relational.",
+    "run(input) with a T4 input (social_event_context present) and a valid stubbed response is handled without error.",
+    "The prompt sent to the LLM is the same string that LlmAppraisalRequest.from_appraisal_input produces for the same input — the runner must not construct prompts independently.",
+    "The runner is importable with no environment variable set and no network call occurring at import time.",
+    "All existing tests (back/tests/) continue to pass without modification."
+  ],
+  "required_tests": [
+    "When the LLM returns a valid surface-absorption neutral T1 response, the runner returns a result with llm_used=True and output.absorption equal to surface.",
+    "When the LLM returns unparseable text (not JSON), the runner returns a result with llm_used=False, a non-empty failure_reason, and output.fallback_used=True.",
+    "When the LLM call raises an exception (simulated API error), the runner returns a result with llm_used=False and output.fallback_used=True rather than propagating the exception.",
+    "The raw_response field on a successful LLM run contains the exact text that the LLM returned before parsing.",
+    "The raw_response field on a failed parse attempt contains the text that was returned but failed to parse.",
+    "The raw_response field is None when the LLM call itself raised an exception (no text was returned).",
+    "For a T1 input, the prompt text passed to the LLM contains the headline and trending_topic from the input's world_context.",
+    "For a T2 input, the prompt text passed to the LLM contains the target_name from the input's relational_context.",
+    "The runner never calls AppraisalOutput.from_deterministic_fallback when the LLM path succeeds and the response is valid.",
+    "When a valid LLM response contains absorption=deep with a growth list of two dimensions, the returned output carries all growth entries intact."
+  ],
+  "non_goals": [
+    "Wiring the shadow runner into any live API route or tick pipeline.",
+    "Adding retry logic or exponential backoff for the LLM call.",
+    "Streaming the LLM response.",
+    "Supporting any LLM provider other than Anthropic.",
+    "Adding a CLI or management interface for invoking the runner.",
+    "Logging or persisting run results to disk or any external store.",
+    "Modifying the deterministic fallback behavior or any settlement logic.",
+    "Adding confidence thresholds or gating settlement on runner output.",
+    "Supporting batch or parallel invocations in this task."
+  ],
+  "allowed_files": [
+    "back/app/llm/shadow_runner.py",
+    "back/app/llm/__init__.py",
+    "back/tests/test_p30_t2_shadow_runner.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/day_simulator.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/llm/prompt_schema.py",
+    "back/app/llm/response_parser.py",
+    "back/app/api/routes",
+    "back/tests/test_p30_t1_prompt_schema.py"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "ShadowRunResult model defined with output, llm_used, failure_reason, raw_response fields",
+    "run(input) with valid stubbed LLM returns llm_used=True, failure_reason=None, output.fallback_used=False, output fields match stubbed response",
+    "run(input) with malformed JSON returns llm_used=False, non-empty failure_reason, output.fallback_used=True",
+    "run(input) with API-level exception returns llm_used=False, output.fallback_used=True, no propagation",
+    "run(input) with T1 input and valid response sets output.tick_type to EventCategory.information_exposure — fix confirmed at shadow_runner.py line 142: output = output.model_copy(update={'tick_type': input.tick_type})",
+    "run(input) with T2 input and relational block in response returns relational block unmodified",
+    "run(input) with T4 input and valid response handled without error",
+    "Prompt sent to LLM is the same string that LlmAppraisalRequest.from_appraisal_input produces",
+    "Runner importable with no environment variable set and no network call at import time",
+    "All 10 required tests present and non-trivial",
+    "All 695 existing tests continue to pass without modification",
+    "No forbidden files modified — only shadow_runner.py and test_p30_t2_shadow_runner.py are new untracked files",
+    "API key read from ANTHROPIC_API_KEY environment variable; not hardcoded",
+    "Tests use monkeypatching — no real API calls in test suite"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [],
+  "rationale": "The targeted tick_type fix is correctly applied. At shadow_runner.py line 142, in the success path after parse_llm_response succeeds, the code applies output = output.model_copy(update={'tick_type': input.tick_type}) before returning ShadowRunResult. The test test_t1_output_tick_type_matches_input (line 455) explicitly asserts result.output.tick_type == EventCategory.information_exposure and passes. A second test test_tick_type_propagated_from_input_on_llm_success covers T2 tick_type propagation. All 17 shadow runner tests pass (17 is up from 16 — the fix added tick_type tests). The full 695-test suite passes with no regressions. No forbidden files were modified per git status."
+}

@@ -1,0 +1,14 @@
+{
+  "summary": "Fixed shadow_runner.py to propagate tick_type from AppraisalInput to AppraisalOutput after a successful LLM parse, and fixed the corresponding test to assert output.tick_type == EventCategory.information_exposure (adding a second tick_type propagation test for T2 as well).",
+  "files_changed": [
+    "back/app/llm/shadow_runner.py",
+    "back/tests/test_p30_t2_shadow_runner.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p30_t2_shadow_runner.py -v",
+    "python3 -m pytest tests/ --tb=short"
+  ],
+  "test_results": "all passed — 695 passed in 0.37s (17 shadow runner tests, 695 total)",
+  "diff_summary": "shadow_runner.py: added `output = output.model_copy(update={\"tick_type\": input.tick_type})` before the success ShadowRunResult return. test file: replaced test_t1_output_absorption_is_surface_from_valid_response (which was an absorption-only check) with test_t1_output_tick_type_matches_input (asserts output.tick_type == EventCategory.information_exposure) and added test_tick_type_propagated_from_input_on_llm_success (verifies T2 tick_type propagation).",
+  "unresolved_issues": []
+}
