@@ -1,0 +1,155 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.0251660000000002,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P31",
+    "task_key": "P31-T1",
+    "title": "Build appraisal router: LLM path for T1/T2/T4, deterministic path for all others",
+    "objective": "Create a single public function that accepts an AppraisalInput and returns an AppraisalOutput by dispatching T1 (information_exposure), T2 (social_interaction), and T4 (relationship_shift) to the live LLM appraisal path, while routing all deferred ticks (T3, T5, T6, T7, T8) to the existing deterministic fallback path. The router must enforce all blocking guardrails identified in failure_taxonomy.py before returning any LLM-produced output.",
+    "exact_scope": "One new module: back/app/llm/appraisal_router.py. No other modules are modified. The router wraps shadow_runner.run() for live LLM dispatch and calls AppraisalOutput.from_deterministic_fallback() for deferred ticks. Guardrail enforcement logic lives exclusively inside the router and references acceptance_rules.compare() to block STRUCTURAL_FAIL verdicts and any valence deviation with severity=severe. No settlement engine code is touched. No AppraisalSignal field definitions are changed. No tick_bridge.py or appraisal_settlement.py are modified.",
+    "acceptance_criteria": [
+      "Calling route(input) with a T1 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "Calling route(input) with a T2 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "Calling route(input) with a T4 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "Calling route(input) with any deferred tick (T3/T5/T6/T7/T8) returns the deterministic fallback output without touching the LLM",
+      "When the LLM path returns a STRUCTURAL_FAIL verdict, the router returns the deterministic output and sets fallback_used=True on the returned output",
+      "When the LLM path returns a valence deviation with severity=severe, the router returns the deterministic output and sets fallback_used=True",
+      "When the LLM path succeeds and the verdict is SEMANTIC_PASS or SEMANTIC_DEGRADED with no severe valence deviation, the router returns the LLM output",
+      "When the LLM call itself fails (connection error), the router returns the deterministic output (shadow_runner fallback already handles this — router must not re-raise)",
+      "The returned AppraisalOutput always has tick_type matching the input tick_type",
+      "The router exposes a RouterResult model that carries: output (AppraisalOutput), llm_used (bool), fallback_reason (Optional[str]), and verdict (Optional[ComparisonVerdict]) for observability",
+      "The router module is importable with no LLM call or file I/O at import time"
+    ],
+    "required_tests": [
+      "T1 input routes to LLM path: given a valid T1 AppraisalInput and a mocked shadow_runner that returns llm_used=True and SEMANTIC_PASS verdict, RouterResult.llm_used is True",
+      "T2 input routes to LLM path: same structure as T1, for T2 tick type",
+      "T4 input routes to LLM path: same structure as T1, for T4 tick type",
+      "T3 input bypasses LLM entirely: shadow_runner is never called; returned output has fallback_used=True and absorption=none",
+      "T5, T6, T7, T8 inputs each bypass LLM entirely with the same bypass behavior as T3",
+      "STRUCTURAL_FAIL verdict causes deterministic fallback to be returned: mock shadow_runner to return a verdict with overall=STRUCTURAL_FAIL; RouterResult.llm_used is False and fallback_reason is non-None",
+      "Severe valence deviation causes deterministic fallback: mock a ComparisonVerdict with a FieldDeviation on valence with severity=severe; RouterResult.llm_used is False",
+      "SEMANTIC_DEGRADED without severe valence deviation does NOT block LLM output: RouterResult.llm_used is True",
+      "Connection failure from shadow_runner (llm_used=False, failure_reason set) propagates correctly: RouterResult.llm_used is False and fallback_reason reflects the runner's failure_reason",
+      "Returned output tick_type always matches input tick_type for all eight tick types",
+      "Router module imports cleanly without triggering any LLM call or file access"
+    ],
+    "non_goals": [
+      "Do not wire the router into day_simulator.py or any API route in this task",
+      "Do not modify tick_bridge.py, appraisal_settlement.py, or any existing engine",
+      "Do not create a SEMANTIC_DEGRADED rate threshold or monitoring mechanism in this task",
+      "Do not extend the LLM path to T3/T5/T6/T7/T8 in this task or any preparatory seam for it",
+      "Do not add logging, metrics, or audit file writing inside the router",
+      "Do not change the AppraisalOutput schema or add fields to it",
+      "Do not implement live wiring into the simulation loop — the router is a standalone callable only"
+    ],
+    "constraints": [
+      "LLM does NOT write ledger — only engine settlement writes state values; the router produces only AppraisalOutput",
+      "AppraisalSignal v1 is frozen — do not modify its field definitions",
+      "Settlement is engine-authoritative — the router only returns a signal, never touches settlement",
+      "T4 old deterministic path is frozen — do not activate T4 negative residual via gate tricks",
+      "Stage 1 deferred ticks (T3/T5/T6/T7/T8) must route to deterministic fallback only — never to LLM",
+      "The router must never raise to its caller — all LLM failures must be caught and resolved by fallback",
+      "VALENCE_SIGN_FLIP (severity=severe valence deviation) must trigger hard fallback to deterministic output",
+      "ZERO_ABSORPTION_OVERRIDE (structural failure on absorption field due to LLM returning non-none absorption against a none baseline) must trigger hard fallback to deterministic output",
+      "Any ComparisonVerdict with overall=STRUCTURAL_FAIL must cause the router to return the deterministic output instead of the LLM output",
+      "The router module must be importable with no side effects — no LLM call at import time",
+      "The router must not modify AppraisalOutput after it passes guardrail checks — no field patching beyond what shadow_runner already does"
+    ],
+    "allowed_files": [
+      "back/app/llm/appraisal_router.py",
+      "back/tests/test_p31_t1_appraisal_router.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py",
+      "back/app/engines/day_simulator.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/acceptance_rules.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/app/llm/comparison_harness.py",
+      "back/app/llm/failure_taxonomy.py",
+      "back/app/engines/deterministic_fallback.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created appraisal_router.py with route(input) -> RouterResult dispatching T1/T2/T4 to the LLM path via shadow_runner, routing deferred ticks (T3/T5/T6/T7/T8) directly to deterministic fallback, and enforcing STRUCTURAL_FAIL and severe-valence guardrails before returning any LLM output.",
+    "files_changed": [
+      "back/app/llm/appraisal_router.py",
+      "back/tests/test_p31_t1_appraisal_router.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p31_t1_appraisal_router.py -v",
+      "python3 -m pytest tests/ -v"
+    ],
+    "test_results": "27 new tests in test_p31_t1_appraisal_router.py all passed; full suite 786 passed in 0.51s",
+    "diff_summary": "Added back/app/llm/appraisal_router.py (RouterResult model + route() function implementing active/deferred tick routing, STRUCTURAL_FAIL guardrail, severe-valence guardrail, and connection-failure handling) and back/tests/test_p31_t1_appraisal_router.py (27 tests covering all required_tests items using unittest.mock.patch on shadow_runner and acceptance_rules).",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "The fallback_reason for deferred ticks is None (not a string like 'deferred tick'). This is consistent with the task contract spec but could be marginally clearer for observability. Not a blocker."
+    ],
+    "rationale": "Both allowed files are implemented correctly and match all acceptance criteria. The router routes T1/T2/T4 to shadow_runner, bypasses LLM for T3/T5/T6/T7/T8, enforces both blocking guardrails (STRUCTURAL_FAIL and severe valence deviation), handles connection failures without raising, and returns a well-formed RouterResult with all required observability fields. All 27 new tests are substantive (non-tautological) and use proper mocking. The full 786-test suite passes with no regressions. No forbidden files were touched — git status shows only two untracked new files."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/app/llm/appraisal_router.py",
+      "back/tests/test_p31_t1_appraisal_router.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are verified. Here is the round-0042 outcome summary:\n\n---\n\n## Round-0042 Summary — **PASS**\n\n**Task:** P31-T1 — Build appraisal router (LLM path for T1/T2/T4, deterministic path for all others)\n\n### What was built\n- **`back/app/llm/appraisal_router.py`** — New module exposing `route(input: AppraisalInput) -> RouterResult`:\n  - Active ticks (T1/T2/T4) dispatched to `shadow_runner.run()` for LLM appraisal\n  - Deferred ticks (T3/T5/T6/T7/T8) bypass LLM entirely and call `AppraisalOutput.from_deterministic_fallback()` directly\n  - Guardrail 1: `STRUCTURAL_FAIL` verdict → deterministic fallback\n  - Guardrail 2: severe valence deviation → deterministic fallback\n  - Never raises to caller; connection failures handled gracefully\n  - `RouterResult` model carries `output`, `llm_used`, `fallback_reason`, `verdict` for observability\n\n- **`back/tests/test_p31_t1_appraisal_router.py`** — 27 new tests using `unittest.mock.patch` (no real LLM calls)\n\n### Test results\n- 27/27 new router tests passed\n- 786/786 full suite tests passed (no regressions)\n- No forbidden files touched\n\n### Verdict\n**PASS** (high confidence) — All 11 acceptance criteria met, scope clean, full test suite green."
+}

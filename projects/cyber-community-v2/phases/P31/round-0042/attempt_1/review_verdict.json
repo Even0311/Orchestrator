@@ -1,0 +1,77 @@
+{
+  "task_key": "P31-T1",
+  "verdict": "PASS",
+  "confidence": "high",
+  "acceptance_criteria_results": [
+    {
+      "criterion": "Calling route(input) with a T1 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "status": "MET",
+      "notes": "test_active_tick_routes_to_llm_path[information_exposure] passes; shadow_runner.run() is called and llm_used=True is returned"
+    },
+    {
+      "criterion": "Calling route(input) with a T2 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "status": "MET",
+      "notes": "test_active_tick_routes_to_llm_path[social_interaction] passes; same parametrized test structure"
+    },
+    {
+      "criterion": "Calling route(input) with a T4 AppraisalInput causes the LLM path to be attempted and returns an AppraisalOutput",
+      "status": "MET",
+      "notes": "test_active_tick_routes_to_llm_path[relationship_shift] passes"
+    },
+    {
+      "criterion": "Calling route(input) with any deferred tick (T3/T5/T6/T7/T8) returns the deterministic fallback output without touching the LLM",
+      "status": "MET",
+      "notes": "test_deferred_tick_bypasses_llm parametrized over all 5 deferred ticks; mock_runner.run.assert_not_called() verifies no LLM call"
+    },
+    {
+      "criterion": "When the LLM path returns a STRUCTURAL_FAIL verdict, the router returns the deterministic output and sets fallback_used=True on the returned output",
+      "status": "MET",
+      "notes": "test_structural_fail_verdict_causes_fallback: llm_used=False, fallback_reason non-None, output.fallback_used=True all asserted"
+    },
+    {
+      "criterion": "When the LLM path returns a valence deviation with severity=severe, the router returns the deterministic output and sets fallback_used=True",
+      "status": "MET",
+      "notes": "test_severe_valence_deviation_causes_fallback: llm_used=False, fallback_reason contains 'valence', output.fallback_used=True"
+    },
+    {
+      "criterion": "When the LLM path succeeds and the verdict is SEMANTIC_PASS or SEMANTIC_DEGRADED with no severe valence deviation, the router returns the LLM output",
+      "status": "MET",
+      "notes": "test_semantic_degraded_without_severe_valence_passes_llm_output: llm_used=True, fallback_reason=None, output.fallback_used=False"
+    },
+    {
+      "criterion": "When the LLM call itself fails (connection error), the router returns the deterministic output (shadow_runner fallback already handles this — router must not re-raise)",
+      "status": "MET",
+      "notes": "test_connection_failure_propagates_as_fallback: llm_used=False, fallback_reason reflects shadow_runner failure_reason"
+    },
+    {
+      "criterion": "The returned AppraisalOutput always has tick_type matching the input tick_type",
+      "status": "MET",
+      "notes": "test_output_tick_type_matches_input parametrized over all 8 tick types, all pass"
+    },
+    {
+      "criterion": "The router exposes a RouterResult model that carries: output (AppraisalOutput), llm_used (bool), fallback_reason (Optional[str]), and verdict (Optional[ComparisonVerdict]) for observability",
+      "status": "MET",
+      "notes": "RouterResult is a Pydantic BaseModel with exactly these four fields defined in appraisal_router.py lines 52-71"
+    },
+    {
+      "criterion": "The router module is importable with no LLM call or file I/O at import time",
+      "status": "MET",
+      "notes": "test_router_module_imports_cleanly passes; no code executes at module level other than constant/class definitions"
+    }
+  ],
+  "test_results": {
+    "new_tests": "27/27 passed (test_p31_t1_appraisal_router.py)",
+    "full_suite": "786/786 passed",
+    "command": "python3 -m pytest tests/ -v"
+  },
+  "all_tests_passed": true,
+  "forbidden_files_clean": true,
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The fallback_reason for deferred ticks is None (not a string like 'deferred tick'). This is consistent with the task contract spec but could be marginally clearer for observability. Not a blocker."
+  ],
+  "issues": [],
+  "rationale": "Both allowed files are implemented correctly and match all acceptance criteria. The router routes T1/T2/T4 to shadow_runner, bypasses LLM for T3/T5/T6/T7/T8, enforces both blocking guardrails (STRUCTURAL_FAIL and severe valence deviation), handles connection failures without raising, and returns a well-formed RouterResult with all required observability fields. All 27 new tests are substantive (non-tautological) and use proper mocking. The full 786-test suite passes with no regressions. No forbidden files were touched — git status shows only two untracked new files.",
+  "summary": "Implementation fully satisfies P31-T1. All 11 acceptance criteria are met, all 27 new tests pass, 786 total tests pass, and only the two allowed files were created."
+}

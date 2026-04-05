@@ -1,0 +1,21 @@
+{
+  "task_key": "P31-T1",
+  "summary": "Created appraisal_router.py with route(input) -> RouterResult dispatching T1/T2/T4 to the LLM path via shadow_runner, routing deferred ticks (T3/T5/T6/T7/T8) directly to deterministic fallback, and enforcing STRUCTURAL_FAIL and severe-valence guardrails before returning any LLM output.",
+  "files_changed": [
+    "back/app/llm/appraisal_router.py",
+    "back/tests/test_p31_t1_appraisal_router.py"
+  ],
+  "files_created": [
+    "back/app/llm/appraisal_router.py",
+    "back/tests/test_p31_t1_appraisal_router.py"
+  ],
+  "files_modified": [],
+  "commands_run": [
+    "python3 -m pytest tests/test_p31_t1_appraisal_router.py -v",
+    "python3 -m pytest tests/ -v"
+  ],
+  "test_results": "27 new tests in test_p31_t1_appraisal_router.py all passed; full suite 786 passed in 0.51s",
+  "all_tests_passed": true,
+  "diff_summary": "Added back/app/llm/appraisal_router.py (RouterResult model + route() function implementing active/deferred tick routing, STRUCTURAL_FAIL guardrail, severe-valence guardrail, and connection-failure handling) and back/tests/test_p31_t1_appraisal_router.py (27 tests covering all required_tests items using unittest.mock.patch on shadow_runner and acceptance_rules).",
+  "unresolved_issues": []
+}
