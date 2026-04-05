@@ -1,0 +1,63 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "acceptance_criteria_results": [
+    {
+      "criterion": "Running pytest back/tests/test_p30_t5_shadow_comparison_run.py passes with zero failures and no network calls",
+      "result": "pass",
+      "notes": "All 15 tests pass. _call_llm is patched via unittest.mock.patch for every scenario so no network calls occur."
+    },
+    {
+      "criterion": "The fixture file back/tests/fixtures/p30_t5_shadow_run_results.json is created when the test module runs",
+      "result": "pass",
+      "notes": "File exists and is written by the _get_fixture_data singleton during the test run."
+    },
+    {
+      "criterion": "The fixture file contains a top-level key 'reports' holding a list of at least 9 serialized ComparisonReport dicts",
+      "result": "pass",
+      "notes": "13 reports are present (4 T1 + 4 T2 + 5 T4). All are model_dump serializations of ComparisonReport."
+    },
+    {
+      "criterion": "Each report dict contains the fields: world_day, agent_id, tick_type, shadow_llm_used, shadow_failure_reason, and a verdict with overall, structural_failures, semantic_deviations, and field_results",
+      "result": "pass",
+      "notes": "Verified in fixture JSON and enforced by test_every_report_has_required_fields. All 13 reports have all required fields."
+    },
+    {
+      "criterion": "The fixture file contains a top-level key 'summary' holding per-tick-type verdict counts with keys SEMANTIC_PASS, SEMANTIC_DEGRADED, and STRUCTURAL_FAIL",
+      "result": "pass",
+      "notes": "Summary present with all three tick types. Each has SEMANTIC_PASS, SEMANTIC_DEGRADED, STRUCTURAL_FAIL keys. Note: STRUCTURAL_FAIL counts are 0 for all tick types, which is consistent with actual acceptance_rules.py behavior."
+    },
+    {
+      "criterion": "At least one scenario per tick type (T1, T2, T4-with-event) produces shadow_llm_used=True",
+      "result": "pass",
+      "notes": "T1: T1_success_surface_neutral and T1_success_deep_positive have shadow_llm_used=True. T2: T2_success_surface_neutral and T2_success_surface_negative. T4-with-event: T4_event_success_matches_baseline and T4_event_success_different_valence."
+    },
+    {
+      "criterion": "At least one scenario per tick type produces shadow_llm_used=False (stub raises exception or returns invalid JSON)",
+      "result": "pass",
+      "notes": "T1: T1_failure_connection_error and T1_failure_bad_json. T2: T2_failure_connection_error and T2_failure_bad_json. T4: T4_event_failure_connection_error and T4_no_event_failure_bad_json."
+    },
+    {
+      "criterion": "At least one scenario where the stub returns a response that differs from the deterministic baseline, so the report captures a semantic deviation with overall=SEMANTIC_DEGRADED",
+      "result": "pass",
+      "notes": "T1_success_deep_positive, T2_success_surface_negative, T4_event_success_different_valence, and T4_no_event_surface_structural_fail all produce SEMANTIC_DEGRADED."
+    },
+    {
+      "criterion": "At least one T4 scenario uses an input with social_event_context present (deterministic baseline has absorption=surface, not none)",
+      "result": "pass",
+      "notes": "T4_event_success_matches_baseline, T4_event_success_different_valence, T4_event_failure_connection_error all have social_event_context with baseline absorption=surface."
+    },
+    {
+      "criterion": "At least one T4 scenario uses an input without social_event_context (baseline absorption=none)",
+      "result": "pass",
+      "notes": "T4_no_event_surface_structural_fail and T4_no_event_failure_bad_json both have no social_event_context and deterministic baseline absorption=none."
+    }
+  ],
+  "constraint_violations": [],
+  "discrepancy_assessment": {
+    "summary": "The executor's discrepancy assessment is correct. Required_test 9 in the contract contains a factual error about acceptance_rules.py behavior.",
+    "detail": "The contract states: 'For a T4-without-event scenario where the stub returns a valid surface-absorption response, the verdict.overall is STRUCTURAL_FAIL (LLM says surface but baseline says none).' However, acceptance_rules.py only triggers STRUCTURAL_FAIL via the S3 guard at line 144, which fires only when llm_output.absorption == AbsorptionLevel.none AND deterministic_baseline.absorption != AbsorptionLevel.none. The reverse direction (LLM says surface, baseline says none) is handled by Sem1 at line 158-168, which records it as a SEMANTIC_DEGRADED deviation. The fixture confirms this: report T4_no_event_surface_structural_fail has overall=SEMANTIC_DEGRADED with an absorption deviation recorded (llm_value=surface, baseline_value=none). The implementation correctly follows actual code behavior rather than the erroneous contract prediction. The test for this scenario (test_t4_no_event_surface_response_not_pass) correctly asserts overall != SEMANTIC_PASS and verifies the absorption deviation is recorded — this captures the spirit of the criterion (the scenario is present and demonstrates a non-trivial mismatch). The implementation is correct; the contract contained a bug in the expected verdict direction. No production code changes are permitted under the constraints, so adjusting the test to match actual behavior is the only valid course of action."
+  },
+  "overall_notes": "The implementation is clean and complete. 13 scenarios cover all required tick types and all required coverage cases (success, connection error, bad JSON, with/without social_event_context, valence deviation, absorption deviation). The stub is defined entirely within the test module using unittest.mock.patch targeting app.llm.shadow_runner._call_llm. The fixture file is written by a module-level singleton (_get_fixture_data) which is called on first test access. All 747 existing tests continue to pass with no regressions. Only the two allowed files (test module and fixture) exist as new untracked files — no forbidden files were modified. The one deviation from the contract (required_test 9 expected STRUCTURAL_FAIL but actual behavior is SEMANTIC_DEGRADED) is a verified error in the contract specification, not an implementation error. The executor's adjustment to assert the correct code behavior while still validating the scenario is present and non-trivially deviating is appropriate.",
+  "recommendation": "Accept this implementation. All acceptance criteria are genuinely met, all required scenarios are present, the test assertions are non-trivial and correct, no constraints were violated, and the required_test 9 discrepancy reflects a contract specification error rather than an implementation defect."
+}

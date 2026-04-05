@@ -1,0 +1,150 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.3570658999999998,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P30",
+    "task_key": "P30-T5",
+    "title": "Offline shadow comparison execution: T1/T2/T4 scenarios with persisted diff reports",
+    "objective": "Execute the comparison harness across a representative set of T1, T2, and T4 AppraisalInput scenarios using a deterministic LLM stub (no live API calls), collect one ComparisonReport per scenario, serialize all reports to a structured JSON file on disk, and produce a summary table that counts pass/degraded/fail verdicts by tick type.",
+    "exact_scope": "A new test module at back/tests/test_p30_t5_shadow_comparison_run.py executes the harness against at least 9 representative scenarios (3 per active tick type: T1, T2, T4-with-event). The shadow runner's _call_llm is replaced by a deterministic in-process stub for every test — no ANTHROPIC_API_KEY is required and no network call is made. Each scenario captures one ComparisonReport. All reports are serialized to back/tests/fixtures/p30_t5_shadow_run_results.json using model_dump. A summary dict — keyed by tick type, counting SEMANTIC_PASS / SEMANTIC_DEGRADED / STRUCTURAL_FAIL verdicts — is also written to the same fixture file alongside the raw reports. The stub is defined inside the test module itself; it is not a new production module. No changes are made to any engine, settlement, domain model, or existing test file.",
+    "acceptance_criteria": [
+      "Running pytest back/tests/test_p30_t5_shadow_comparison_run.py passes with zero failures and no network calls",
+      "The fixture file back/tests/fixtures/p30_t5_shadow_run_results.json is created (or overwritten) when the test module runs",
+      "The fixture file contains a top-level key 'reports' holding a list of at least 9 serialized ComparisonReport dicts",
+      "Each report dict contains the fields: world_day, agent_id, tick_type, shadow_llm_used, shadow_failure_reason, and a verdict with overall, structural_failures, semantic_deviations, and field_results",
+      "The fixture file contains a top-level key 'summary' holding per-tick-type verdict counts with keys SEMANTIC_PASS, SEMANTIC_DEGRADED, and STRUCTURAL_FAIL",
+      "At least one scenario per tick type (T1, T2, T4-with-event) produces shadow_llm_used=True (the stub returns a valid JSON response)",
+      "At least one scenario per tick type produces shadow_llm_used=False (the stub raises an exception or returns invalid JSON), capturing fallback behavior",
+      "At least one scenario where the stub returns a response that differs from the deterministic baseline (e.g. a different valence), so the report captures a semantic deviation with overall=SEMANTIC_DEGRADED",
+      "At least one T4 scenario uses an input with social_event_context present (so the deterministic baseline has absorption=surface, not none)",
+      "At least one T4 scenario uses an input without social_event_context (so the deterministic baseline has absorption=none)"
+    ],
+    "required_tests": [
+      "Importing the test module causes no network calls and no side effects",
+      "Running the full scenario suite writes the fixture file to back/tests/fixtures/p30_t5_shadow_run_results.json",
+      "The fixture file has a 'reports' list with at least 9 entries",
+      "The fixture file has a 'summary' dict covering at least the three tick types: information_exposure, social_interaction, relationship_shift",
+      "For each T1 scenario with a valid stub response, the report shows shadow_llm_used=True and tick_type=information_exposure",
+      "For each T2 scenario with a valid stub response, the report shows shadow_llm_used=True, tick_type=social_interaction, and the relational_context is echoed in the report's tick_type field",
+      "For a T4-with-event scenario where the stub returns a response that exactly matches the deterministic baseline, the verdict.overall is SEMANTIC_PASS",
+      "For a T4-with-event scenario where the stub returns a response with a different valence than the deterministic baseline, the verdict.overall is SEMANTIC_DEGRADED",
+      "For a T4-without-event scenario where the stub returns a valid surface-absorption response, the verdict.overall is STRUCTURAL_FAIL (LLM says surface but baseline says none)",
+      "For any scenario where the stub raises a connection error, the report shows shadow_llm_used=False and shadow_failure_reason is a non-empty string",
+      "For any scenario where the stub returns unparseable text, the report shows shadow_llm_used=False and the deterministic fallback output is used",
+      "The summary dict counts are consistent with the individual report verdicts (sum of per-tick counts equals number of reports for that tick type)"
+    ],
+    "non_goals": [
+      "Do not implement a live LLM call path or require the ANTHROPIC_API_KEY",
+      "Do not add any LLM stub or mock to a production module under back/app/",
+      "Do not run T3, T5, T6, T7, or T8 scenarios",
+      "Do not modify the comparison harness, shadow runner, acceptance rules, prompt schema, or response parser",
+      "Do not modify any settlement engine or domain model",
+      "Do not produce a UI view, dashboard component, or API endpoint for the results",
+      "Do not analyze or interpret the diff results beyond counting verdict categories in the summary",
+      "Do not modify vision.md or road_map.md"
+    ],
+    "constraints": [
+      "No live LLM API call is made at any point — _call_llm must be patched with a deterministic stub via unittest.mock.patch for every scenario",
+      "No ANTHROPIC_API_KEY environment variable is required to run the tests",
+      "AppraisalSignal v1 definition must not be touched",
+      "Settlement engines must not be touched",
+      "The stub must live inside the test module, not in a new production module under back/app/",
+      "The fixture file (p30_t5_shadow_run_results.json) must be written only by the test module; no new production-side file I/O code is added",
+      "All existing tests must continue to pass after this task is implemented",
+      "The comparison harness, shadow runner, and acceptance rules modules must not be modified",
+      "T3, T5, T6, T7, T8 deferred ticks are not in scope for scenario execution"
+    ],
+    "allowed_files": [
+      "back/tests/test_p30_t5_shadow_comparison_run.py",
+      "back/tests/fixtures/p30_t5_shadow_run_results.json"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/comparison_harness.py",
+      "back/app/llm/acceptance_rules.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/engines/appraisal_settlement.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created test module test_p30_t5_shadow_comparison_run.py with 15 tests running 13 T1/T2/T4 scenarios through the comparison harness using deterministic LLM stubs, writing all ComparisonReport dicts and a per-tick verdict summary to back/tests/fixtures/p30_t5_shadow_run_results.json.",
+    "files_changed": [
+      "back/tests/test_p30_t5_shadow_comparison_run.py",
+      "back/tests/fixtures/p30_t5_shadow_run_results.json"
+    ],
+    "commands_run": [
+      "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/test_p30_t5_shadow_comparison_run.py -v",
+      "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ --tb=short"
+    ],
+    "test_results": "15/15 new tests passed; 747/747 total tests passed (no regressions)",
+    "diff_summary": "Added back/tests/test_p30_t5_shadow_comparison_run.py (new file, 400+ lines): 13 scenario definitions across T1/T2/T4 tick types, deterministic LLM stub via unittest.mock.patch, fixture writer using _get_fixture_data() singleton, 15 test functions covering all required_tests from the contract. Added back/tests/fixtures/p30_t5_shadow_run_results.json (generated by test run): 13 ComparisonReport dicts plus per-tick-type summary with SEMANTIC_PASS/SEMANTIC_DEGRADED/STRUCTURAL_FAIL counts. Note: required_test 9 description in the contract incorrectly predicts STRUCTURAL_FAIL for T4-no-event + LLM-surface scenario; actual behavior per acceptance_rules.py is SEMANTIC_DEGRADED (Sem1 absorption mismatch). Test was adjusted to assert the correct behavior (not SEMANTIC_PASS, absorption deviation present) while still satisfying the spirit of the acceptance criterion.",
+    "unresolved_issues": [
+      "Task contract required_test 9 states 'verdict.overall is STRUCTURAL_FAIL (LLM says surface but baseline says none)' but acceptance_rules.py only triggers STRUCTURAL_FAIL when LLM says none and baseline is non-none (S3 guard). The reverse direction (LLM=surface, baseline=none) produces SEMANTIC_DEGRADED per Sem1. The test was written to match actual code behavior and still validates the scenario is present with a non-PASS verdict and an absorption deviation recorded."
+    ]
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": ""
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/tests/fixtures/p30_t5_shadow_run_results.json",
+      "back/tests/test_p30_t5_shadow_comparison_run.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are confirmed. Here is the round summary:\n\n---\n\n## Round-0040 Summary — **PASSED**\n\n**Task:** P30-T5 — Offline shadow comparison execution across T1/T2/T4 scenarios with persisted diff reports\n\n### What was built\n- **`back/tests/test_p30_t5_shadow_comparison_run.py`** — 15 tests running 13 representative scenarios (4×T1, 4×T2, 5×T4) through the existing comparison harness, with `_call_llm` fully stubbed via `unittest.mock.patch` (zero live API calls)\n- **`back/tests/fixtures/p30_t5_shadow_run_results.json`** — Written by the test suite: 13 serialized `ComparisonReport` dicts + per-tick-type verdict summary (`SEMANTIC_PASS` / `SEMANTIC_DEGRADED` / `STRUCTURAL_FAIL` counts)\n\n### Verdict: PASS (high confidence)\n- All 10 acceptance criteria met\n- 747/747 tests pass — zero regressions\n- No forbidden files touched; no live LLM calls; stub confined to test module\n- One minor contract discrepancy noted: required_test 9 incorrectly predicted `STRUCTURAL_FAIL` for T4-no-event + LLM-surface; actual `acceptance_rules.py` behavior is `SEMANTIC_DEGRADED` (Sem1 path). The executor correctly adjusted the assertion to match actual code behavior — this is a contract spec error, not an implementation defect. The scenario is present, covered, and non-trivially exercised."
+}
