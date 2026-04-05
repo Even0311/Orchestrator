@@ -1,0 +1,159 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.2810235500000005,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P30",
+    "task_key": "P30-T4",
+    "title": "Comparison harness: run both paths, diff, flag violations",
+    "objective": "Build back/app/llm/comparison_harness.py that accepts an AppraisalInput, runs the deterministic fallback path and the shadow LLM path independently on the same input, produces a structured ComparisonReport (Pydantic model) capturing per-field diffs and metadata, and delegates violation detection to the existing acceptance_rules.compare() function. The harness must be purely offline with no side effects on live simulation state.",
+    "exact_scope": "Create one new module (back/app/llm/comparison_harness.py) and one new test module (back/tests/test_p30_t4_comparison_harness.py). The harness exposes a single public function run_comparison(input: AppraisalInput) -> ComparisonReport. ComparisonReport is a Pydantic model defined in the same file. The deterministic path is AppraisalOutput.from_deterministic_fallback(input). The shadow path is shadow_runner.run(input).output. Acceptance-rule evaluation is acceptance_rules.compare(llm_output, deterministic_output). No other files are modified.",
+    "acceptance_criteria": [
+      "back/app/llm/comparison_harness.py exists and is importable with no side effects.",
+      "ComparisonReport is a Pydantic BaseModel with fields: world_day (int), agent_id (str), tick_type (EventCategory), deterministic_output (AppraisalOutput), shadow_output (AppraisalOutput), shadow_llm_used (bool), shadow_failure_reason (Optional[str]), verdict (ComparisonVerdict from acceptance_rules).",
+      "run_comparison(input) returns a ComparisonReport for any valid AppraisalInput.",
+      "The deterministic_output field is always populated from AppraisalOutput.from_deterministic_fallback(input).",
+      "The shadow_output field is always populated from shadow_runner.run(input).output.",
+      "shadow_llm_used and shadow_failure_reason mirror the corresponding ShadowRunResult fields.",
+      "The verdict field is always the result of acceptance_rules.compare(shadow_output, deterministic_output).",
+      "When shadow_runner falls back (llm_used=False), ComparisonReport is still returned without raising an exception.",
+      "All 14 or more required tests in back/tests/test_p30_t4_comparison_harness.py pass.",
+      "The full existing test suite (pytest back/tests/) continues to pass without regressions."
+    ],
+    "required_tests": [
+      "Importing comparison_harness causes no side effects and makes no network calls.",
+      "ComparisonReport has all required fields and each field has the correct type annotation.",
+      "run_comparison with a T1 input where the shadow runner returns a successful LLM output produces a ComparisonReport with shadow_llm_used=True and shadow_failure_reason=None.",
+      "run_comparison with a T1 input where the shadow runner returns a fallback (llm_used=False) produces a ComparisonReport with shadow_llm_used=False and a non-None shadow_failure_reason.",
+      "run_comparison with a T2 input (requires relational_context) produces a ComparisonReport with the correct tick_type echoed.",
+      "run_comparison with a T4 input (with social_event_context) produces a ComparisonReport with the correct tick_type echoed.",
+      "run_comparison for a deferred tick (T3, T5, T6, T7, or T8) produces a ComparisonReport with deterministic_output.absorption == none (deferred fallback).",
+      "The deterministic_output in the report equals AppraisalOutput.from_deterministic_fallback(input) for the same input.",
+      "The shadow_output in the report equals the output field from the shadow_runner.run(input) result for the same input.",
+      "The verdict in the report equals acceptance_rules.compare(shadow_output, deterministic_output).",
+      "When LLM output matches the deterministic baseline exactly, the verdict.overall is SEMANTIC_PASS.",
+      "When the LLM output has a valence sign-flip relative to the baseline, the verdict captures a severe semantic deviation.",
+      "When the LLM output has absorption=none but the deterministic baseline does not, the verdict captures a structural failure.",
+      "run_comparison never raises an exception regardless of shadow runner outcome — it always returns a ComparisonReport."
+    ],
+    "non_goals": [
+      "Do not wire ComparisonReport into any live API route or settlement pipeline.",
+      "Do not modify acceptance_rules.py, shadow_runner.py, prompt_schema.py, or any domain model.",
+      "Do not implement any CLI or dashboard entry point for the harness.",
+      "Do not implement batch/multi-input comparison — the harness processes exactly one AppraisalInput per call.",
+      "Do not persist ComparisonReport to disk or any storage layer.",
+      "Do not implement retry logic inside the harness — shadow runner fallback behavior is already handled by shadow_runner.run().",
+      "Do not expand the shadow runner or acceptance rules as part of this task."
+    ],
+    "constraints": [
+      "The harness must not modify any live simulation state — it is read-only and offline.",
+      "The harness must not call any settlement engine function directly; the deterministic baseline is obtained exclusively from AppraisalOutput.from_deterministic_fallback(input).",
+      "The shadow LLM path is obtained exclusively from shadow_runner.run(input).output — never by constructing an LLM call directly in the harness.",
+      "Acceptance-rule evaluation must delegate exclusively to acceptance_rules.compare() — the harness must not reimplement comparison logic.",
+      "ComparisonReport must be a Pydantic BaseModel defined in comparison_harness.py.",
+      "The harness must never raise to the caller — all shadow runner failures (fallback-used cases) are captured in the report, not propagated as exceptions.",
+      "AppraisalSignal v1 fields must not be touched or referenced.",
+      "No new fields may be added to AppraisalOutput or AppraisalInput.",
+      "The module must be importable with no side effects — no LLM call or file I/O at import time."
+    ],
+    "allowed_files": [
+      "back/app/llm/comparison_harness.py",
+      "back/tests/test_p30_t4_comparison_harness.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/llm/acceptance_rules.py",
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/tick_bridge.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created comparison_harness.py with ComparisonReport model and run_comparison() function, plus 21 tests covering all 14 required test cases from the contract.",
+    "files_changed": [
+      "back/app/llm/comparison_harness.py",
+      "back/tests/test_p30_t4_comparison_harness.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p30_t4_comparison_harness.py -v",
+      "python3 -m pytest tests/ -q"
+    ],
+    "test_results": "732 passed (21 new tests in test_p30_t4_comparison_harness.py, 711 pre-existing), 0 failures",
+    "diff_summary": "Added back/app/llm/comparison_harness.py (84 lines): ComparisonReport Pydantic model with 8 required fields, run_comparison() function that calls from_deterministic_fallback(), shadow_runner.run(), and acceptance_rules.compare() in sequence, never raising to caller. Added back/tests/test_p30_t4_comparison_harness.py (21 tests): covers all 14 required tests including import side-effects, field type annotations, LLM success/fallback paths, tick_type echoing for T1/T2/T4/deferred, deterministic/shadow output identity, verdict delegation, semantic_pass on match, sign-flip severe deviation, structural fail on absorption=none mismatch, and no-raise guarantee.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "back/app/llm/comparison_harness.py exists and is importable with no side effects.",
+      "ComparisonReport is a Pydantic BaseModel with all 8 required fields: world_day (int), agent_id (str), tick_type (EventCategory), deterministic_output (AppraisalOutput), shadow_output (AppraisalOutput), shadow_llm_used (bool), shadow_failure_reason (Optional[str]), verdict (ComparisonVerdict).",
+      "run_comparison(input) returns a ComparisonReport for any valid AppraisalInput.",
+      "The deterministic_output field is always populated from AppraisalOutput.from_deterministic_fallback(input).",
+      "The shadow_output field is always populated from shadow_runner.run(input).output.",
+      "shadow_llm_used and shadow_failure_reason mirror the corresponding ShadowRunResult fields.",
+      "The verdict field is always the result of acceptance_rules.compare(shadow_output, deterministic_output).",
+      "When shadow_runner falls back (llm_used=False), ComparisonReport is still returned without raising an exception.",
+      "All 14 or more required tests in back/tests/test_p30_t4_comparison_harness.py pass (21 tests total).",
+      "The full existing test suite (pytest back/tests/) continues to pass without regressions (732/732 passed)."
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [],
+    "rationale": "The implementation is correct and complete. comparison_harness.py is a clean 94-line module that delegates exclusively to the three required components (from_deterministic_fallback, shadow_runner.run, acceptance_rules.compare) with no settlement engine calls, no LLM calls at import time, and no exception propagation to the caller. The test file provides 21 tests covering all 14 required scenarios plus additional edge cases. Only the two allowed files were created (both are new untracked files; no existing files were modified). All 732 tests pass with zero regressions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/app/llm/comparison_harness.py",
+      "back/tests/test_p30_t4_comparison_harness.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three subagents completed successfully. Here's the round summary:\n\n---\n\n## Round-0039 Summary — P30-T4: Comparison Harness\n\n**Outcome: PASS**\n\n### What was built\n\n**`back/app/llm/comparison_harness.py`** — A purely offline comparison harness with:\n- `ComparisonReport` Pydantic model capturing world_day, agent_id, tick_type, both outputs, LLM-used flag, failure reason, and verdict\n- `run_comparison(input: AppraisalInput) -> ComparisonReport` that wires all three existing pieces together:\n  1. Deterministic baseline via `AppraisalOutput.from_deterministic_fallback()`\n  2. Shadow LLM output via `shadow_runner.run()`\n  3. Violation detection via `acceptance_rules.compare()`\n- Never raises to the caller — shadow failures are captured as report fields\n- Zero side effects on live state\n\n**`back/tests/test_p30_t4_comparison_harness.py`** — 21 tests covering all required scenarios (import safety, all tick types, LLM success/fallback paths, verdict delegation, exception safety).\n\n### Test results\n- **732/732 tests passing** — zero regressions across the full suite\n\n### Artifacts\n- ✅ `task_contract.json`\n- ✅ `execution_evidence.json`\n- ✅ `review_verdict.json`"
+}

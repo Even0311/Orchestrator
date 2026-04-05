@@ -1,0 +1,81 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "back/app/llm/comparison_harness.py exists and is importable with no side effects.",
+    "ComparisonReport is a Pydantic BaseModel with all 8 required fields: world_day (int), agent_id (str), tick_type (EventCategory), deterministic_output (AppraisalOutput), shadow_output (AppraisalOutput), shadow_llm_used (bool), shadow_failure_reason (Optional[str]), verdict (ComparisonVerdict).",
+    "run_comparison(input) returns a ComparisonReport for any valid AppraisalInput.",
+    "The deterministic_output field is always populated from AppraisalOutput.from_deterministic_fallback(input).",
+    "The shadow_output field is always populated from shadow_runner.run(input).output.",
+    "shadow_llm_used and shadow_failure_reason mirror the corresponding ShadowRunResult fields.",
+    "The verdict field is always the result of acceptance_rules.compare(shadow_output, deterministic_output).",
+    "When shadow_runner falls back (llm_used=False), ComparisonReport is still returned without raising an exception.",
+    "All 14 or more required tests in back/tests/test_p30_t4_comparison_harness.py pass (21 tests total).",
+    "The full existing test suite (pytest back/tests/) continues to pass without regressions (732/732 passed)."
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [],
+  "rationale": "The implementation is correct and complete. comparison_harness.py is a clean 94-line module that delegates exclusively to the three required components (from_deterministic_fallback, shadow_runner.run, acceptance_rules.compare) with no settlement engine calls, no LLM calls at import time, and no exception propagation to the caller. The test file provides 21 tests covering all 14 required scenarios plus additional edge cases. Only the two allowed files were created (both are new untracked files; no existing files were modified). All 732 tests pass with zero regressions.",
+  "summary": "All 10 acceptance criteria are fully met. The harness correctly wires the three required paths, ComparisonReport has the correct schema, no forbidden files were touched, and the test suite shows 732/732 passing with 21 new tests in the new test module.",
+  "criteria_results": [
+    {
+      "criterion": "back/app/llm/comparison_harness.py exists and is importable with no side effects",
+      "result": "pass",
+      "notes": "File exists as a new untracked file. Import test (test_import_no_side_effects) passes. No I/O or LLM calls at module level."
+    },
+    {
+      "criterion": "ComparisonReport is a Pydantic BaseModel with all required fields and correct types",
+      "result": "pass",
+      "notes": "All 8 fields present with correct annotations. test_comparison_report_fields_and_types verifies each type including Optional[str] for shadow_failure_reason."
+    },
+    {
+      "criterion": "run_comparison(input) returns a ComparisonReport for any valid AppraisalInput",
+      "result": "pass",
+      "notes": "Confirmed by multiple tests across T1, T2, T4, and deferred tick inputs."
+    },
+    {
+      "criterion": "deterministic_output is always from AppraisalOutput.from_deterministic_fallback(input)",
+      "result": "pass",
+      "notes": "Harness line 77 calls this exclusively. test_deterministic_output_matches_factory confirms equality."
+    },
+    {
+      "criterion": "shadow_output is always from shadow_runner.run(input).output",
+      "result": "pass",
+      "notes": "Harness line 80-83 uses shadow_result.output. test_shadow_output_matches_shadow_runner confirms equality."
+    },
+    {
+      "criterion": "shadow_llm_used and shadow_failure_reason mirror ShadowRunResult fields",
+      "result": "pass",
+      "notes": "Harness directly assigns shadow_result.llm_used and shadow_result.failure_reason. Tests 3 and 4 verify these values."
+    },
+    {
+      "criterion": "verdict is always acceptance_rules.compare(shadow_output, deterministic_output)",
+      "result": "pass",
+      "notes": "Harness line 83 delegates exclusively to acceptance_rules.compare(). test_verdict_matches_acceptance_rules_compare confirms via model_dump equality."
+    },
+    {
+      "criterion": "No exception raised when shadow_runner falls back",
+      "result": "pass",
+      "notes": "Three never-raises tests cover ConnectionError, parse error, and ValueError. All return ComparisonReport instances."
+    },
+    {
+      "criterion": "14 or more required tests pass in test_p30_t4_comparison_harness.py",
+      "result": "pass",
+      "notes": "21 tests implemented covering all 14 required scenarios. All pass."
+    },
+    {
+      "criterion": "Full test suite continues to pass without regressions",
+      "result": "pass",
+      "notes": "732/732 tests pass. No regressions."
+    }
+  ],
+  "test_results": {
+    "total": 732,
+    "passed": 732,
+    "failed": 0,
+    "new_tests": 21,
+    "pre_existing_tests": 711
+  }
+}

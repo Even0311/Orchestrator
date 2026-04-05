@@ -1,0 +1,14 @@
+{
+  "summary": "Created comparison_harness.py with ComparisonReport model and run_comparison() function, plus 21 tests covering all 14 required test cases from the contract.",
+  "files_changed": [
+    "back/app/llm/comparison_harness.py",
+    "back/tests/test_p30_t4_comparison_harness.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p30_t4_comparison_harness.py -v",
+    "python3 -m pytest tests/ -q"
+  ],
+  "test_results": "732 passed (21 new tests in test_p30_t4_comparison_harness.py, 711 pre-existing), 0 failures",
+  "diff_summary": "Added back/app/llm/comparison_harness.py (84 lines): ComparisonReport Pydantic model with 8 required fields, run_comparison() function that calls from_deterministic_fallback(), shadow_runner.run(), and acceptance_rules.compare() in sequence, never raising to caller. Added back/tests/test_p30_t4_comparison_harness.py (21 tests): covers all 14 required tests including import side-effects, field type annotations, LLM success/fallback paths, tick_type echoing for T1/T2/T4/deferred, deterministic/shadow output identity, verdict delegation, semantic_pass on match, sign-flip severe deviation, structural fail on absorption=none mismatch, and no-raise guarantee.",
+  "unresolved_issues": []
+}
