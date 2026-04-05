@@ -129,7 +129,7 @@ def _build_driver_prompt(*, round_id: str, attempt_num: int, round_dir: Path) ->
         f"  - execution_evidence.json\n"
         f"  - review_verdict.json\n"
         f"\n"
-        f"Do NOT modify vision.md, road_map.md, or any orchestrator SOT files."
+        f"Do NOT modify vision.md, road_map.md, decisions.md, or any orchestrator SOT files."
     )
 
 

@@ -56,11 +56,13 @@ def _show_round_detail(project, round_id: str) -> None:
 
 
 def _find_round_dir(sot_dir: Path, round_id: str) -> Path | None:
-    """Find round directory under sot_dir/<phase_id>/<round_id> or legacy sot_dir/rounds/<round_id>."""
-    # New structure: sot_dir/P28/round-0029/
-    for child in sorted(sot_dir.iterdir()):
-        if child.is_dir() and (child / round_id).is_dir():
-            return child / round_id
+    """Find round directory under sot_dir/phases/<phase_id>/<round_id> or legacy paths."""
+    # Current structure: sot_dir/phases/P29/round-0030/
+    phases_dir = sot_dir / "phases"
+    if phases_dir.is_dir():
+        for phase_dir in sorted(phases_dir.iterdir()):
+            if phase_dir.is_dir() and (phase_dir / round_id).is_dir():
+                return phase_dir / round_id
     # Legacy: sot_dir/rounds/round-0029/
     legacy = sot_dir / "rounds" / round_id
     if legacy.is_dir():

@@ -28,7 +28,7 @@ from orch.models import (
     TaskContract,
     Verdict,
 )
-from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, append_decision_entry, get_phase_status, PhaseInfo
+from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, get_phase_status, PhaseInfo
 from orch.utils.evidence_collector import collect_git_evidence
 from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, GitError
 
@@ -106,7 +106,8 @@ def run_project(project_row, run_once: bool = False) -> None:
             _set_round_status(resolution["id"], "accepted_applied")
 
             if is_phase_complete(sot_dir):
-                _handle_phase_complete(project_id, phase_id, project_name, config)
+                completed_phase = parse_current_phase(sot_dir)
+                _handle_phase_complete(project_id, phase_id, project_name, config, sot_dir=sot_dir, sot_phase_id=completed_phase.phase_id)
                 break
 
             if run_once:
@@ -119,7 +120,7 @@ def run_project(project_row, run_once: bool = False) -> None:
         # Parse SOT to find next task
         phase_info = parse_current_phase(sot_dir)
         if phase_info.all_done:
-            _handle_phase_complete(project_id, phase_id, project_name, config)
+            _handle_phase_complete(project_id, phase_id, project_name, config, sot_dir=sot_dir, sot_phase_id=phase_info.phase_id)
             break
 
         if not phase_info.next_task_key:
@@ -133,7 +134,7 @@ def run_project(project_row, run_once: bool = False) -> None:
         click.echo(f"  Task: {phase_info.next_task_key} — {phase_info.next_task_desc[:80]}")
 
         # Determine round directory — organized by phase
-        rounds_base = sot_dir / phase_info.phase_id
+        rounds_base = sot_dir / "phases" / phase_info.phase_id
         round_dir = rounds_base / round_id
 
         # Build resolution instruction if applicable
@@ -177,30 +178,13 @@ def run_project(project_row, run_once: bool = False) -> None:
                 if marked:
                     click.echo(f"  [{_ts()}] Marked {task_key} complete in current_phase.md")
 
-            # Append decision entry (C: restore decisions.md update on PASS)
-            last_attempt = result.attempts[-1] if result.attempts else None
-            gate_summary = ""
-            if last_attempt:
-                gate_summary = "all passed"
-            append_decision_entry(
-                sot_dir,
-                round_id=round_id,
-                phase_id=result.task.phase_id,
-                task_key=result.task.task_key,
-                task_title=result.task.title,
-                outcome_summary=result.task.objective[:200],
-                hard_gate_summary=gate_summary,
-                notes=last_attempt.execution_evidence.summary[:200] if last_attempt else "",
-            )
-            click.echo(f"  [{_ts()}] Appended decision entry to decisions.md")
-
             # Commit both orchestrator SOT and target repo
             commit_msg = f"[orch] {round_id}: {result.task.title[:60]}"
             orch_hash, target_hash = _commit_both(codebase_path, commit_msg, round_id)
             update_round_commits(round_id, orch_hash, target_hash)
 
             if is_phase_complete(sot_dir):
-                _handle_phase_complete(project_id, phase_id, project_name, config)
+                _handle_phase_complete(project_id, phase_id, project_name, config, sot_dir=sot_dir, sot_phase_id=phase_info.phase_id)
                 break
 
             if run_once:
@@ -519,14 +503,35 @@ def _build_recent_rounds_summary(project_id: str, limit: int = 3) -> str:
     return "\n".join(lines)
 
 
-def _handle_phase_complete(project_id: str, phase_id: str, project_name: str, config: OrchestratorConfig) -> None:
+def _handle_phase_complete(
+    project_id: str, phase_id: str, project_name: str,
+    config: OrchestratorConfig, sot_dir: Path = None, sot_phase_id: str = "",
+) -> None:
     click.echo(f"\n{'='*60}")
-    click.echo(f"  Phase complete: {phase_id}")
+    click.echo(f"  Phase complete: {sot_phase_id or phase_id}")
     click.echo(f"{'='*60}")
     _close_phase(project_id, phase_id)
+
+    # Archive current_phase.md into the phase directory
+    if sot_dir and sot_phase_id:
+        _archive_phase(sot_dir, sot_phase_id)
+
     _notify_phase_complete(project_name, phase_id, config)
     click.echo("  Next phase must be planned manually before re-running.")
-    click.echo("  Edit current_phase.md in the SOT directory to define the next phase.")
+    click.echo("  Run 'orch phase next' to generate the next phase.")
+
+
+def _archive_phase(sot_dir: Path, sot_phase_id: str) -> None:
+    """Copy current_phase.md into the phase's directory as an archive."""
+    import shutil
+    src = sot_dir / "current_phase.md"
+    if not src.exists():
+        return
+    dest_dir = sot_dir / "phases" / sot_phase_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / "current_phase.md"
+    shutil.copy2(src, dest)
+    click.echo(f"  Archived current_phase.md -> phases/{sot_phase_id}/current_phase.md")
 
 
 # ── DB helpers ───────────────────────────────────────────────────────────────

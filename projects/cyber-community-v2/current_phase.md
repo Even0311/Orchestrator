@@ -1,29 +1,26 @@
-# P29: Appraisal / Settlement Boundary Extraction
+# P30: Offline / Shadow LLM Appraisal Validation
 <!-- status: approved -->
 
 ## Phase Goal
-Make the appraisal layer an explicit seam in the architecture, without yet introducing live LLM runtime.
+Validate LLM appraisal against the extracted appraisal seam without allowing it to drive the authoritative live path yet.
 
 ## In Scope
-- extract or formalize appraisal-facing input schema
-- **input schema must accommodate all 8 tick types** (T1–T8), not just the 3 with active bridges,
-  so that future tick coverage does not require schema redesign
-- formalize appraisal output contract
-- define what fields are advisory vs contract-bearing
-- define how deterministic fallback works when no external appraisal is available
-- make boundary testable and reviewable
+- run shadow or offline appraisal comparisons
+- define approved prompt / schema format
+- compare LLM output against deterministic expectations and acceptance rules
+- evaluate whether LLM outputs are useful, bounded, and composable
+- identify failure classes and required guardrails
 
 ## Out of Scope
-- no production LLM integration yet
-- no prompt experimentation as the main work
-- no dynamic open-ended agent cognition system
-- no removal of deterministic fallback behavior
-- no granting live authority to T3/T5/T6/T7/T8 (schema accommodation only)
+- no full production live control handoff
+- no open-ended autonomy
+- no replacing settlement with model judgment
+- no prompt-only “magic” as a substitute for contract discipline
 
 ## Task Queue
-- [x] P29-T1: Define a unified AppraisalInput schema that represents all 8 tick types with their context slices — Round round-0030 — Define unified AppraisalInput schema for all 8 tick types
-- [x] P29-T2: Formalize the AppraisalOutput contract, marking each field as advisory or contract-bearing — Round round-0031 — Formalize AppraisalOutput contract with advisory vs contract
-- [x] P29-T3: Define deterministic fallback mappings for T3/T5/T6/T7/T8 that produce valid AppraisalOutput without external appraisal — Round round-0032 — Tick-type-aware deterministic fallback mappings for T3/T5/T6
-- [x] P29-T4: Refactor existing T1/T2/T4 bridges to emit through the new AppraisalInput → AppraisalOutput boundary — Round round-0033 — Wire T1/T2/T4 bridge builders to emit AppraisalInput and ret
-- [x] P29-T5: Extract settlement as a pure consumer of AppraisalOutput, decoupled from tick-specific knowledge — Round round-0034 — Settlement as pure AppraisalOutput consumer, tick-specific k
-- [x] P29-T6: Add boundary contract tests that verify schema completeness, fallback correctness, and settlement isolation — Round round-0035 — Boundary contract tests: schema completeness, fallback corre
+- [ ] P30-T1: Define the prompt schema and template contract for converting AppraisalInput into an LLM prompt and parsing the LLM response back into AppraisalOutput
+- [ ] P30-T2: Build a shadow appraisal runner that accepts AppraisalInput, invokes the LLM offline, and returns a parsed AppraisalOutput without touching the live path
+- [ ] P30-T3: Define acceptance rules that specify per-field comparison criteria between LLM-produced and deterministic AppraisalOutput, distinguishing structural validity from semantic quality
+- [ ] P30-T4: Build a comparison harness that runs both deterministic and shadow LLM paths on the same AppraisalInput, produces a structured diff report, and flags acceptance-rule violations
+- [ ] P30-T5: Execute shadow comparisons across representative T1/T2/T4 test scenarios, collect structured diff reports, and persist raw results for analysis
+- [ ] P30-T6: Classify observed failure modes from shadow results into categories, define required guardrails for each category, and document which failures are blocking vs acceptable for live handoff

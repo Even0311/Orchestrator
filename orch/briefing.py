@@ -77,12 +77,11 @@ def generate_round_brief(
     # ── Decisions Context ────────────────────────────────────────────────
     decisions_path = sot_dir / "decisions.md"
     if decisions_path.exists():
-        decisions = decisions_path.read_text().strip()
-        if decisions and len(decisions) > 50:
-            # Only include last 2000 chars to avoid bloat
-            if len(decisions) > 2000:
-                decisions = "...(truncated)\n" + decisions[-2000:]
-            parts.extend(["## Decisions Context", decisions, ""])
+        decisions_text = decisions_path.read_text().strip()
+        if decisions_text and len(decisions_text) > 50:
+            recent = _extract_recent_decisions(decisions_text, count=3)
+            if recent:
+                parts.extend(["## Decisions Context (recent)", recent, ""])
 
     # ── Recent Rounds ────────────────────────────────────────────────────
     if recent_rounds_summary:
@@ -115,6 +114,20 @@ def generate_round_brief(
     brief_path = round_dir / "round_brief.md"
     brief_path.write_text("\n".join(parts))
     return brief_path
+
+
+def _extract_recent_decisions(decisions_text: str, count: int = 3) -> str:
+    """Extract the last N H2 sections from decisions.md."""
+    sections = _split_h2_sections(decisions_text)
+    if not sections:
+        return ""
+    recent = sections[-count:]
+    parts = []
+    for heading, body in recent:
+        parts.append(heading)
+        parts.append(body.strip())
+        parts.append("")
+    return "\n".join(parts).strip()
 
 
 def _extract_vision_summary(vision_text: str) -> str:

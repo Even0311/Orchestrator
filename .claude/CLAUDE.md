@@ -105,3 +105,7 @@ python3 -m pytest tests/ -v
 - P29 (Appraisal / Settlement Boundary Extraction) starting
 - 121 orchestrator tests passing
 - Target project: cyber-community-v2 (609 tests)
+
+
+每次在你给我方案之前， 先一步步走通你的推理过程。 说清楚你在哪里不确定， 标出你在做哪些假设！
+我需要你诚实， 即使让我不舒服， 如果我的计划有致命缺陷， 直接说。 不要软化他。
