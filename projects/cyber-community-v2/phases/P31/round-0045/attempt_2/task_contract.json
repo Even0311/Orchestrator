@@ -1,0 +1,69 @@
+{
+  "phase_id": "P31",
+  "task_key": "P31-T4",
+  "title": "Structured audit logging for per-tick LLM appraisal path selection",
+  "objective": "Build a structured audit logging layer that captures, for every appraisal invocation inside simulate_day_bridged, exactly which path was taken (LLM vs deterministic), the raw LLM text output, the ComparisonVerdict produced by acceptance_rules, and any fallback event with its classified failure category. The log must be machine-readable and returned alongside the SimulationResult so that calling code can inspect or persist it. This requires extending RouterResult with a raw_llm_response field so that raw LLM text flows from ShadowRunResult through the router into the audit entry.",
+  "exact_scope": "1) Add raw_llm_response: Optional[str] = None to RouterResult in back/app/llm/appraisal_router.py, and propagate shadow_result.raw_response into RouterResult.raw_llm_response in all three return paths where the shadow_runner was actually called (LLM success, parse failure via shadow_result fallback, and unexpected shadow_runner fallback). 2) Create back/app/llm/appraisal_audit_log.py containing AppraisalAuditEntry and AppraisalAuditLog Pydantic models. 3) Modify back/app/engines/tick_bridge.py to build and collect one AppraisalAuditEntry per route() call (T1, T2, T4) and return it as the third element of the return value from simulate_day_bridged, via a backward-compatible container. 4) Write back/tests/test_p31_t4_appraisal_audit_log.py with all required tests, including assertions that raw_llm_response is non-None on LLM success and contains bad text on parse failure.",
+  "constraints": [
+    "Settlement and bookkeeping remain engine-authoritative — the audit layer is read-only observation, zero writes to state",
+    "AppraisalSignal v1 is frozen — no fields may be added or changed",
+    "ShadowRunResult, GateDecision, and all other existing Pydantic models other than RouterResult must not be modified",
+    "RouterResult may be extended with raw_llm_response: Optional[str] = None — this is an additive, backward-compatible change. All existing RouterResult construction sites must be updated to propagate raw_response from ShadowRunResult where available",
+    "The audit log must be purely additive — existing callers of simulate_day_bridged that unpack only the first two elements of the return value must not break",
+    "The new AppraisalAuditEntry and AppraisalAuditLog models must live in a new file under back/app/llm/ — not embedded inside tick_bridge.py",
+    "Deferred ticks (T3/T5/T6/T7/T8) do not produce audit entries because route() is never called for them inside simulate_day_bridged",
+    "The module must be importable with no side effects — no LLM call, no file I/O at import time",
+    "No LLM calls may be made in tests — all LLM interactions must be mocked via unittest.mock.patch"
+  ],
+  "acceptance_criteria": [
+    "simulate_day_bridged returns a backward-compatible container that unpacks as a 2-tuple (SimulationResult, list[ResidualEntry]) for legacy callers, while also exposing the AppraisalAuditLog at index [2] or via an .audit_log attribute",
+    "AppraisalAuditLog contains exactly one AppraisalAuditEntry for each route() call made during the day (1 for T1, 1 for T2, 0 or 1 for T4 depending on whether a relationship exists)",
+    "Each AppraisalAuditEntry records: world_day (int), tick_type (EventCategory), llm_used (bool), fallback_reason (str or None), raw_llm_response (str or None), verdict_overall (str or None — the OverallVerdict value), verdict_failure_categories (list of str — one entry per structural_failure or per severe semantic_deviation), and timestamp_iso (UTC ISO-8601 string generated at entry creation time)",
+    "When llm_used=True and the LLM path succeeded, raw_llm_response is a non-None string containing the raw text returned by the LLM — this requires RouterResult.raw_llm_response to be populated from ShadowRunResult.raw_response in the router's LLM success return path",
+    "When llm_used=False due to a connection failure (shadow_runner API call raised), raw_llm_response is None and fallback_reason is non-None",
+    "When llm_used=False due to a parse failure (shadow_runner parsed but failed, returning llm_used=False with a non-None raw_response), raw_llm_response contains the raw text that failed to parse — this requires the router to propagate shadow_result.raw_response into RouterResult.raw_llm_response even on fallback paths",
+    "When T4 is skipped (no relationship found), no audit entry is created for relationship_shift",
+    "The AppraisalAuditLog model is a Pydantic BaseModel with an entries field (list of AppraisalAuditEntry) and a world_day field (int)",
+    "All existing tests continue to pass without modification"
+  ],
+  "required_tests": [
+    "test_simulate_day_bridged_returns_result_with_audit_log: Call simulate_day_bridged with standard fixtures (mocked route()), unpack the result as a 2-tuple and verify the first two elements are SimulationResult and list. Also verify the result supports index [2] and that element is an AppraisalAuditLog instance",
+    "test_audit_log_has_2_entries_when_no_t4_relationship: When no relationship exists for the influencer, the audit log contains exactly 2 entries (T1 and T2 only), with no entry whose tick_type is relationship_shift",
+    "test_audit_log_has_3_entries_when_relationship_exists: When the influencer relationship exists, the audit log contains exactly 3 entries (T1, T2, T4), one per tick type",
+    "test_audit_entry_llm_success: Mock route() to return a RouterResult with llm_used=True and raw_llm_response set to a non-None string (e.g. 'raw LLM text'). Verify the corresponding audit entry has llm_used=True, raw_llm_response is a non-None string (not None), and verdict_overall matches the mocked verdict's overall value",
+    "test_audit_entry_connection_failure: Mock route() to return a RouterResult with llm_used=False, raw_llm_response=None, and fallback_reason='LLM connection failed'. Verify the corresponding audit entry has llm_used=False, raw_llm_response is None, and fallback_reason is non-None",
+    "test_audit_entry_parse_failure: Mock route() to return a RouterResult with llm_used=False, raw_llm_response='{{bad json text}}' (non-None), and fallback_reason='Response parse failed: ...'. Verify the corresponding audit entry has llm_used=False, raw_llm_response contains the bad text (is non-None and equals '{{bad json text}}'), and fallback_reason is non-None",
+    "test_audit_entry_structural_fail: Mock route() to return a RouterResult with llm_used=False, a ComparisonVerdict whose overall is STRUCTURAL_FAIL, and fallback_reason non-None. Verify the audit entry has llm_used=False, verdict_overall='STRUCTURAL_FAIL', and fallback_reason is non-None",
+    "test_t4_entry_absent_when_no_relationship: When simulate_day_bridged is called with an empty relationship list, verify no audit entry has tick_type equal to relationship_shift",
+    "test_audit_entry_timestamp_iso_is_valid_utc: For each audit entry in a normal run, verify timestamp_iso is a string that parses successfully as a UTC-aware ISO-8601 datetime (datetime.fromisoformat or equivalent)",
+    "test_import_audit_log_module_no_side_effects: Import back/app/llm/appraisal_audit_log without patching anything and verify no exception is raised and no LLM call is triggered",
+    "test_all_existing_tests_still_pass: The full test suite (including test_p31_t1_appraisal_router, test_p31_t2_validation_gate, test_p31_t3_router_integration, and all legacy test files) must pass with no modifications to those existing test files"
+  ],
+  "non_goals": [
+    "Persisting the audit log to disk or a database",
+    "Exposing the audit log via any API route",
+    "Changing ShadowRunResult, GateDecision, validation_gate.py, acceptance_rules.py, appraisal_settlement.py, or any domain model other than RouterResult",
+    "Adding audit entries for deferred ticks (T3/T5/T6/T7/T8)",
+    "Aggregating or rolling up statistics across days",
+    "Changing any guardrail or fallback logic",
+    "Adding LLM authority to any new tick type"
+  ],
+  "allowed_files": [
+    "back/app/llm/appraisal_router.py",
+    "back/app/llm/appraisal_audit_log.py",
+    "back/app/engines/tick_bridge.py",
+    "back/tests/test_p31_t4_appraisal_audit_log.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/llm/shadow_runner.py",
+    "back/app/llm/validation_gate.py",
+    "back/app/llm/failure_taxonomy.py",
+    "back/app/llm/acceptance_rules.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py"
+  ],
+  "implementation_notes": "The root cause of attempt_1's failure was a conflict in the task_contract: it required raw_llm_response to be non-None in two scenarios (LLM success and parse failure), but simultaneously forbade modifying RouterResult. ShadowRunResult already carries raw_response correctly — on LLM success it is the raw text, on parse failure it is the text that failed to parse, on API error it is None. The fix is to extend RouterResult with raw_llm_response: Optional[str] = None and populate it from shadow_result.raw_response in all three return paths inside the route() function where shadow_runner.run() was actually invoked: (1) LLM success path — set raw_llm_response=shadow_result.raw_response (non-None string); (2) shadow_result.llm_used=False path (includes parse failures) — set raw_llm_response=shadow_result.raw_response (non-None string for parse failures, None for API errors); (3) the acceptance_rules.compare exception fallback — raw_llm_response is not available so set it to None. The deferred tick path and the unexpected shadow_runner exception path also produce raw_llm_response=None (LLM was never called). Once RouterResult carries this field, _build_audit_entry() in tick_bridge.py can read router_result.raw_llm_response directly. The executor must update all RouterResult(...) construction sites in appraisal_router.py to pass raw_llm_response. The test for LLM success must construct a mock RouterResult with raw_llm_response='some raw text' and assert the audit entry's raw_llm_response is that same non-None string. The test for parse failure must construct a mock RouterResult with raw_llm_response='{{bad json text}}' and assert the audit entry's raw_llm_response contains that text."
+}

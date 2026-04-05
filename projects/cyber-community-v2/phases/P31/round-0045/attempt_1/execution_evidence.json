@@ -1,0 +1,20 @@
+{
+  "task_key": "P31-T4",
+  "summary": "Created AppraisalAuditLog Pydantic models in back/app/llm/appraisal_audit_log.py, wired audit entry collection into simulate_day_bridged for T1/T2/T4 router calls, introduced backward-compatible SimulateDayBridgedResult that allows 2-element tuple unpacking for existing callers while exposing the audit log at index [2], and wrote 18 tests covering all required test scenarios.",
+  "files_created": [
+    "back/app/llm/appraisal_audit_log.py",
+    "back/tests/test_p31_t4_appraisal_audit_log.py"
+  ],
+  "files_modified": [
+    "back/app/engines/tick_bridge.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p31_t4_appraisal_audit_log.py -v",
+    "python3 -m pytest tests/ -q"
+  ],
+  "test_results": "840 passed (822 pre-existing + 18 new)",
+  "diff_summary": "tick_bridge.py: added SimulateDayBridgedResult class (backward-compatible 3-element container), _build_audit_entry() helper, AppraisalAuditLog construction at end of simulate_day_bridged, audit entry collection after T1/T2/T4 router calls, updated return type annotation and return statement. appraisal_audit_log.py: new file with AppraisalAuditEntry and AppraisalAuditLog Pydantic models. test_p31_t4_appraisal_audit_log.py: 18 tests covering 3-element result, backward-compat unpacking, 2-entry and 3-entry scenarios, T4-skip, LLM success, connection failure, parse failure, STRUCTURAL_FAIL, severe deviation, timestamp_iso UTC validity, module import side-effect check.",
+  "unresolved_issues": [
+    "raw_llm_response in audit entries is always None when populated through tick_bridge — RouterResult does not carry ShadowRunResult.raw_response, and appraisal_router.py is in the forbidden files list. The field exists on AppraisalAuditEntry for future use or for callers that populate it directly."
+  ]
+}

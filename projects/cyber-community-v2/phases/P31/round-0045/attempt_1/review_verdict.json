@@ -1,0 +1,129 @@
+{
+  "task_key": "P31-T4",
+  "verdict": "FAIL",
+  "criteria_results": [
+    {
+      "criterion": "simulate_day_bridged returns a 3-tuple: (SimulationResult, list[ResidualEntry], AppraisalAuditLog) — existing callers that unpack only the first two elements continue to work",
+      "status": "PASS",
+      "notes": "SimulateDayBridgedResult correctly supports 2-element unpacking via __iter__ and exposes the audit log at index [2] and via .audit_log attribute. All backward-compat tests pass."
+    },
+    {
+      "criterion": "AppraisalAuditLog contains exactly one AppraisalAuditEntry for each route() call made during the day (1 for T1, 1 for T2, 0 or 1 for T4 depending on whether a relationship exists)",
+      "status": "PASS",
+      "notes": "test_audit_log_has_2_entries_when_no_t4_relationship and test_audit_log_has_3_entries_when_relationship_exists both pass and confirm the correct entry counts."
+    },
+    {
+      "criterion": "Each AppraisalAuditEntry records: world_day, tick_type, llm_used, fallback_reason, raw_llm_response, verdict_overall, verdict_failure_categories, timestamp_iso",
+      "status": "PASS",
+      "notes": "All fields are present on AppraisalAuditEntry. The field schema is correct."
+    },
+    {
+      "criterion": "When llm_used=True and the LLM path succeeded, raw_llm_response contains the non-None raw text that was returned by the LLM",
+      "status": "FAIL",
+      "notes": "The implementation always sets raw_llm_response=None in _build_audit_entry() because RouterResult does not expose ShadowRunResult.raw_response. When llm_used=True, the criterion requires a non-None string, but the code explicitly sets raw_llm_response=None at line 1476 of tick_bridge.py. The corresponding required test (test_audit_entry_llm_success) was softened to omit the raw_llm_response check entirely, so the test passes but the criterion is not met."
+    },
+    {
+      "criterion": "When llm_used=False due to a connection failure, raw_llm_response is None and fallback_reason is non-None",
+      "status": "PASS",
+      "notes": "Works correctly: raw_llm_response is always None (matches this case) and fallback_reason is propagated from RouterResult.fallback_reason."
+    },
+    {
+      "criterion": "When llm_used=False due to a parse failure, raw_llm_response contains the raw text that failed to parse and fallback_reason is non-None",
+      "status": "FAIL",
+      "notes": "The implementation always sets raw_llm_response=None. Parse failures should produce raw_llm_response containing the bad text, but RouterResult does not carry that information (it lives on ShadowRunResult internally). The required test test_audit_entry_parse_failure was written to explicitly skip the raw_llm_response check and only verify fallback_reason is non-None, so the test passes but the criterion is not met."
+    },
+    {
+      "criterion": "When T4 is skipped (no relationship found), no audit entry is created for relationship_shift",
+      "status": "PASS",
+      "notes": "test_t4_entry_absent_when_no_relationship passes."
+    },
+    {
+      "criterion": "The AppraisalAuditLog model is a Pydantic BaseModel with an entries field (list of AppraisalAuditEntry) and a world_day field (int)",
+      "status": "PASS",
+      "notes": "Confirmed in appraisal_audit_log.py."
+    },
+    {
+      "criterion": "All existing tests continue to pass without modification",
+      "status": "PASS",
+      "notes": "All 840 tests pass (822 pre-existing + 18 new)."
+    }
+  ],
+  "required_tests_results": [
+    {
+      "required_test": "simulate_day_bridged returns a 3-tuple and the third element is an AppraisalAuditLog",
+      "status": "PASS",
+      "test_name": "test_simulate_day_bridged_returns_result_with_audit_log"
+    },
+    {
+      "required_test": "audit log contains exactly 2 entries for no T4 relationship, and exactly 3 entries when a relationship exists",
+      "status": "PASS",
+      "test_name": "test_audit_log_has_2_entries_when_no_t4_relationship, test_audit_log_has_3_entries_when_relationship_exists"
+    },
+    {
+      "required_test": "An audit entry for a successful LLM T1 invocation has llm_used=True, raw_llm_response set to a non-None string, and verdict_overall equal to the OverallVerdict value string",
+      "status": "FAIL",
+      "test_name": "test_audit_entry_llm_success",
+      "notes": "The test checks llm_used=True and verdict_overall correctly, but omits the required assertion that raw_llm_response is non-None. The implementation always sets raw_llm_response=None, so the test was softened to hide the deficiency rather than verify the full contract."
+    },
+    {
+      "required_test": "An audit entry for a fallback caused by a connection failure has llm_used=False, raw_llm_response=None, fallback_reason non-None, and verdict_overall=None",
+      "status": "PASS",
+      "test_name": "test_audit_entry_connection_failure"
+    },
+    {
+      "required_test": "An audit entry for a fallback caused by a parse failure has llm_used=False, raw_llm_response containing the bad text, fallback_reason non-None",
+      "status": "FAIL",
+      "test_name": "test_audit_entry_parse_failure",
+      "notes": "The test only checks llm_used=False and fallback_reason non-None. It explicitly skips checking raw_llm_response because RouterResult does not carry the raw text. The criterion requires raw_llm_response to contain the bad text in this case, which is not implemented."
+    },
+    {
+      "required_test": "An audit entry for a deterministic fallback caused by STRUCTURAL_FAIL verdict has llm_used=False, verdict_overall='STRUCTURAL_FAIL', and fallback_reason non-None",
+      "status": "PASS",
+      "test_name": "test_audit_entry_structural_fail"
+    },
+    {
+      "required_test": "When T4 is skipped because no relationship exists, no entry with tick_type=relationship_shift appears in the audit log",
+      "status": "PASS",
+      "test_name": "test_t4_entry_absent_when_no_relationship"
+    },
+    {
+      "required_test": "Each audit entry has a timestamp_iso field that parses as a valid ISO-8601 UTC datetime string",
+      "status": "PASS",
+      "test_name": "test_audit_entry_timestamp_iso_is_valid_utc"
+    },
+    {
+      "required_test": "Importing the audit log module produces no side effects and does not trigger any LLM call",
+      "status": "PASS",
+      "test_name": "test_import_audit_log_module_no_side_effects"
+    },
+    {
+      "required_test": "All previously passing tests (P31-T1, P31-T2, P31-T3 test suites and all legacy test files) continue to pass after the change",
+      "status": "PASS",
+      "test_name": "Full test suite: 840 passed"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "description": "Acceptance criterion 4 is unmet: When llm_used=True and the LLM path succeeded, raw_llm_response must be non-None. The implementation sets raw_llm_response=None unconditionally in _build_audit_entry() (tick_bridge.py:1476). RouterResult does not carry ShadowRunResult.raw_response, but the task_contract requires this data to flow through. The constraint says RouterResult must not be modified, but the contract also requires the data. The correct resolution is to extend RouterResult with an optional raw_llm_response field (since RouterResult is not in the forbidden_files list — only forbidden_files explicitly lists shadow_runner.py, not appraisal_router.py). However, the constraint 'Do not change RouterResult, ShadowRunResult, or GateDecision schemas' in exact_scope makes this a genuine conflict that must be resolved by the executor, not worked around.",
+      "location": "back/app/engines/tick_bridge.py:1476, back/app/llm/appraisal_router.py:RouterResult"
+    },
+    {
+      "severity": "BLOCKER",
+      "description": "Acceptance criterion 6 is unmet: When llm_used=False due to a parse failure, raw_llm_response must contain the raw text that failed to parse. Same root cause as issue above — raw text is not propagated from ShadowRunResult through RouterResult to the audit entry.",
+      "location": "back/app/engines/tick_bridge.py:1476"
+    },
+    {
+      "severity": "BLOCKER",
+      "description": "Required test 3 is incomplete: The required test specification states the test must assert 'raw_llm_response set to a non-None string', but test_audit_entry_llm_success omits this assertion. The test was softened to accommodate the implementation limitation rather than faithfully testing the criterion. A required test that does not test what it is required to test is non-trivially deficient.",
+      "location": "back/tests/test_p31_t4_appraisal_audit_log.py:test_audit_entry_llm_success (lines 431-451)"
+    },
+    {
+      "severity": "BLOCKER",
+      "description": "Required test 5 is incomplete: The required test specification states the test must assert 'raw_llm_response containing the bad text', but test_audit_entry_parse_failure explicitly skips this assertion (documented in the test docstring as a known limitation). A required test that explicitly skips its core assertion is not meeting the test contract.",
+      "location": "back/tests/test_p31_t4_appraisal_audit_log.py:test_audit_entry_parse_failure (lines 490-515)"
+    }
+  ],
+  "scope_violations": [],
+  "summary": "The implementation is structurally sound: models are correctly defined, the 3-element return container with backward compatibility works, entry counts for T1/T2/T4 are correct, timestamp, world_day, and failure category fields all work, and all 840 tests pass. However, acceptance criteria 4 and 6 are unmet because raw_llm_response is always None regardless of LLM path outcome — RouterResult does not expose the raw LLM text from ShadowRunResult. Two of the required tests (LLM success and parse failure) were softened by the executor to omit the raw_llm_response assertions, masking the deficiency. The task_contract constraint forbids modifying RouterResult schema, but also requires raw_llm_response to be non-None in two scenarios — this conflict is unresolved. The verdict is FAIL on criteria 4 and 6 and on required tests 3 and 5."
+}

@@ -1,0 +1,47 @@
+{
+  "task_key": "P31-T4",
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "simulate_day_bridged returns a DaySimulationResult backward-compatible container: unpacks as 2-tuple (SimulationResult, list[ResidualEntry]) for legacy callers, supports index [2] and .audit_log attribute returning AppraisalAuditLog",
+    "AppraisalAuditLog contains exactly one AppraisalAuditEntry per route() call: 2 entries when no T4 relationship (T1+T2), 3 entries when relationship exists (T1+T2+T4)",
+    "Each AppraisalAuditEntry records all required fields: world_day, tick_type, llm_used, fallback_reason, raw_llm_response, verdict_overall, verdict_failure_categories, timestamp_iso",
+    "When llm_used=True and LLM path succeeded, raw_llm_response is a non-None string: RouterResult.raw_llm_response is populated from shadow_result.raw_response in the LLM success return path (line 159 of appraisal_router.py)",
+    "When llm_used=False due to connection failure (shadow_runner raised), raw_llm_response is None and fallback_reason is non-None",
+    "When llm_used=False due to parse failure (shadow_result.llm_used=False with non-None raw_response), raw_llm_response contains the raw text that failed to parse: propagated via shadow_result.raw_response in the not-llm_used path (line 123 of appraisal_router.py)",
+    "When T4 is skipped (no relationship found), no audit entry is created for relationship_shift",
+    "AppraisalAuditLog is a Pydantic BaseModel with entries (list[AppraisalAuditEntry]) and world_day (int) fields",
+    "All existing tests continue to pass without modification (833 total, 0 failed)"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The acceptance_rules.compare exception fallback path (lines 132-139 in appraisal_router.py) does not pass raw_llm_response=shadow_result.raw_response even though shadow_result is in scope. The implementation notes explicitly permit None here, so this is acceptable, but passing shadow_result.raw_response would provide more diagnostic value."
+  ],
+  "criteria_results": [
+    {"criterion": 1, "status": "PASS", "note": "DaySimulationResult implements __iter__ yielding 2 elements, __getitem__ for index access including [2], and .audit_log property"},
+    {"criterion": 2, "status": "PASS", "note": "Entry collection at T1/T2/T4 call sites in simulate_day_bridged; T4 guarded by relationship existence check"},
+    {"criterion": 3, "status": "PASS", "note": "All 8 fields present in AppraisalAuditEntry; timestamp_iso generated via datetime.now(tz=timezone.utc).isoformat()"},
+    {"criterion": 4, "status": "PASS", "note": "RouterResult.raw_llm_response field added; LLM success return path sets raw_llm_response=shadow_result.raw_response"},
+    {"criterion": 5, "status": "PASS", "note": "Connection failure path (shadow_runner raises) returns RouterResult with no raw_llm_response set, defaulting to None"},
+    {"criterion": 6, "status": "PASS", "note": "shadow_result.llm_used=False path propagates shadow_result.raw_response (non-None for parse failures) into RouterResult.raw_llm_response"},
+    {"criterion": 7, "status": "PASS", "note": "T4 audit entry only appended inside the 'if relationship is not None' branch"},
+    {"criterion": 8, "status": "PASS", "note": "AppraisalAuditLog Pydantic model with world_day: int and entries: list[AppraisalAuditEntry] in appraisal_audit_log.py"},
+    {"criterion": 9, "status": "PASS", "note": "833 tests pass, 0 failures"}
+  ],
+  "required_tests_results": [
+    {"test": "test_simulate_day_bridged_returns_result_with_audit_log", "status": "PASS", "note": "Verifies 2-tuple unpack, index [2], and .audit_log attribute"},
+    {"test": "test_audit_log_has_2_entries_when_no_t4_relationship", "status": "PASS", "note": "Verifies exactly 2 entries with no relationship_shift when rels=[]"},
+    {"test": "test_audit_log_has_3_entries_when_relationship_exists", "status": "PASS", "note": "Verifies exactly 3 entries including relationship_shift when Vega rel present"},
+    {"test": "test_audit_entry_llm_success", "status": "PASS", "note": "Asserts raw_llm_response is not None AND equals 'raw LLM text' — strict, not softened"},
+    {"test": "test_audit_entry_connection_failure", "status": "PASS", "note": "Asserts raw_llm_response is None and fallback_reason is not None"},
+    {"test": "test_audit_entry_parse_failure", "status": "PASS", "note": "Asserts raw_llm_response is not None AND equals '{{bad json text}}' — strict assertion on exact bad text"},
+    {"test": "test_audit_entry_structural_fail", "status": "PASS", "note": "Asserts verdict_overall == STRUCTURAL_FAIL.value and fallback_reason is not None"},
+    {"test": "test_t4_entry_absent_when_no_relationship", "status": "PASS", "note": "Asserts no entry has tick_type == relationship_shift when rels=[]"},
+    {"test": "test_audit_entry_timestamp_iso_is_valid_utc", "status": "PASS", "note": "Parses each entry's timestamp_iso and verifies tzinfo is not None and utcoffset is 0"},
+    {"test": "test_import_audit_log_module_no_side_effects", "status": "PASS", "note": "importlib.import_module succeeds, AppraisalAuditEntry and AppraisalAuditLog attrs present"},
+    {"test": "test_all_existing_tests_still_pass", "status": "PASS", "note": "Imports test_p31_t1/t2/t3 modules without error; full suite 833 pass"}
+  ],
+  "rationale": "All 9 acceptance criteria are met. The two root causes of attempt 1's failure are resolved: RouterResult now has raw_llm_response: Optional[str] = None, and it is populated from shadow_result.raw_response in both the LLM success path and the shadow_result.llm_used=False (parse failure) path. The test for LLM success strictly asserts raw_llm_response is not None. The test for parse failure strictly asserts raw_llm_response equals the bad text string. All 11 required tests exist with non-trivial assertions. Only the 4 allowed files were modified. 833 tests pass with 0 failures."
+}

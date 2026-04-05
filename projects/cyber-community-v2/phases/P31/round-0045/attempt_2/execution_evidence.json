@@ -1,0 +1,16 @@
+{
+  "summary": "Extended RouterResult with raw_llm_response field, created AppraisalAuditLog/AppraisalAuditEntry models, wired audit entry collection into simulate_day_bridged with a backward-compatible DaySimulationResult container, and wrote 11 tests covering all required scenarios.",
+  "files_changed": [
+    "back/app/llm/appraisal_router.py",
+    "back/app/llm/appraisal_audit_log.py",
+    "back/app/engines/tick_bridge.py",
+    "back/tests/test_p31_t4_appraisal_audit_log.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/ -q",
+    "python3 -m pytest tests/test_p31_t4_appraisal_audit_log.py -v"
+  ],
+  "test_results": "833 passed (822 existing + 11 new), 0 failed",
+  "diff_summary": "appraisal_router.py: added raw_llm_response: Optional[str] = None to RouterResult and propagated shadow_result.raw_response into all return paths inside route(). appraisal_audit_log.py: new file with AppraisalAuditEntry and AppraisalAuditLog Pydantic models. tick_bridge.py: added import, DaySimulationResult backward-compatible container class, _build_audit_entry helper, audit entry collection at T1/T2/T4 route() call sites, and updated return to DaySimulationResult. test_p31_t4_appraisal_audit_log.py: new test file with 11 tests covering all required scenarios.",
+  "unresolved_issues": []
+}
