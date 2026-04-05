@@ -1,0 +1,80 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T1",
+  "round": "round-0048",
+  "title": "T4 End-to-End Audit: Confirm Zero Activation Rate and Document Blocker Chain",
+  "objective": "Run a multi-day simulation using the real world generator (not synthetic fixtures) and confirm that T4 qualifying event detection is never triggered. Trace every code-level gate that prevents T4 from producing a negative relational signal, cross-day residual, or wake-chain output. Produce a structured written audit report that names each blocker in execution order so that Phase P32 implementation tasks have a precise target list.",
+  "exact_scope": "Audit the live T4 path from world snapshot generation through `_detect_qualifying_t4_social_event`, the wake-chain gate at line 1820, `_adjust_t4`, and residual creation — all within the standard `simulate_day_bridged` call path. The audit must use the real `get_world_snapshot` generator (no injected social_event fixtures) to confirm zero activation in real simulation. The report must state each blocker, its file and approximate line, and why it prevents downstream progress.",
+  "constraints": [
+    "Do not modify vision.md, road_map.md, or decisions_summary.md",
+    "Do not expand deferred ticks T3/T5/T6/T7/T8",
+    "Do not alter existing engine contracts or AppraisalSignal field definitions",
+    "Do not introduce new features or implementation changes — this is a read-and-diagnose task only",
+    "Audit must use the real get_world_snapshot generator, not hand-crafted WorldSnapshot fixtures, to confirm production-path activation rate",
+    "The audit script must not modify any shared state or write to production data"
+  ],
+  "acceptance_criteria": [
+    "A multi-day simulation (minimum 10 consecutive world days, days 3–12) is run using the real world generator and the T4 activation rate is confirmed to be 0.0 — every day emits an audit record with activated=False",
+    "The audit report identifies Blocker 1: `get_world_snapshot` in `back/app/world/generator.py` never sets `social_event` on the returned `WorldSnapshot` — the field is always None",
+    "The audit report identifies Blocker 2: `_detect_qualifying_t4_social_event` in `tick_bridge.py` returns None on every real simulation day because `world.social_event is None`",
+    "The audit report identifies Blocker 3: because no qualifying event is detected, `build_signal_from_t4_relationship_tick` always returns a positive-valence / mild_increase signal — the negative branch is structurally unreachable",
+    "The audit report identifies Blocker 4: the wake-chain gate (`_t4_wake_chain_gate_open`) at tick_bridge.py line ~1820 requires `valence==negative` and `trust_shift in (mild_decrease, strong_decrease)`, conditions that are never satisfied in the positive-only default path",
+    "The audit report identifies Blocker 5: because the wake-chain gate never opens, no relational residual with aftershock_days=1 is ever created, which means the bootstrapping deadlock persists — `_adjust_t4` is never called with a non-None residual in real simulation",
+    "The audit report states the exact bootstrapping deadlock: T4 can only produce a negative residual if the wake-chain gate opens, but the gate can only open if the signal is already negative, which requires either a qualifying social event (Blocker 1) or a carried negative residual (which never exists because no residual is ever created)",
+    "The audit output is a structured file (JSON, Markdown, or Python dataclass dump) that can be referenced by subsequent implementation rounds",
+    "All existing tests continue to pass after the audit script and report are added"
+  ],
+  "required_tests": [
+    "A pytest test or standalone audit script runs `simulate_day_bridged` for at least 10 consecutive days using the real `get_world_snapshot` output (no injected social_event) and asserts that `T4ActivationAuditRecord.activated` is False for every day — confirming production-path activation rate is 0.0",
+    "The audit collects `T4ActivationAuditRecord` objects and asserts none have `trigger_event_type` set to a non-None value",
+    "The audit verifies that `world.social_event` is None for every WorldSnapshot returned by `get_world_snapshot` across the simulated day range"
+  ],
+  "non_goals": [
+    "Do not fix any of the identified blockers — only document them",
+    "Do not add social_event production to the world generator",
+    "Do not implement the T4 wake-chain activation or residual creation logic",
+    "Do not add new SocialEventSpec fixtures or modify arc/fallback phase data",
+    "Do not change any test that is currently passing",
+    "Do not audit deferred ticks (T3/T5/T6/T7/T8)"
+  ],
+  "deliverables": [
+    "back/tests/test_p32_t1_t4_live_audit.py — a pytest module that drives real-world-generator simulation and asserts zero activation across the day range",
+    "docs/p32_t4_blocker_audit.md — a written audit report listing each blocker in execution order with file path, approximate line reference, and a plain-language explanation of why the blocker prevents downstream T4 relational output"
+  ],
+  "files_to_create": [
+    "back/tests/test_p32_t1_t4_live_audit.py",
+    "docs/p32_t4_blocker_audit.md"
+  ],
+  "files_to_read": [
+    "back/app/world/generator.py",
+    "back/app/world/arcs.py",
+    "back/app/domain/models.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/tests/test_t4_activation_frequency.py",
+    "back/tests/test_p31_t6_multiday_audit.py",
+    "docs/decisions_summary.md",
+    "docs/phase25_continuity_status.md"
+  ],
+  "allowed_files": [
+    "back/tests/test_p32_t1_t4_live_audit.py",
+    "docs/p32_t4_blocker_audit.md"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "docs/decisions_summary.md",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/domain/models.py",
+    "back/app/world/generator.py",
+    "back/app/world/arcs.py"
+  ],
+  "out_of_scope": [
+    "Any implementation changes to the T4 path",
+    "Adding social_event generation to the world generator or arcs",
+    "Modifying AppraisalSignal fields or settlement logic",
+    "Expanding bridge coverage for deferred ticks",
+    "Changing any currently-passing test"
+  ]
+}

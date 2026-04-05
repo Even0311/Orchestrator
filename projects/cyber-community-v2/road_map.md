@@ -354,16 +354,77 @@ The system is ready for the first real LLM-assisted appraisal step.
 
 ### Exit Condition
 - live LLM appraisal participates in the real loop for T1 / T2 / T4
-- T3/T5/T6/T7/T8 remain on deterministic fallback
+- T3 / T5 / T6 / T7 / T8 remain on deterministic fallback
 - engine remains authoritative for settlement
 - outputs remain auditable
 - fallback path remains functional
-- the integration is stable enough to count as the end of Stage 1
+- the integration is stable enough to establish the first controlled live hybrid path
+- Stage 1 closure is now pending only on the remaining T4 reality-closure gap
 
 ### Unlocks
-- Stage 1 complete
-- project has transitioned from pure deterministic baseline to controlled hybrid architecture:
+- first controlled live hybrid path
+- project has transitioned from pure deterministic baseline to controlled hybrid infrastructure:
   **LLM appraisal + engine settlement**
+- safe entry into final Stage 1 closure work
+
+---
+
+## Phase 32 — T4 Reality Closure
+
+### Goal
+Close the remaining Stage 1 gap by turning the existing T4 event-aware seam
+from a partially implemented path into a real, stage-closing relational contract.
+
+### Why Now
+By the end of Phase 31, the project already has:
+- a governed deterministic backbone
+- active T1 / T2 continuity
+- cross-day persistence
+- an explicit appraisal / settlement boundary
+- a first live LLM appraisal router with narrow authority
+
+However, Stage 1 is not yet fully closed because T4 is still only partially unlocked:
+- the social-event detection seam exists
+- the negative signal path exists
+- but relational residual creation is still blocked
+- `_adjust_t4()` is still dormant
+- the project cannot yet honestly claim full T4 relational continuity
+
+This phase exists to close that remaining gap without changing the overall Stage 1 architecture.
+
+### In Scope
+- close the remaining T4 partial-unlock gap identified in the current repo status
+- make the existing T4 event-aware path capable of completing the approved relational wake chain
+- validate that T4 can progress beyond detection-only / negative-signal-only behavior
+- verify that downstream relational residual creation becomes real and auditable
+- verify that `_adjust_t4()` is no longer permanently dormant
+- audit same-day T2/T4 composition and downstream wake behavior after closure
+- produce explicit contract notes describing what Stage 1 now considers valid T4 relational continuity
+
+### Out of Scope
+- no deferred tick bridge or live-authority expansion for T3 / T5 / T6 / T7 / T8
+- no broad social world redesign
+- no rich new event taxonomy expansion
+- no settlement / substrate redesign
+- no bridge architecture rewrite
+- no freeform memory / personality / identity-deepening work
+- no uncontrolled broadening of LLM authority
+- no rewriting Stage 1 into a richer Stage 2 system
+
+### Exit Condition
+- T4 no longer remains in a merely partial-unlock state
+- approved T4 event-aware activation can complete the relational wake chain in real simulation
+- relational residual creation is observed and auditable under the approved Stage 1 path
+- `_adjust_t4()` is confirmed live rather than permanently dormant
+- same-day T2/T4 composition remains bounded and acceptable
+- the project can honestly claim that Stage 1 now includes a real event-aware relational seam
+- Stage 1 can close without misrepresenting T4 as either still frozen or only half-implemented
+
+### Unlocks
+- honest Stage 1 completion
+- closure of the remaining mismatch between “Phase 31 complete” and actual T4 reality
+- a clean transition into Stage 2
+- a stronger base for later appraisal deepening, memory contracts, and agent interior growth
 
 ---
 
@@ -371,13 +432,24 @@ The system is ready for the first real LLM-assisted appraisal step.
 
 When Stage 1 is complete, CyberLife should have:
 
-- a still-governed deterministic backbone
-- a real event-aware relational seam
+- a governed deterministic single-agent backbone
+- active T1 / T2 residual continuity
+- established cross-day residual persistence
+- partially active but bounded world carryover behavior
 - an explicit appraisal / settlement boundary
-- a validated live LLM appraisal insertion point
-- a first hybrid runtime path that does not collapse explainability or auditability
+- AppraisalInput schema capable of representing all 8 tick types
+- first live LLM appraisal authority limited to T1 / T2 / T4 only
+- deterministic fallback preserved for T3 / T5 / T6 / T7 / T8
+- engine-authoritative settlement / bookkeeping
+- auditable per-tick live-path selection and fallback behavior
+- a real event-aware relational seam for T4
+- no unresolved mismatch between roadmap closure claims and actual repo reality
 
-This is the intended end state of this roadmap.
+Stage 1 is complete only when the system can honestly be described as:
+
+**LLM appraisal + engine settlement**
+with controlled live authority, preserved deterministic governance,
+and a real rather than merely partial T4 relational seam.
 
 ---
 
