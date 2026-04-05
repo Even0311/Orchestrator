@@ -1,0 +1,71 @@
+{
+  "phase_id": "P30",
+  "task_key": "P30-T3",
+  "title": "Per-field acceptance rules for LLM vs deterministic AppraisalOutput comparison",
+  "objective": "Create a module at back/app/llm/acceptance_rules.py that defines per-field comparison criteria for evaluating an LLM-produced AppraisalOutput against a deterministic baseline AppraisalOutput, with explicit separation of structural validity checks (field present, correct type, in bounds) from semantic quality checks (direction agreement, magnitude plausibility, alignment with deterministic signal). The module must expose a single public entry point that accepts an LLM output and a deterministic baseline and returns a structured verdict with per-field results and an overall pass/fail classification.",
+  "exact_scope": "One new module: back/app/llm/acceptance_rules.py. One new test file: back/tests/test_p30_t3_acceptance_rules.py. No changes to any existing module, domain model, engine, or test file. The rules operate on already-parsed AppraisalOutput objects — they never call the LLM or the settlement engine.",
+  "constraints": [
+    "Input types are two AppraisalOutput instances: llm_output (produced by the shadow runner) and deterministic_baseline (produced by from_deterministic_fallback or the deterministic engine path). No raw strings or AppraisalInput are accepted by this module.",
+    "The comparison is offline and stateless — it does not write any state, call any engine, or trigger any LLM call.",
+    "AppraisalOutput schema is frozen. Do not add fields to it.",
+    "AppraisalSignal v1 is frozen. Do not reference or import it from this module.",
+    "Structural validity checks must rely only on the rules already enforced by the AppraisalOutput Pydantic model validators — do not duplicate or contradict them. A structurally valid output is one that was successfully constructed by the Pydantic model (i.e., it already passed the model validators). Structural checks in this module must focus on schema-surface invariants not enforced by the Pydantic constructor (e.g., cross-output consistency like tick_type agreement).",
+    "Semantic quality checks are advisory — a semantic failure lowers quality but must not be misclassified as a structural failure.",
+    "The overall verdict must carry a clear two-level classification: STRUCTURAL_FAIL (structural problem found) or SEMANTIC_PASS / SEMANTIC_DEGRADED (structurally sound but with semantic deviations). No other verdict levels.",
+    "All comparison logic is pure — same inputs always produce the same verdict. No randomness, no thresholds read from environment variables.",
+    "Do not define numeric tolerance thresholds for ordinal enum fields (absorption, valence, arousal, trust_shift). Agreement is binary: same value or different value."
+  ],
+  "acceptance_criteria": [
+    "acceptance_rules.py exports a single public function compare(llm_output: AppraisalOutput, deterministic_baseline: AppraisalOutput) -> ComparisonVerdict.",
+    "ComparisonVerdict is a Pydantic BaseModel with fields: overall (enum: STRUCTURAL_FAIL | SEMANTIC_PASS | SEMANTIC_DEGRADED), structural_failures (list of FieldFailure), semantic_deviations (list of FieldDeviation), field_results (dict mapping field name to FieldVerdict).",
+    "FieldFailure captures: field_name (str), reason (str). FieldDeviation captures: field_name (str), llm_value (str), baseline_value (str), severity (str).",
+    "Structural checks implemented: (1) tick_type field on both outputs must agree when both are non-None; (2) when llm_output.absorption == none, aftershock_days must be 0 and growth must be empty; (3) when llm_output.absorption == none and deterministic_baseline.absorption != none, this mismatch is recorded as a structural failure (unexpected zero-absorption).",
+    "Semantic checks implemented for each contract-bearing field: (1) absorption — same/different; (2) valence — same/different, and sign-flip (positive vs negative) is flagged as severe deviation; (3) arousal — same/different; (4) aftershock_days — whether llm > baseline by more than 1 is flagged as a deviation; (5) growth — whether each dimension present in baseline is also present in llm output (missing baseline dimension is a deviation), and whether any dimension appears only in llm output with no baseline counterpart (unexpected dimension is a deviation); (6) relational — when baseline has a non-None relational block, check trust_shift agreement and closeness_delta sign agreement; when baseline relational is None and llm provides one, flag as a deviation; (7) guidance_resonance — same/different.",
+    "Advisory fields (narrative_summary, confidence, fallback_used) are explicitly excluded from structural and semantic comparison. The module must document this exclusion.",
+    "When no structural failures and no semantic deviations are found, overall is SEMANTIC_PASS.",
+    "When no structural failures but one or more semantic deviations are found, overall is SEMANTIC_DEGRADED.",
+    "When one or more structural failures are found, overall is STRUCTURAL_FAIL regardless of semantic results.",
+    "The module is importable with no side effects and requires no environment variables."
+  ],
+  "required_tests": [
+    "When two identical AppraisalOutput objects are compared, the verdict is SEMANTIC_PASS with empty structural_failures and empty semantic_deviations.",
+    "When the LLM output has absorption=none but the deterministic baseline has absorption=surface, the verdict is STRUCTURAL_FAIL with a structural failure recorded for the absorption field.",
+    "When the LLM output has valence=positive and the baseline has valence=negative, the verdict is SEMANTIC_DEGRADED with a severe deviation recorded for valence.",
+    "When the LLM output has valence=positive and the baseline has valence=neutral, the verdict is SEMANTIC_DEGRADED with a non-severe deviation recorded for valence.",
+    "When the LLM output includes a growth dimension (e.g. curiosity) that is also in the baseline, no deviation is recorded for that dimension.",
+    "When the LLM output is missing a growth dimension that is present in the baseline, the verdict is SEMANTIC_DEGRADED with a deviation recorded for growth.",
+    "When the LLM output includes a growth dimension not present in the baseline, the verdict is SEMANTIC_DEGRADED with a deviation recorded for growth.",
+    "When both outputs have a relational block and trust_shift values differ, the verdict is SEMANTIC_DEGRADED with a deviation recorded for relational.",
+    "When the baseline has a non-None relational block but the LLM output has relational=None, the verdict is SEMANTIC_DEGRADED with a deviation recorded for relational.",
+    "When the baseline has relational=None but the LLM output provides a relational block, the verdict is SEMANTIC_DEGRADED with a deviation recorded for relational.",
+    "When both outputs have a relational block and closeness_delta values have opposite signs (one positive, one negative), the verdict is SEMANTIC_DEGRADED with a deviation recorded for relational.",
+    "When aftershock_days in the LLM output exceeds the baseline by more than 1, the verdict is SEMANTIC_DEGRADED with a deviation recorded for aftershock_days.",
+    "When both tick_type fields are non-None and disagree, the verdict is STRUCTURAL_FAIL with a structural failure recorded for tick_type.",
+    "When one or both tick_type fields are None, no tick_type structural failure is recorded.",
+    "The module can be imported with no environment variables set and no network call occurs.",
+    "Advisory fields (narrative_summary, confidence, fallback_used) do not appear in field_results and produce no structural failures or semantic deviations regardless of their values."
+  ],
+  "non_goals": [
+    "Do not integrate acceptance rules into the shadow runner — the shadow runner does not call this module.",
+    "Do not define numeric tolerance thresholds for float fields other than what is already enforced by the AppraisalOutput schema bounds.",
+    "Do not produce acceptance rules for AppraisalSignal v1 — this module operates on AppraisalOutput only.",
+    "Do not produce a batch runner or accumulate statistics across multiple comparisons — that is a later task.",
+    "Do not modify the deterministic fallback path, tick bridge, or any engine to feed into this module.",
+    "Do not define acceptance rules for deferred ticks (T3/T5/T6/T7/T8) beyond what the existing Pydantic schema already enforces."
+  ],
+  "allowed_files": [
+    "back/app/llm/acceptance_rules.py",
+    "back/tests/test_p30_t3_acceptance_rules.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/llm/shadow_runner.py",
+    "back/app/llm/prompt_schema.py",
+    "back/app/llm/response_parser.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py"
+  ]
+}

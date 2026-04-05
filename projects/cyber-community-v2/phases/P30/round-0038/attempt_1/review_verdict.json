@@ -1,0 +1,24 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "acceptance_rules.py exports a single public function compare(llm_output: AppraisalOutput, deterministic_baseline: AppraisalOutput) -> ComparisonVerdict.",
+    "ComparisonVerdict is a Pydantic BaseModel with fields: overall (enum: STRUCTURAL_FAIL | SEMANTIC_PASS | SEMANTIC_DEGRADED), structural_failures (list of FieldFailure), semantic_deviations (list of FieldDeviation), field_results (dict mapping field name to FieldVerdict).",
+    "FieldFailure captures: field_name (str), reason (str). FieldDeviation captures: field_name (str), llm_value (str), baseline_value (str), severity (str).",
+    "Structural checks implemented: (1) tick_type agreement when both non-None; (2) absorption=none consistency (aftershock_days must be 0, growth must be empty); (3) unexpected zero-absorption mismatch recorded as structural failure.",
+    "Semantic checks implemented for all contract-bearing fields: absorption, valence (with sign-flip severity), arousal, aftershock_days (>1 overshoot), growth (missing/unexpected dimensions), relational (trust_shift agreement, closeness_delta sign agreement, None presence mismatch), guidance_resonance.",
+    "Advisory fields (narrative_summary, confidence, fallback_used) are explicitly excluded from all comparisons and documented in the module docstring.",
+    "When no structural failures and no semantic deviations, overall is SEMANTIC_PASS.",
+    "When no structural failures but one or more semantic deviations, overall is SEMANTIC_DEGRADED.",
+    "When one or more structural failures, overall is STRUCTURAL_FAIL regardless of semantic results.",
+    "The module is importable with no side effects and requires no environment variables."
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The module imports AbsorptionLevel from appraisal_settlement.py rather than from domain/appraisal_output.py. The constraint says not to import AppraisalSignal v1, and AbsorptionLevel is a settlement-layer enum. This import pattern is consistent with how other modules in the codebase access AbsorptionLevel and does not violate the frozen contract."
+  ],
+  "test_run_result": "16/16 tests in test_p30_t3_acceptance_rules.py passed. Full suite: 711/711 passed with no regressions.",
+  "rationale": "All 10 acceptance criteria are fully met. All 16 required tests are present, non-trivial, and pass. Only the two allowed files were created (back/app/llm/acceptance_rules.py and back/tests/test_p30_t3_acceptance_rules.py). No forbidden files were modified. The three verdict levels (STRUCTURAL_FAIL, SEMANTIC_PASS, SEMANTIC_DEGRADED) are correctly implemented with proper precedence. Advisory field exclusion is both implemented and documented. The comparison function is pure and stateless."
+}

@@ -1,0 +1,14 @@
+{
+  "summary": "Implemented acceptance_rules.py at back/app/llm/acceptance_rules.py with ComparisonVerdict/FieldFailure/FieldDeviation models and a pure compare() function, plus 16 tests covering all required criteria.",
+  "files_changed": [
+    "back/app/llm/acceptance_rules.py",
+    "back/tests/test_p30_t3_acceptance_rules.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p30_t3_acceptance_rules.py -v",
+    "python3 -m pytest tests/ -v --tb=short"
+  ],
+  "test_results": "16/16 new tests passed; 711/711 total tests passed",
+  "diff_summary": "Created back/app/llm/acceptance_rules.py: exports compare(llm_output, deterministic_baseline) -> ComparisonVerdict with structural checks (tick_type agreement, absorption=none consistency, unexpected zero-absorption mismatch) and semantic checks (absorption, valence with sign-flip severity, arousal, aftershock_days >1 overshoot, growth dimension coverage, relational block trust_shift/closeness_delta sign, guidance_resonance); advisory fields (narrative_summary, confidence, fallback_used) explicitly excluded. Created back/tests/test_p30_t3_acceptance_rules.py with 16 tests covering all required_tests from task contract.",
+  "unresolved_issues": []
+}
