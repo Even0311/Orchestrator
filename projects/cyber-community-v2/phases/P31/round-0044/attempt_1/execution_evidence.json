@@ -1,0 +1,18 @@
+{
+  "task_key": "P31-T3",
+  "summary": "Wired appraisal_router.route() into simulate_day_bridged at the T1, T2, and T4 signal-building call sites in tick_bridge.py, with try/except fallback to original builder functions and llm_used=False fallback to deterministic builder output.",
+  "files_changed": [
+    "back/app/engines/tick_bridge.py"
+  ],
+  "files_created": [
+    "back/tests/test_p31_t3_router_integration.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/test_p31_t3_router_integration.py -v",
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v --tb=no -q"
+  ],
+  "test_results": "822 passed, 0 failed (11 new tests in test_p31_t3_router_integration.py all pass; all pre-existing tests continue to pass)",
+  "diff_summary": "tick_bridge.py: added 'from app.llm import appraisal_router as _appraisal_router' import; replaced T1 build_signal_from_t1_world_tick() call with AppraisalInput construction + route() call (falls back to builder when llm_used=False or exception); replaced T2 build_signal_from_t2_influencer_tick() call similarly with relational_context built from influencer relationship; replaced T4 build_signal_from_t4_relationship_tick() call — builder still called first to check for None, then route() called with AppraisalInput when relationship exists (uses builder output on llm_used=False or exception). Created test_p31_t3_router_integration.py with 11 tests covering all required_tests items.",
+  "implementation_notes": "The router's built-in from_deterministic_fallback() output differs from the builder functions (e.g. always returns surface/neutral vs. context-aware output). To preserve backward compatibility with all existing tests, when route() returns llm_used=False the code falls back to the original builder function output rather than the router's simplified fallback. Only when llm_used=True is the LLM-produced output used.",
+  "unresolved_issues": []
+}

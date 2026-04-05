@@ -1,0 +1,170 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 2.3928778499999983,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P31",
+    "task_key": "P31-T3",
+    "title": "Wire appraisal router into simulate_day_bridged for live LLM appraisal on T1/T2/T4",
+    "objective": "Modify simulate_day_bridged in tick_bridge.py so that the three T1/T2/T4 signal-building steps call appraisal_router.route() instead of the bare builder functions (build_signal_from_t1_world_tick, build_signal_from_t2_influencer_tick, build_signal_from_t4_relationship_tick). The router already dispatches eligible ticks to the LLM path via shadow_runner and enforces guardrails with automatic deterministic fallback. After wiring, a live simulation day running under ENABLE_APPRAISAL_BRIDGE=true will produce AppraisalOutput values that may come from the LLM for T1, T2, and T4, while all settlement arithmetic, residual bookkeeping, and audit paths downstream of the signal remain unchanged.",
+    "exact_scope": "One file modified: back/app/engines/tick_bridge.py. The three T1/T2/T4 signal-building call sites in simulate_day_bridged are replaced with calls to appraisal_router.route(). A new helper function build_appraisal_input_for_t1, build_appraisal_input_for_t2, and build_appraisal_input_for_t4 (or equivalent inline construction) assembles the AppraisalInput from the live simulation state/world/profile context already present in simulate_day_bridged at each tick's call site. The router returns a RouterResult; the AppraisalOutput is extracted and converted to an AppraisalSignal via the existing appraisal_output_to_signal() function exactly as before. One new test file: back/tests/test_p31_t3_router_integration.py. No other files are changed: no settlement logic, no audit path, no service layer, no domain models, no API routes.",
+    "acceptance_criteria": [
+      "simulate_day_bridged calls appraisal_router.route() at the T1 signal-building call site, passing an AppraisalInput constructed from the live world/profile/state/growth context at that point in the tick loop",
+      "simulate_day_bridged calls appraisal_router.route() at the T2 signal-building call site, passing an AppraisalInput that includes a populated relational_context constructed from the influencer relationship data available at that point",
+      "simulate_day_bridged calls appraisal_router.route() at the T4 signal-building call site, passing an AppraisalInput that includes a populated relational_context constructed from the target relationship; when build_signal_from_t4_relationship_tick would have returned None (no existing relationship), route() is not called and the T4 bridge signal step is skipped as before",
+      "The AppraisalOutput returned by route() is converted to an AppraisalSignal via appraisal_output_to_signal() and passed to _apply_bridge_signal — no other change to the settlement pipeline",
+      "All four optional audit outputs (trace_out, composition_audit_out, t4_activation_audit_out, t4_residual_audit_out, t4_adjustment_audit_out) continue to receive records with the same fields and semantics as before the wiring change",
+      "When the router returns a RouterResult with llm_used=False (fallback), the resulting AppraisalSignal is equivalent to what the builder functions would have produced — settlement proceeds without error",
+      "When the router returns a RouterResult with llm_used=True (LLM output accepted), the settlement path consumes the LLM-produced AppraisalOutput without modification — no field patching after the router returns",
+      "A try/except wrapper around each route() call catches any unexpected exception and falls back to the original builder function output, so simulate_day_bridged never raises due to router failure",
+      "cd back && python3 -m pytest tests/ -v passes with no regressions",
+      "cd back && python3 -m pytest tests/test_p31_t3_router_integration.py -v passes with all new tests"
+    ],
+    "required_tests": [
+      "When simulate_day_bridged runs with a mocked appraisal_router.route that returns llm_used=True for T1 and a known AppraisalOutput, the final SimulationResult reflects settlement of that LLM output rather than the builder output",
+      "When simulate_day_bridged runs with a mocked route that returns llm_used=False (fallback) for T1, the simulation completes without error and the result is consistent with the deterministic fallback AppraisalOutput",
+      "When simulate_day_bridged runs with a mocked route that returns llm_used=True for T2 and a known AppraisalOutput, the final SimulationResult reflects settlement of that T2 LLM output",
+      "When simulate_day_bridged runs with a mocked route that returns llm_used=True for T4 and a known AppraisalOutput, the final SimulationResult reflects settlement of that T4 LLM output",
+      "When the relationship targeted by T4 does not exist (no existing relationship for the influencer), route() is not called for T4 and simulate_day_bridged still completes — same behaviour as before the wiring change",
+      "When route() raises an unexpected exception (simulated by a mock that throws), simulate_day_bridged catches it and falls back to the original builder output without raising to the caller",
+      "route() is called exactly once for T1, exactly once for T2, and at most once for T4 during a single call to simulate_day_bridged",
+      "route() is never called for T3, T5, T6, T7, or T8 during simulate_day_bridged",
+      "The AppraisalInput passed to route() for T1 has tick_type=information_exposure, a populated agent_context and world_context, and relational_context=None",
+      "The AppraisalInput passed to route() for T2 has tick_type=social_interaction and a populated relational_context matching the influencer relationship data",
+      "The AppraisalInput passed to route() for T4 has tick_type=relationship_shift and a populated relational_context matching the target relationship data",
+      "All previously passing tests in tests/ continue to pass with no regressions after the wiring change is applied"
+    ],
+    "non_goals": [
+      "Do not modify the settlement engine (appraisal_settlement.py), residual lifecycle, growth buffer commit, or any downstream engine",
+      "Do not add a live LLM appraisal path to simulate_day (day_simulator.py) — only simulate_day_bridged is in scope",
+      "Do not extend LLM authority to T3, T5, T6, T7, or T8 — the router's own deferred-tick bypass is sufficient",
+      "Do not add logging, metrics, audit file writing, or observability beyond what RouterResult already carries",
+      "Do not modify the RouterResult schema, ValidationGate, or appraisal_router.py in this task",
+      "Do not wire the router into the service layer (advance_day.py) or API routes — simulate_day_bridged is the integration boundary",
+      "Do not add a feature flag for LLM routing inside tick_bridge.py — the existing ENABLE_APPRAISAL_BRIDGE flag already gates whether simulate_day_bridged runs",
+      "Do not change the AppraisalInput, AppraisalOutput, or AppraisalSignal schemas",
+      "Do not change any audit record schemas or the data emitted to audit output lists"
+    ],
+    "constraints": [
+      "LLM does not write ledger — the router produces only an AppraisalOutput; all settlement arithmetic (mood/stress, growth buffer, relationship, residual) continues to be performed by the existing settlement path in _apply_bridge_signal and downstream engine functions",
+      "AppraisalSignal v1 is frozen — do not modify its field definitions",
+      "Settlement is engine-authoritative — the only change is the source of the AppraisalOutput; the conversion to AppraisalSignal via appraisal_output_to_signal() and all downstream settlement calls are unchanged",
+      "T4 old deterministic path is frozen — do not activate T4 negative residual via gate tricks; the existing Phase 23 wake-chain gate logic and T4 signal builder precedence (narrow_original → pattern_a → pattern_b → default) must be preserved",
+      "Stage 1 deferred ticks (T3/T5/T6/T7/T8) must not be routed through the appraisal_router for LLM dispatch — the router's own deferred-tick bypass already enforces this, but the wiring in simulate_day_bridged must not call route() for T3/T5/T6/T7/T8",
+      "The router must never raise to its caller — if the router's defensive fallback fails for any reason, simulate_day_bridged must still complete deterministically; implement a try/except wrapper around each route() call that falls back to the original builder output on any unexpected exception",
+      "All existing audit paths (trace_out, composition_audit_out, t4_activation_audit_out, t4_residual_audit_out, t4_adjustment_audit_out) must continue to receive the same data structure and semantics — the only change is that the AppraisalOutput values feeding those paths may now come from the LLM path instead of the builder functions",
+      "ENABLE_APPRAISAL_BRIDGE=false path (simulate_day in day_simulator.py) is not affected — only simulate_day_bridged is modified",
+      "The RouterResult.llm_used and RouterResult.fallback_reason fields are observability metadata — do not use them to change settlement behaviour; settlement runs identically regardless of which path produced the AppraisalOutput",
+      "All 786 previously passing tests must continue to pass after this change"
+    ],
+    "allowed_files": [
+      "back/app/engines/tick_bridge.py",
+      "back/tests/test_p31_t3_router_integration.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/day_simulator.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/llm/appraisal_router.py",
+      "back/app/llm/validation_gate.py",
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/acceptance_rules.py",
+      "back/app/llm/failure_taxonomy.py",
+      "back/app/llm/prompt_schema.py",
+      "back/app/llm/response_parser.py",
+      "back/app/llm/comparison_harness.py",
+      "back/app/engines/deterministic_fallback.py",
+      "back/app/services/advance_day.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Wired appraisal_router.route() into simulate_day_bridged at the T1, T2, and T4 signal-building call sites in tick_bridge.py, with try/except fallback to original builder functions and llm_used=False fallback to deterministic builder output.",
+    "files_changed": [
+      "back/app/engines/tick_bridge.py"
+    ],
+    "commands_run": [
+      "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/test_p31_t3_router_integration.py -v",
+      "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v --tb=no -q"
+    ],
+    "test_results": "822 passed, 0 failed (11 new tests in test_p31_t3_router_integration.py all pass; all pre-existing tests continue to pass)",
+    "diff_summary": "tick_bridge.py: added 'from app.llm import appraisal_router as _appraisal_router' import; replaced T1 build_signal_from_t1_world_tick() call with AppraisalInput construction + route() call (falls back to builder when llm_used=False or exception); replaced T2 build_signal_from_t2_influencer_tick() call similarly with relational_context built from influencer relationship; replaced T4 build_signal_from_t4_relationship_tick() call — builder still called first to check for None, then route() called with AppraisalInput when relationship exists (uses builder output on llm_used=False or exception). Created test_p31_t3_router_integration.py with 11 tests covering all required_tests items.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "simulate_day_bridged calls appraisal_router.route() at T1 signal-building call site with AppraisalInput constructed from live world/profile/state/growth context",
+      "simulate_day_bridged calls appraisal_router.route() at T2 signal-building call site with AppraisalInput including a populated relational_context from the influencer relationship data",
+      "simulate_day_bridged calls appraisal_router.route() at T4 signal-building call site only when build_signal_from_t4_relationship_tick returns non-None; route() is skipped when builder returns None (no relationship)",
+      "AppraisalOutput returned by route() is converted to AppraisalSignal via appraisal_output_to_signal() and passed to _apply_bridge_signal — settlement pipeline unchanged",
+      "All four optional audit outputs (trace_out, composition_audit_out, t4_activation_audit_out, t4_residual_audit_out, t4_adjustment_audit_out) continue to receive records with the same fields and semantics",
+      "When route() returns llm_used=False, code falls back to original builder function output ensuring consistent deterministic behaviour",
+      "When route() returns llm_used=True, LLM-produced AppraisalOutput is used without field patching",
+      "try/except wrapper around each route() call catches unexpected exceptions and falls back to original builder output",
+      "cd back && python3 -m pytest tests/ -v passes with no regressions — 822 passed (811 pre-existing + 11 new)",
+      "cd back && python3 -m pytest tests/test_p31_t3_router_integration.py -v passes with all 11 new tests"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "The test test_t1_llm_used_true_settlement_reflects_llm_output asserts mock_route.call_count >= 1 rather than == 1, which is a weaker assertion. A dedicated call-count test (test_route_called_once_per_tick) compensates for this. Non-blocking.",
+      "T4 has a defensive else branch that falls back to _t4_deterministic_output when _t4_target_rel is None even though the builder returned non-None. This is a correct defensive guard but may be unreachable in practice."
+    ],
+    "rationale": "All acceptance criteria are genuinely met. tick_bridge.py correctly wires appraisal_router.route() at the T1, T2, and T4 call sites with proper AppraisalInput construction and try/except fallback. The T4 None-check gate preserves the existing skip behaviour. No forbidden files were modified — only back/app/engines/tick_bridge.py was changed and back/tests/test_p31_t3_router_integration.py was created, both in the allowed_files list. All 822 tests pass (11 new + 811 pre-existing), including all 12 required_test scenarios covered by the 11 test functions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/engines/tick_bridge.py"
+    ],
+    "files_added": [
+      "back/tests/test_p31_t3_router_integration.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/engines/tick_bridge.py | 158 +++++++++++++++++++++++++++++++++++++++-\n 1 file changed, 154 insertions(+), 4 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifacts are confirmed. Here is the round summary:\n\n---\n\n## Round-0044 Summary — P31-T3: PASS\n\n**Task:** Wire the appraisal router and validation gate into `simulate_day_bridged` so that LLM appraisal runs in-line for T1, T2, and T4 ticks during actual simulation.\n\n**What was done:**\n- **Designer** produced a precise contract targeting only `tick_bridge.py` — replacing the three bare builder-function calls with `appraisal_router.route()` calls, with try/except fallback and correct `AppraisalInput` construction per tick type.\n- **Executor** implemented the changes: added the router import, wired T1/T2/T4 call sites in `simulate_day_bridged`, preserved the T4 None-skip gate, and created 11 integration tests in `test_p31_t3_router_integration.py` that mock the router.\n- **Reviewer** verified all acceptance criteria met, no forbidden files touched, and **822 tests pass (811 pre-existing + 11 new)**.\n\n**Key design note:** When `route()` returns `llm_used=False`, the code falls back to the original builder function (not the router's simplified `from_deterministic_fallback()`) to preserve backward compatibility with the existing test suite. Only when `llm_used=True` is the LLM-produced output used for settlement."
+}

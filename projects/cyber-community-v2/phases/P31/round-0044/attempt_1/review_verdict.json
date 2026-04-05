@@ -1,0 +1,45 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "simulate_day_bridged calls appraisal_router.route() at T1 signal-building call site with AppraisalInput constructed from live world/profile/state/growth context",
+    "simulate_day_bridged calls appraisal_router.route() at T2 signal-building call site with AppraisalInput including a populated relational_context from the influencer relationship data",
+    "simulate_day_bridged calls appraisal_router.route() at T4 signal-building call site only when build_signal_from_t4_relationship_tick returns non-None; route() is skipped when builder returns None (no relationship)",
+    "AppraisalOutput returned by route() is converted to AppraisalSignal via appraisal_output_to_signal() and passed to _apply_bridge_signal — settlement pipeline unchanged",
+    "All four optional audit outputs (trace_out, composition_audit_out, t4_activation_audit_out, t4_residual_audit_out, t4_adjustment_audit_out) continue to receive records with the same fields and semantics",
+    "When route() returns llm_used=False, code falls back to original builder function output ensuring consistent deterministic behaviour",
+    "When route() returns llm_used=True, LLM-produced AppraisalOutput is used without field patching",
+    "try/except wrapper around each route() call catches unexpected exceptions and falls back to original builder output",
+    "cd back && python3 -m pytest tests/ -v passes with no regressions — 822 passed (811 pre-existing + 11 new)",
+    "cd back && python3 -m pytest tests/test_p31_t3_router_integration.py -v passes with all 11 new tests"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The test test_t1_llm_used_true_settlement_reflects_llm_output asserts mock_route.call_count >= 1 rather than == 1, which is a weaker assertion. A dedicated call-count test (test_route_called_once_per_tick) compensates for this. Non-blocking.",
+    "T4 has a defensive else branch that falls back to _t4_deterministic_output when _t4_target_rel is None even though the builder returned non-None. This is a correct defensive guard but may be unreachable in practice."
+  ],
+  "rationale": "All acceptance criteria are genuinely met. tick_bridge.py correctly wires appraisal_router.route() at the T1, T2, and T4 call sites with proper AppraisalInput construction and try/except fallback. The T4 None-check gate preserves the existing skip behaviour. No forbidden files were modified — only back/app/engines/tick_bridge.py was changed and back/tests/test_p31_t3_router_integration.py was created, both in the allowed_files list. All 822 tests pass (11 new + 811 pre-existing), including all 12 required_test scenarios covered by the 11 test functions.",
+  "task_key": "P31-T3",
+  "test_summary": {
+    "total": 822,
+    "new": 11,
+    "pre_existing": 811,
+    "failed": 0,
+    "new_test_file": "back/tests/test_p31_t3_router_integration.py"
+  },
+  "criteria_results": [
+    {"criterion": "route() called at T1 with correct AppraisalInput", "status": "pass", "notes": "tick_type=information_exposure, relational_context=None, agent_context and world_context populated"},
+    {"criterion": "route() called at T2 with populated relational_context", "status": "pass", "notes": "relational_context built from influencer relationship; synthetic placeholder used when no relationship exists"},
+    {"criterion": "route() called at T4 only when builder returns non-None", "status": "pass", "notes": "builder called first; if None, route() skipped entirely; relational_context built from target relationship"},
+    {"criterion": "AppraisalOutput from route() converted via appraisal_output_to_signal()", "status": "pass", "notes": "Conversion call unchanged; downstream settlement pipeline untouched"},
+    {"criterion": "Audit outputs receive same data structure", "status": "pass", "notes": "All audit record construction logic is downstream of signal production and was not changed"},
+    {"criterion": "llm_used=False fallback produces deterministic output", "status": "pass", "notes": "Falls back to original builder function call, not router's simplified fallback output"},
+    {"criterion": "llm_used=True LLM output consumed without modification", "status": "pass", "notes": "result.output used directly with no patching"},
+    {"criterion": "try/except wrapper prevents raise to caller", "status": "pass", "notes": "All three call sites wrapped; test_route_exception_triggers_fallback_no_raise confirms"},
+    {"criterion": "All previously passing tests pass", "status": "pass", "notes": "811 pre-existing tests all pass"},
+    {"criterion": "All new required tests pass", "status": "pass", "notes": "11/11 new tests pass"}
+  ],
+  "issues": []
+}
