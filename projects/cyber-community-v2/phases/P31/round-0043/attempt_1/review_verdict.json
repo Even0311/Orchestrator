@@ -1,0 +1,41 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "back/app/llm/validation_gate.py exists and is importable with no side effects",
+    "GateDecision model exported with correct fields: accepted (bool), rejection_reason (Optional[str]), failure_category (Optional[FailureModeCategory])",
+    "evaluate() exported with correct signature: (shadow_result: ShadowRunResult, deterministic_baseline: AppraisalOutput, verdict: Optional[ComparisonVerdict]) -> GateDecision",
+    "evaluate() with llm_used=False and 'LLM call failed' reason returns accepted=False with failure_category=LLM_CONNECTION_FAILURE",
+    "evaluate() with llm_used=False and 'parse' in failure_reason returns accepted=False with failure_category=LLM_PARSE_FAILURE (case-insensitive match confirmed)",
+    "evaluate() with llm_used=True and verdict=None returns accepted=True (deferred tick pass-through)",
+    "evaluate() with verdict.overall=STRUCTURAL_FAIL returns accepted=False with failure_category=ZERO_ABSORPTION_OVERRIDE and non-None rejection_reason",
+    "evaluate() with a FieldDeviation on valence with severity=severe returns accepted=False with failure_category=VALENCE_SIGN_FLIP and non-None rejection_reason",
+    "evaluate() with verdict=SEMANTIC_PASS returns accepted=True",
+    "evaluate() with verdict=SEMANTIC_DEGRADED and no severe valence deviation returns accepted=True",
+    "accepted=True always implies failure_category=None and rejection_reason=None",
+    "accepted=False always implies rejection_reason is non-None and non-empty",
+    "Gate never raises to caller — wrapped in try/except in evaluate()",
+    "appraisal_router.py updated to call validation_gate.evaluate() instead of inline guardrail blocks",
+    "RouterResult fields and routing behaviour preserved exactly (27 pre-existing router tests all pass)",
+    "back/tests/test_p31_t2_validation_gate.py exists and all 25 tests pass",
+    "All 786 previously passing tests continue to pass — full suite now 811 passed, 0 failures",
+    "Only allowed files modified: back/app/llm/validation_gate.py (new), back/tests/test_p31_t2_validation_gate.py (new), back/app/llm/appraisal_router.py (modified)",
+    "No forbidden files were modified (confirmed via git status)"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The router retains its own early-exit for shadow_result.llm_used=False (lines 111-117) before calling the gate, meaning Gate 1 in _evaluate_inner is dead code in the actual router flow. This is harmless and makes the gate a correct standalone module testable in isolation, but worth noting for future maintainers."
+  ],
+  "rationale": "All 13 required tests are implemented and non-trivial, covering every acceptance criterion. The GateDecision model matches the spec exactly. The evaluate() function correctly enforces both BLOCKING policies (STRUCTURAL_FAIL -> ZERO_ABSORPTION_OVERRIDE, severe valence -> VALENCE_SIGN_FLIP) and correctly passes SEMANTIC_PASS, SEMANTIC_DEGRADED with no severe valence, and deferred ticks. The router delegates guardrail evaluation to the gate with no behavioral change. 811 total tests pass with 0 failures. No forbidden files were touched.",
+  "test_results": {
+    "new_test_file": "back/tests/test_p31_t2_validation_gate.py",
+    "new_tests_passed": 25,
+    "new_tests_failed": 0,
+    "full_suite_passed": 811,
+    "full_suite_failed": 0,
+    "regression": false
+  },
+  "issues_found": []
+}

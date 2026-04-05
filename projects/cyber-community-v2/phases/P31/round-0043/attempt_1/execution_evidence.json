@@ -1,0 +1,15 @@
+{
+  "summary": "Created back/app/llm/validation_gate.py with GateDecision model and evaluate() function enforcing all blocking guardrail policies, then updated appraisal_router.py to delegate guardrail evaluation to the gate instead of inlining it.",
+  "files_changed": [
+    "back/app/llm/validation_gate.py",
+    "back/tests/test_p31_t2_validation_gate.py",
+    "back/app/llm/appraisal_router.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/test_p31_t2_validation_gate.py -v",
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v --tb=short 2>&1 | tail -40"
+  ],
+  "test_results": "25 new tests passed; 811 total tests passed (786 pre-existing + 25 new), 0 failures",
+  "diff_summary": "NEW validation_gate.py: GateDecision Pydantic model (accepted, rejection_reason, failure_category) and evaluate() pure function classifying shadow results into accept/reject with FailureModeCategory; NEW test_p31_t2_validation_gate.py: 25 tests covering all required_tests from contract; MODIFIED appraisal_router.py: replaced inline STRUCTURAL_FAIL and severe-valence guardrail blocks (~15 lines) with single validation_gate.evaluate() call, removed unused OverallVerdict import",
+  "unresolved_issues": []
+}

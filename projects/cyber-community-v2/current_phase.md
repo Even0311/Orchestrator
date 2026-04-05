@@ -22,7 +22,7 @@ Introduce the first controlled live LLM appraisal path into the agent loop.
 
 ## Task Queue
 - [x] P31-T1: Build an appraisal router that inspects tick type and dispatches T1/T2/T4 to the LLM appraisal path while sending all other ticks to the existing deterministic path — Round round-0042 — Build appraisal router: LLM path for T1/T2/T4, deterministic
-- [ ] P31-T2: Add a runtime validation gate that applies P30 acceptance rules and guardrails to each live LLM appraisal result, falling back to deterministic output on any rejection
+- [x] P31-T2: Add a runtime validation gate that applies P30 acceptance rules and guardrails to each live LLM appraisal result, falling back to deterministic output on any rejection — Round round-0043 — Runtime validation gate: apply P30 acceptance rules and guar
 - [ ] P31-T3: Integrate the appraisal router and validation gate into the live agent tick loop so LLM appraisal runs in-line for eligible ticks during actual simulation
 - [ ] P31-T4: Build structured audit logging that records per-tick path selection, LLM raw output, validation verdict, and fallback events for every appraisal invocation
 - [ ] P31-T5: Verify that settlement and bookkeeping engines produce correct results when consuming LLM-sourced appraisal output, confirming contract compatibility end-to-end

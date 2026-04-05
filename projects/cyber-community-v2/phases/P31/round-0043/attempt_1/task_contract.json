@@ -1,0 +1,85 @@
+{
+  "phase_id": "P31",
+  "task_key": "P31-T2",
+  "title": "Runtime validation gate: apply P30 acceptance rules and guardrails with deterministic fallback on rejection",
+  "objective": "Extract the inline guardrail logic currently embedded in appraisal_router.py into a dedicated, standalone validation gate module (back/app/llm/validation_gate.py). The gate takes a ShadowRunResult, a deterministic baseline AppraisalOutput, and a ComparisonVerdict, and returns a structured GateDecision that records whether the LLM output is accepted or rejected, the rejection reason, and which failure mode category triggered the rejection. The router is then updated to call the gate instead of duplicating guardrail logic inline. The gate enforces all BLOCKING guardrail policies defined in failure_taxonomy.py: STRUCTURAL_FAIL verdict triggers rejection, and a valence deviation with severity=severe triggers rejection.",
+  "exact_scope": "One new module: back/app/llm/validation_gate.py. One new test file: back/tests/test_p31_t2_validation_gate.py. Minimal update to back/app/llm/appraisal_router.py to delegate guardrail decisions to the gate rather than evaluating them inline — no other behavioural changes to the router. No other files are modified. The gate is a pure function that accepts structured inputs and returns a structured GateDecision. It never calls the LLM, writes state, or raises to its caller.",
+  "constraints": [
+    "LLM does not write ledger — the gate only produces an accept/reject decision and never touches settlement",
+    "AppraisalSignal v1 is frozen — do not modify its field definitions",
+    "Do not modify acceptance_rules.py, failure_taxonomy.py, shadow_runner.py, or any engine file",
+    "The gate must be importable with no side effects — no LLM call, no file I/O at import time",
+    "The gate must never raise to its caller — all edge cases must be handled and return a GateDecision",
+    "The gate must enforce all BLOCKING policies from failure_taxonomy.GUARDRAIL_POLICIES — VALENCE_SIGN_FLIP and ZERO_ABSORPTION_OVERRIDE are both blocking; LLM_CONNECTION_FAILURE, LLM_PARSE_FAILURE, and SEMANTIC_DEVIATION_SAME_SIGN remain acceptable",
+    "The router behavioural contract (routing rules, fallback triggers, RouterResult shape) must be preserved exactly — only the internal implementation of guardrail evaluation changes",
+    "All 786 previously passing tests must continue to pass after the router is updated"
+  ],
+  "acceptance_criteria": [
+    "back/app/llm/validation_gate.py exists and is importable with no side effects",
+    "validation_gate.py exports a GateDecision model with fields: accepted (bool), rejection_reason (Optional[str] — None when accepted=True), failure_category (Optional[FailureModeCategory] — None when accepted=True)",
+    "validation_gate.py exports a public function evaluate(shadow_result: ShadowRunResult, deterministic_baseline: AppraisalOutput, verdict: Optional[ComparisonVerdict]) -> GateDecision",
+    "When the shadow runner already fell back (shadow_result.llm_used=False), evaluate() returns accepted=False with failure_category=LLM_CONNECTION_FAILURE or LLM_PARSE_FAILURE as appropriate, and rejection_reason matching the shadow_result.failure_reason",
+    "When the verdict is None (deferred tick), evaluate() returns accepted=True — the gate does not block deterministic-only outputs",
+    "When the verdict has overall=STRUCTURAL_FAIL, evaluate() returns accepted=False with failure_category=ZERO_ABSORPTION_OVERRIDE (or the most specific BLOCKING category applicable) and a non-None rejection_reason",
+    "When the verdict has a FieldDeviation on valence with severity=severe, evaluate() returns accepted=False with failure_category=VALENCE_SIGN_FLIP and a non-None rejection_reason",
+    "When the verdict is SEMANTIC_PASS, evaluate() returns accepted=True",
+    "When the verdict is SEMANTIC_DEGRADED with no severe valence deviation and no structural failures, evaluate() returns accepted=True",
+    "appraisal_router.py is updated to call validation_gate.evaluate() instead of evaluating guardrail conditions inline — the RouterResult fields and routing behaviour are identical to the pre-update behaviour",
+    "back/tests/test_p31_t2_validation_gate.py exists and all tests in it pass under: cd back && python3 -m pytest tests/test_p31_t2_validation_gate.py -v",
+    "All previously passing tests continue to pass (no regression): cd back && python3 -m pytest tests/ -v"
+  ],
+  "required_tests": [
+    "Importing validation_gate causes no side effects and no network calls",
+    "evaluate() with shadow_result.llm_used=False and failure_reason containing 'LLM call failed' returns accepted=False with failure_category=LLM_CONNECTION_FAILURE",
+    "evaluate() with shadow_result.llm_used=False and failure_reason containing 'parse' returns accepted=False with failure_category=LLM_PARSE_FAILURE",
+    "evaluate() with shadow_result.llm_used=True and verdict=None returns accepted=True",
+    "evaluate() with shadow_result.llm_used=True and verdict overall=STRUCTURAL_FAIL returns accepted=False and rejection_reason is non-empty",
+    "evaluate() with shadow_result.llm_used=True and verdict containing a FieldDeviation on valence with severity=severe returns accepted=False with failure_category=VALENCE_SIGN_FLIP",
+    "evaluate() with shadow_result.llm_used=True and verdict overall=SEMANTIC_PASS returns accepted=True with failure_category=None",
+    "evaluate() with shadow_result.llm_used=True and verdict overall=SEMANTIC_DEGRADED with no severe valence deviation returns accepted=True",
+    "evaluate() with shadow_result.llm_used=True and verdict containing a non-severe valence deviation returns accepted=True",
+    "evaluate() never raises when passed unexpected None values for verdict",
+    "GateDecision.accepted=True always has failure_category=None and rejection_reason=None",
+    "GateDecision.accepted=False always has a non-None rejection_reason",
+    "Router integration: when evaluate() returns accepted=False for a STRUCTURAL_FAIL case, RouterResult.llm_used is False and fallback_reason is non-None (existing router test coverage must still pass)"
+  ],
+  "non_goals": [
+    "Do not wire the validation gate or router into day_simulator.py or any API route",
+    "Do not add a SEMANTIC_DEGRADED rate threshold or monitoring in this task",
+    "Do not extend LLM authority to deferred ticks (T3/T5/T6/T7/T8)",
+    "Do not add logging, metrics, or audit file writing inside the gate",
+    "Do not change the AppraisalOutput or AppraisalSignal schema",
+    "Do not add new fields to RouterResult beyond what was defined in P31-T1",
+    "Do not modify acceptance_rules.py to add new guardrail checks — the gate uses the existing verdict outputs only"
+  ],
+  "allowed_files": [
+    "back/app/llm/validation_gate.py",
+    "back/tests/test_p31_t2_validation_gate.py",
+    "back/app/llm/appraisal_router.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/day_simulator.py",
+    "back/app/domain/appraisal_output.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/llm/shadow_runner.py",
+    "back/app/llm/acceptance_rules.py",
+    "back/app/llm/failure_taxonomy.py",
+    "back/app/llm/prompt_schema.py",
+    "back/app/llm/response_parser.py",
+    "back/app/llm/comparison_harness.py",
+    "back/app/engines/deterministic_fallback.py"
+  ],
+  "implementation_notes": [
+    "The current appraisal_router.py already enforces two guardrails inline: (1) if verdict.overall == OverallVerdict.STRUCTURAL_FAIL → fall back, and (2) if any FieldDeviation on valence has severity=severe → fall back. validation_gate.evaluate() should formalize these exact same rules as named checks that map to FailureModeCategory values from failure_taxonomy.py.",
+    "GateDecision is a Pydantic BaseModel. Fields: accepted: bool, rejection_reason: Optional[str], failure_category: Optional[FailureModeCategory]. accepted=True implies rejection_reason=None and failure_category=None; accepted=False implies rejection_reason is a non-empty string.",
+    "evaluate() signature: evaluate(shadow_result: ShadowRunResult, deterministic_baseline: AppraisalOutput, verdict: Optional[ComparisonVerdict]) -> GateDecision. The deterministic_baseline parameter is accepted for future extensibility but the current implementation only needs shadow_result and verdict to make its decision.",
+    "When shadow_result.llm_used is False, the gate should classify the rejection into LLM_CONNECTION_FAILURE vs LLM_PARSE_FAILURE by inspecting shadow_result.failure_reason: if it contains 'parse' (case-insensitive) → LLM_PARSE_FAILURE, otherwise → LLM_CONNECTION_FAILURE.",
+    "For STRUCTURAL_FAIL: check for absorption-field structural failures first to produce ZERO_ABSORPTION_OVERRIDE; for all other structural failures produce a generic STRUCTURAL_FAIL-based rejection (you may use any BLOCKING category or introduce a STRUCTURAL_FAIL_OTHER label if needed — but prefer matching ZERO_ABSORPTION_OVERRIDE when the failure is on the absorption field).",
+    "The appraisal_router.py update should replace the two inline guardrail blocks (lines ~133-153) with a single call to validation_gate.evaluate(). If gate.accepted is False, return the deterministic fallback with fallback_reason=gate.rejection_reason. The RouterResult.verdict field should still carry the ComparisonVerdict from acceptance_rules.compare() as before.",
+    "Tests should not make real LLM calls — mock shadow_runner.run() using unittest.mock.patch as in the existing test_p31_t1_appraisal_router.py tests."
+  ]
+}
