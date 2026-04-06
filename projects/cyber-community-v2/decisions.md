@@ -664,3 +664,8 @@ T4 当前仍然在真实 simulation 中为 inactive，原因已从"结构上无 
 > T4 relational continuity 在旧 deterministic path 下 frozen；已批准 Phase 26B 通过 social event-aware activation 作为唯一解冻路径。
 > Stage 1 appraisal schema 按 8 tick 设计，但 first live LLM authority 仅限 T1/T2/T4；deferred ticks 进入 live path 留给 Stage 2。
 
+
+## 18. Stage 2 顺序规则：先 appraisal discipline / memory contract / identity contract，再谈扩 live authority。
+
+
+## 19. Deferred tick intake 规则：Stage 2 采用 selective expansion，不是 all-at-once breadth-first rollout。

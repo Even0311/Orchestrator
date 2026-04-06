@@ -453,37 +453,365 @@ and a real rather than merely partial T4 relational seam.
 
 ---
 
-# Coarse Outlook Beyond Stage 1
-# For future roadmap generation only
+# Phase Roadmap — Stage 2
+# Goal: Deepen appraisal, memory, identity continuity, and selective live intake without breaking bounded life-sim governance
 
-The following is intentionally coarse-grained.
-It is not yet an approved detailed roadmap.
-It exists only to guide later Stage 2 roadmap drafting.
+Move from “LLM has entered the loop safely” to “Agent interior life becomes deeper, more continuous, and more identity-bearing” — without losing engine-authoritative settlement, auditability, explainability, bounded contracts, or the product identity of witnessing a life rather than chatting with a mind.
+
+# Stage 2 Global Sequencing Principles
+
+1. Phase 33 must complete before any deferred-tick live-authority expansion begins.
+2. Phase 34 must complete before any identity-growth implementation or selective recall behavior is approved.
+3. Phase 35 must define the post-P32 T4 expressivity path before T4 is treated as fully expressive.
+4. Phase 36 must explicitly decide deferred-tick admission policy before any specific deferred tick enters live authority.
+5. Phase 37 implements only the first approved deferred-tick candidate set; broad rollout is prohibited.
+6. Stage 2 may introduce only the minimum world-input enablement needed for deeper appraisal and bounded T4 progression; broad world-generator deepening remains out of scope for Stage 2.
+7. Stage 2 preserves the current player loop and does not redesign player influence surfaces; Stage 3 owns player-influence maturation.
+8. Engine remains authoritative for settlement / bookkeeping throughout Stage 2.
+9. LLM remains appraisal-only throughout Stage 2; no direct ledger-authority transfer is permitted.
+10. Selective live intake remains the default principle; all-ticks-at-once rollout is explicitly disallowed.
 
 ---
 
-## Stage 2 — Appraisal Deepening and Agent Interior Growth
+## Phase 33 — Appraisal Discipline Hardening
 
-### Strategic Goal
-Move from “LLM has entered the loop safely” to “Agent interior life becomes deeper, more continuous, and more identity-bearing.”
+### Goal
+Harden the live appraisal path so Stage 2 begins from explicit evaluation discipline rather than vague prompt optimism.
 
-### Likely Themes
-- richer appraisal dimensions
-- more durable personality continuity
-- memory relevance and selective carryover
-- stronger relation-specific interpretation
-- longer-horizon consequence shaping
-- better distinction between public, relational, and internal meaning
+### In Scope
+- tighten prompt / schema / evaluation discipline for current live-authority ticks
+- define explicit classes for:
+  - acceptable output
+  - degraded-but-usable output
+  - invalid / forced-fallback output
+- improve live-path observability and reviewability
+- audit multi-day drift and failure accumulation, not only single-tick correctness
+- document what Stage 2 considers safe appraisal deepening versus dangerous narrative drift
 
-### Likely Necessary Steps
-- stabilize prompt / schema / evaluation discipline
-- define durable memory contracts
-- define what counts as identity drift vs identity growth
-- deepen appraisal types without surrendering settlement governance
-- improve continuity between daily events, inner appraisal, and future behavior
+### Out of Scope
+- no deferred-tick live-authority expansion yet
+- no freeform memory system
+- no identity-growth implementation yet
+- no player influence redesign
+- no world-generator redesign
 
-### Main Risk
-Turning the agent into a vague chatbot mind instead of a bounded life-sim entity.
+### Why Now
+Stage 1 established the first controlled live hybrid path, but that is only a safe entry condition.
+Stage 2 cannot responsibly deepen memory, identity, or live-intake breadth until appraisal quality is governed by an explicit discipline.
+
+### Exit Condition
+- live appraisal quality is governed by explicit, reviewable acceptance criteria
+- degraded output classes are defined and intentionally handled
+- multi-day drift / instability failure shapes are documented
+- Stage 2 can deepen appraisal without relying on informal prompt intuition
+
+### Unlocks
+- safe basis for memory and identity contract work
+- reduced risk of Stage 2 drifting into chatbot-style narrative looseness
+- foundation for later deferred-tick admission decisions
+
+---
+
+## Phase 34 — Memory Scope and Authority Contract
+
+### Goal
+Define what memory already exists, what is still missing, and what authority boundaries memory is allowed to have.
+
+### In Scope
+- inventory the current memory substrate, including at minimum:
+  - DaySnapshot-style carryover artifacts
+  - residuals and cross-day persistence
+  - residual-aware bridging
+  - archive / history / continuity-bearing records already owned by the engine
+- distinguish between:
+  - narrative-only memory
+  - appraisal-visible memory
+  - settlement-relevant memory
+  - identity-bearing memory
+- define missing memory capabilities that Stage 2 may later introduce, including:
+  - selective recall
+  - relevance decay
+  - resurfacing rules
+  - bounded memory selection for appraisal input
+- define engine-owned versus LLM-influenced memory boundaries
+
+### Out of Scope
+- no unconstrained autobiographical memory engine
+- no vector-memory-first architecture expansion
+- no freeform rumination system
+- no direct ledger writing by LLM memory outputs
+- no identity-growth implementation yet
+
+### Why Now
+Memory is already one of the system’s shaping forces, but it still exists mostly as substrate and carryover mechanics rather than as an explicit contract.
+Stage 2 cannot safely deepen continuity until memory scope and authority are clearly defined.
+
+### Exit Condition
+- the project has an explicit memory scope matrix
+- existing substrate versus missing capability is clearly documented
+- memory authority boundaries are explicit and reviewable
+- selective recall / decay / resurfacing are defined as governed mechanisms rather than vague future ideas
+
+### Unlocks
+- real basis for identity continuity work
+- safer integration of memory into later appraisal deepening
+- stronger distinction between noise, carryover, and lasting significance
+
+---
+
+## Phase 35 — T4 Expressivity Path and World-Input Enablement
+
+### Goal
+Define the bounded post-P32 path for T4 expressivity and the minimum world-side input enrichment required to support it.
+
+### In Scope
+- define the approved T4 expressivity ladder after P32, including:
+  - what “partial” means
+  - what “deep” means
+  - whether “full” belongs in Stage 2 or remains deferred
+- define when and why T4 absorption is allowed to progress beyond the P32 state
+- define the approved relationship between T4 expressivity depth and downstream residual / wake-chain behavior
+- define the minimum additional world-side input shapes needed to support deeper relational appraisal
+- define the minimum generator-side enrichment allowed in Stage 2 to produce those inputs
+- audit same-day composition and downstream consequences at each approved T4 depth
+
+### Out of Scope
+- no broad social world redesign
+- no rich world-event grammar expansion
+- no shared-world deepening program
+- no unrestricted T4 expressivity expansion
+- no multi-agent relational system redesign
+
+### Why Now
+P32 closes the Stage 1 reality gap, but it does not automatically answer how T4 continues to evolve afterward.
+Stage 2 must explicitly define the next bounded path, or T4 will either stagnate or drift into uncontrolled expansion.
+
+### Exit Condition
+- the post-P32 T4 expressivity ladder is explicitly documented
+- approved world-input enablement for Stage 2 is explicitly bounded
+- the project knows which T4 depth transitions belong to Stage 2 and which remain deferred
+- deeper T4 behavior is connected to explicit contract language rather than informal intuition
+
+### Unlocks
+- safe continuation of relational appraisal depth
+- a bounded world-input enabling line for Stage 2
+- reduced risk of confusing Stage 2 with Stage 4 world deepening
+
+---
+
+## Phase 36 — Deferred-Tick Admission Contract
+
+### Goal
+Make deferred-tick live-intake expansion an explicit Stage 2 decision rather than an implicit future guess.
+
+### In Scope
+- define admission criteria for T3 / T5 / T6 / T7 / T8 live-authority entry
+- evaluate each deferred tick against:
+  - expected value to interior continuity
+  - risk to settlement discipline
+  - dependency on memory contract maturity
+  - dependency on identity contract maturity
+  - dependency on world-input quality
+- classify each deferred tick as:
+  - not yet eligible
+  - eligible later in Stage 2
+  - candidate for first-wave live admission
+- choose the first approved deferred-tick candidate set for implementation
+- preserve deterministic fallback for all non-approved deferred ticks
+
+### Out of Scope
+- no all-at-once deferred-tick rollout
+- no hidden expansion of live authority
+- no production all-ticks-to-LLM mode
+- no implementation of second-wave tick admission yet
+
+### Why Now
+Stage 1 explicitly deferred live authority for T3 / T5 / T6 / T7 / T8.
+Stage 2 must therefore answer this question directly.
+If it does not, the system will either stall or drift into accidental breadth-first expansion.
+
+### Exit Condition
+- every deferred tick has an explicit admission status
+- first-wave deferred-tick candidates are explicitly chosen
+- deterministic fallback remains explicit for all others
+- selective intake is established as policy, not just preference
+
+### Unlocks
+- a governed path into Stage 2 live-authority expansion
+- a reusable admission template for future ticks
+- reduced ambiguity for Designer and Claude during later phases
+
+---
+
+## Phase 37 — Selective Deferred-Tick Live Intake I
+
+### Goal
+Implement the first approved deferred-tick candidate set under explicit Stage 2 constraints.
+
+### In Scope
+- add live appraisal authority for the first approved deferred-tick candidate set
+- preserve deterministic fallback for all non-approved deferred ticks
+- audit whether the newly live deferred tick(s) actually improve interior continuity
+- audit whether the new live tick(s) remain compatible with bounded settlement and reviewability
+- document any new failure modes introduced by selective live-intake expansion
+
+### Out of Scope
+- no second-wave deferred-tick admission yet
+- no broad deferred-tick rollout
+- no abandonment of deterministic fallback
+- no player influence redesign
+
+### Why Now
+Once admission criteria and the first approved candidate set exist, Stage 2 needs one real implementation slice.
+Otherwise the roadmap would define a policy but never test whether selective live-intake expansion actually works.
+
+### Exit Condition
+- the first deferred-tick candidate set is live and auditable
+- selective intake is proven in real use rather than only in planning
+- deterministic fallback remains preserved for all still-deferred ticks
+- the project has evidence that interior depth can increase without breadth-first rollout
+
+### Unlocks
+- first true Stage 2 expansion beyond the Stage 1 live-authority set
+- evidence for or against further deferred-tick rollout
+- stronger basis for cross-tick continuity work
+
+---
+
+## Phase 38 — Identity Continuity Contract
+
+### Goal
+Define what counts as short-term drift, long-term growth, regression, and merely contextual behavior.
+
+### In Scope
+- define identity drift versus identity growth
+- define what repeated patterns are allowed to contribute to identity continuity
+- distinguish between:
+  - situational state
+  - recurring tendency
+  - meaningful growth
+  - regression
+  - temporary relational reaction
+- define how memory classes may or may not contribute to identity continuity
+- define how appraisal may reference continuity of self without collapsing into vague roleplay
+
+### Out of Scope
+- no open-ended personality fiction layer
+- no full trait-engine rewrite
+- no product/UI redesign for identity presentation
+- no broad social identity system
+
+### Why Now
+Deeper memory without an identity contract will produce continuity-shaped language without continuity-shaped governance.
+Stage 2 needs a principled basis for selfhood before it can claim real interior growth.
+
+### Exit Condition
+- identity continuity has explicit contract language
+- growth is distinguishable from temporary fluctuation
+- appraisal can reference continuity of self without becoming freeform personality improvisation
+- the project has a governed basis for later interior-life deepening
+
+### Unlocks
+- credible agent interior growth foundation
+- safer relationship between memory and self
+- stronger basis for later player-facing emotional legibility
+
+---
+
+## Phase 39 — Cross-Tick Continuity and Consequence Shaping
+
+### Goal
+Strengthen the connection between events, appraisal, memory, identity, and later behavior across multiple days.
+
+### In Scope
+- improve continuity between daily events and later appraisal
+- define how memory and identity contracts shape future interpretation
+- strengthen the distinction between:
+  - public meaning
+  - relational meaning
+  - internal meaning
+- improve longer-horizon consequence shaping without surrendering bounded settlement
+- audit whether deeper continuity creates meaningful life-shaping rather than uncontrolled noise accumulation
+
+### Out of Scope
+- no shared-world deepening program
+- no major district-system expansion
+- no multi-agent emergence work
+- no player influence redesign
+
+### Why Now
+After Stage 2 has stronger appraisal discipline, memory scope, T4 pathing, and at least one deferred-tick live slice, it becomes possible to deepen multi-day interior continuity in a governed way.
+
+### Exit Condition
+- continuity across days is deeper, more legible, and more identity-bearing
+- longer-horizon consequence shaping is real but bounded
+- future behavior is shaped by prior interpreted experience in a governed manner
+- the system remains a life-sim entity rather than a freeform conversational mind
+
+### Unlocks
+- a credible Stage 2 completion candidate
+- stronger emotional and structural basis for later player and world work
+- a cleaner handoff into later stages
+
+---
+
+## Phase 40 — Stage 2 / Stage 3 Player Boundary Freeze
+
+### Goal
+Explicitly define what Stage 2 preserves about the player loop and what Stage 3 will own about player influence maturation.
+
+### In Scope
+- document the current player-loop assumptions that Stage 2 must preserve
+- define what forms of player input Stage 2 may continue to pass through unchanged
+- define the compatibility boundary for future Stage 3 work, including:
+  - influence surfaces
+  - cadence
+  - scarcity / cost
+  - how player intent enters appraisal rather than direct scripting
+- ensure Stage 2 additions do not create a future redesign trap for Stage 3
+
+### Out of Scope
+- no new player influence surfaces
+- no scarcity / cost rebalance
+- no cadence redesign
+- no direct player scripting expansion
+- no Stage 3 implementation work yet
+
+### Why Now
+If Stage 2 says nothing about the player boundary, it becomes unclear whether player influence is being ignored or silently redesigned.
+This phase prevents that ambiguity and gives Stage 3 a cleaner starting point.
+
+### Exit Condition
+- Stage 2 / Stage 3 player boundary is explicitly documented
+- Stage 2 is confirmed compatible with future player-influence maturation
+- no hidden player-loop redesign remains embedded in Stage 2 work
+
+### Unlocks
+- clean handoff into Stage 3
+- reduced ambiguity about what Stage 2 intentionally does not do
+- stronger protection against product-identity drift
+
+# Stage 2 End State
+
+When Stage 2 is complete, CyberLife should have:
+
+- hardened live appraisal discipline
+- explicit memory scope and authority contracts
+- a bounded post-P32 T4 expressivity path
+- an explicit deferred-tick admission policy
+- at least one selective deferred-tick live-intake slice beyond Stage 1
+- explicit identity continuity contracts
+- deeper cross-day continuity between event, interpretation, persistence, and later behavior
+- preserved engine-authoritative settlement
+- preserved deterministic fallback outside approved live-authority scope
+- an explicit Stage 2 / Stage 3 player boundary
+- no collapse into vague chatbot-style interior narration
+
+Stage 2 is complete only when the project can honestly say:
+
+the agent now has deeper interior continuity, deeper but still bounded appraisal,
+and selectively expanded live authority — without breaking settlement governance
+or drifting into chatbot-style mind simulation.
 
 ---
 
