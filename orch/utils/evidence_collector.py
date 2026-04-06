@@ -19,40 +19,72 @@ class GitEvidence:
     error: str = ""                 # non-empty if collection failed
 
 
-def collect_git_evidence(repo_path: Path, diff_max_chars: int = 3000) -> GitEvidence:
+def collect_git_evidence(repo_path: Path, baseline_commit: str | None = None, diff_max_chars: int = 3000) -> GitEvidence:
     """Collect objective evidence of what changed in repo_path after Executor ran.
 
     Runs git commands directly — does not depend on Executor cooperation.
+
+    If *baseline_commit* is provided, evidence includes both uncommitted changes
+    AND any new commits made since that baseline (``git diff <baseline>..HEAD``).
+    Without it, only uncommitted working-tree changes are detected (legacy mode).
     """
     if not repo_path.exists():
         return GitEvidence(error=f"path does not exist: {repo_path}")
     if not _is_git_repo(repo_path):
         return GitEvidence(error="not a git repo")
 
-    # git status --porcelain -uall: all changed/new/deleted files (expand directories)
+    # --- Uncommitted changes (working tree + index) ---
     status_out = _run(repo_path, ["git", "status", "--porcelain", "-uall"])
     if status_out is None:
         return GitEvidence(error="git status failed")
 
-    files_modified, files_added, files_deleted = _parse_status(status_out)
+    wt_modified, wt_added, wt_deleted = _parse_status(status_out)
 
-    # git diff HEAD --stat: line-level summary of tracked changes
-    diff_stat = _run(repo_path, ["git", "diff", "HEAD", "--stat"]) or ""
+    # --- Committed changes since baseline ---
+    cm_modified: list[str] = []
+    cm_added: list[str] = []
+    cm_deleted: list[str] = []
+    committed_diff_stat = ""
+    committed_diff_full = ""
 
-    # git diff HEAD: actual patch for tracked changes
-    diff_full = _run(repo_path, ["git", "diff", "HEAD"]) or ""
+    if baseline_commit:
+        committed_status = _run(repo_path, [
+            "git", "diff", "--name-status", f"{baseline_commit}..HEAD",
+        ])
+        if committed_status:
+            cm_modified, cm_added, cm_deleted = _parse_name_status(committed_status)
 
-    # For untracked (new) files, git diff HEAD produces nothing.
-    # Use git diff --no-index /dev/null <file> to capture their content.
-    for new_file in files_added:
+        committed_diff_stat = _run(repo_path, [
+            "git", "diff", f"{baseline_commit}..HEAD", "--stat",
+        ]) or ""
+
+        committed_diff_full = _run(repo_path, [
+            "git", "diff", f"{baseline_commit}..HEAD",
+        ]) or ""
+
+    # Merge: committed changes + uncommitted working-tree changes
+    files_modified = sorted(set(cm_modified + wt_modified))
+    files_added = sorted(set(cm_added + wt_added))
+    files_deleted = sorted(set(cm_deleted + wt_deleted))
+
+    # Prefer committed diff stat if present; fall back to working-tree diff
+    diff_stat = committed_diff_stat or _run(repo_path, ["git", "diff", "HEAD", "--stat"]) or ""
+
+    # Build full diff
+    diff_full = committed_diff_full
+    # Append uncommitted changes on top of committed diff
+    wt_diff = _run(repo_path, ["git", "diff", "HEAD"]) or ""
+    if wt_diff:
+        diff_full += f"\n{wt_diff}"
+
+    # For untracked (new) files, capture their content
+    for new_file in wt_added:
         file_path = repo_path / new_file
         if file_path.is_file():
             untracked_diff = _run(
                 repo_path,
                 ["git", "diff", "--no-index", "/dev/null", new_file],
             )
-            # git diff --no-index exits non-zero when files differ, so _run returns None.
-            # Fall back to subprocess directly for this case.
             if untracked_diff is None:
                 untracked_diff = _run_no_index_diff(repo_path, new_file)
             if untracked_diff:
@@ -63,13 +95,15 @@ def collect_git_evidence(repo_path: Path, diff_max_chars: int = 3000) -> GitEvid
     else:
         diff_patch = diff_full
 
+    has_changes = bool(files_modified or files_added or files_deleted)
+
     return GitEvidence(
         files_modified=files_modified,
         files_added=files_added,
         files_deleted=files_deleted,
         diff_stat=diff_stat.strip(),
         diff_patch_truncated=diff_patch,
-        has_changes=bool(status_out.strip()),
+        has_changes=has_changes,
     )
 
 
@@ -108,6 +142,25 @@ def _run_no_index_diff(path: Path, filename: str) -> str:
         return ""
     except Exception:
         return ""
+
+
+def _parse_name_status(output: str) -> tuple[list[str], list[str], list[str]]:
+    """Parse ``git diff --name-status`` output into (modified, added, deleted)."""
+    modified: list[str] = []
+    added: list[str] = []
+    deleted: list[str] = []
+    for line in output.splitlines():
+        parts = line.split("\t", 1)
+        if len(parts) < 2:
+            continue
+        status, filename = parts[0].strip(), parts[1].strip()
+        if status.startswith("A"):
+            added.append(filename)
+        elif status.startswith("D"):
+            deleted.append(filename)
+        else:
+            modified.append(filename)
+    return modified, added, deleted
 
 
 def _parse_status(status_output: str) -> tuple[list[str], list[str], list[str]]:

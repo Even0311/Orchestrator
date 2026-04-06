@@ -30,7 +30,7 @@ from orch.models import (
 )
 from orch.sot import parse_current_phase, mark_task_complete, is_phase_complete, get_phase_status, PhaseInfo
 from orch.utils.evidence_collector import collect_git_evidence
-from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, GitError
+from orch.utils.git_ops import commit_all, clean_working_tree, get_current_commit, reset_hard, GitError
 
 
 @dataclass
@@ -244,6 +244,10 @@ def _run_round(
 
         click.echo(f"\n  [{_ts()}] --- Attempt {attempt_num}/{max_attempts} ---")
 
+        # Record baseline commit BEFORE Claude runs — used to detect
+        # committed changes and to roll back if the attempt fails.
+        baseline_commit = get_current_commit(codebase_path)
+
         # Generate briefing
         generate_round_brief(
             round_dir=attempt_dir,
@@ -268,6 +272,7 @@ def _run_round(
             round_id=round_id,
             attempt_num=attempt_num,
             model=model,
+            baseline_commit=baseline_commit,
         )
         elapsed = time.time() - t0
         elapsed_str = f"{elapsed:.0f}s" if elapsed < 60 else f"{elapsed / 60:.1f}m"
@@ -353,14 +358,16 @@ def _run_round(
             result.final_passed = True
             break
 
-        # Clean target working tree between attempts so the next attempt
-        # starts from a committed baseline (no leftover changes from this attempt).
-        if not attempt.passed and attempt_num < max_attempts:
+        # Roll back target repo to the baseline commit — undoes both
+        # uncommitted changes AND any commits Claude made during this
+        # failed attempt.  Applied after every failure (including the last
+        # attempt) so that the repo is always clean for the next round.
+        if not attempt.passed:
             try:
-                clean_working_tree(codebase_path)
-                click.echo(f"  [{_ts()}] Cleaned target working tree for next attempt")
+                reset_hard(codebase_path, baseline_commit)
+                click.echo(f"  [{_ts()}] Reset target repo to baseline {baseline_commit[:8]}")
             except Exception as e:
-                click.echo(f"  ⚠ Working tree cleanup between attempts failed: {e}", err=True)
+                click.echo(f"  ⚠ Baseline reset failed: {e}", err=True)
 
         # Build prior_failure for next attempt
         prior_failure = _build_failure_context(attempt, gate_results)
@@ -401,6 +408,8 @@ def _build_failure_context(attempt: AttemptRecord, gate_results: HardGateResults
         lines.append(f"Fix required: {f}")
     for g in gate_results.failures:
         lines.append(f"Hard gate {g.name}: {g.detail}")
+    lines.append("All code changes from the previous attempt have been rolled back. "
+                 "The working tree is clean. You must re-implement from scratch.")
     return "\n".join(lines)
 
 
@@ -414,7 +423,11 @@ def _build_resolution_context(resolution_row) -> str:
     else:
         header = f"Human rejected round {round_id} and requested a redo."
 
-    return f"{header}\nAction: {action}\nHuman note: {note}"
+    return (
+        f"{header}\nAction: {action}\nHuman note: {note}\n"
+        "All code changes from prior attempts have been rolled back. "
+        "The working tree is clean. You must re-implement from scratch."
+    )
 
 
 def _try_mark_task_complete(sot_dir: Path, task_desc: str, note: str) -> None:

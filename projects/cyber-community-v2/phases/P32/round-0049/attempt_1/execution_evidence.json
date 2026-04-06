@@ -1,0 +1,35 @@
+{
+  "task_key": "P32-T2",
+  "summary": "Verified that the P32-T2 implementation in back/app/world/generator.py (qualifying T4 social event injection on world_day % 7 == 0) and the 12-test module test_p32_t2_world_generator_social_event.py are already complete and all 900 tests pass.",
+  "implementation_status": "complete",
+  "files_modified": [],
+  "files_verified": [
+    "back/app/world/generator.py",
+    "back/tests/test_p32_t2_world_generator_social_event.py"
+  ],
+  "files_changed": [],
+  "commands_run": [
+    "python3 -m pytest tests/test_p32_t2_world_generator_social_event.py -v",
+    "python3 -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "total_tests": 900,
+    "passed": 900,
+    "failed": 0,
+    "p32_t2_specific": "passed (12/12)"
+  },
+  "diff_summary": "No changes made. Implementation was already present: generator.py defines _FALLBACK_QUALIFYING_EVENTS (confrontation + withdrawal), injects qualifying event when world_day % 7 == 0, selects event via cycle_iteration % 2, and propagates arc phase social_event through _snapshot_from_phase. Test module covers schema validity, frequency, low-frequency guard, determinism, arc propagation, SocialEventSpec validity, and multi-day simulation integration.",
+  "acceptance_criteria_met": [
+    "get_world_snapshot(21) returns WorldSnapshot with social_event.event_type in {confrontation, withdrawal}",
+    "get_world_snapshot(28) returns WorldSnapshot with social_event.event_type in {confrontation, withdrawal}",
+    "get_world_snapshot(17) returns WorldSnapshot with social_event == None",
+    "get_world_snapshot(20) returns WorldSnapshot with social_event == None",
+    "Scan of days 17-37 yields at least 2 qualifying days with no more than 1 qualifying event in any 7-day window",
+    "Arc days 3-16 all return social_event=None",
+    "Calling get_world_snapshot(N) twice returns the same social_event both times",
+    "All 900 existing tests pass with no regressions",
+    "test_p32_t2_world_generator_social_event.py passes with all 12 tests green"
+  ],
+  "acceptance_criteria_failed": [],
+  "unresolved_issues": []
+}

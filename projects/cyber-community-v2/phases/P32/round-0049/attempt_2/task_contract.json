@@ -1,0 +1,83 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T2",
+  "title": "World Generator: Inject Qualifying T4 Social Events at Controlled Frequency",
+  "objective": "Ensure back/app/world/generator.py produces qualifying SocialEventSpec values (confrontation or withdrawal) on a deterministic ~1-in-7 day schedule in the fallback path, so the T4 event-aware detection path activates during real multi-day simulation runs. The implementation logic exists in the current baseline — the executor must verify it is correct, run the full test suite to confirm passing, and commit any fix or refinement needed to close the task.",
+  "exact_scope": "The world generator (back/app/world/generator.py) must inject a qualifying SocialEventSpec on fallback days where (world_day % 7) == 0. The event type must alternate deterministically between SocialEventType.confrontation and SocialEventType.withdrawal. Arc phases must propagate their social_event field (None when not defined). The new test file back/tests/test_p32_t2_world_generator_social_event.py must pass in full. All other existing tests must continue to pass.",
+  "constraints": [
+    "Determinism is mandatory: get_world_snapshot(day) must return the same WorldSnapshot for the same day input, always — no randomness.",
+    "Only SocialEventType.confrontation and SocialEventType.withdrawal may be used as qualifying event types (matching T4_QUALIFYING_EVENT_TYPES in tick_bridge.py).",
+    "Event frequency must be low: approximately 1 qualifying event per 7-day cycle in the fallback path (trigger condition: world_day % 7 == 0).",
+    "Every injected SocialEventSpec must be schema-valid with event_type, intensity, reciprocity, and expectedness all populated.",
+    "AppraisalSignal v1 fields are frozen — back/app/engines/appraisal_settlement.py must not be modified.",
+    "T4 gate logic in back/app/engines/tick_bridge.py must not be modified.",
+    "No existing test file (any back/tests/test_*.py) may be deleted or have its assertions weakened.",
+    "No changes to docs/vision.md or docs/road_map.md.",
+    "No changes to back/app/domain/enums.py or back/app/domain/models.py.",
+    "The executor MUST produce at least one git commit containing the implementation. The review gate requires git_changes — an empty working tree with no new commit is a hard failure.",
+    "The executor MUST NOT create a file named attempt_report.json anywhere, especially not in the round directory.",
+    "The only file the executor writes to the round directory is execution_evidence.json."
+  ],
+  "acceptance_criteria": [
+    "git_changes: At least one new git commit is present in the repository after the executor runs — the commit must include back/app/world/generator.py and/or back/tests/test_p32_t2_world_generator_social_event.py.",
+    "qualifying_event_frequency: Running get_world_snapshot() across days 17–37 (fallback range) produces at least 2 days where world.social_event is not None and event_type is confrontation or withdrawal.",
+    "arc_propagation: Running get_world_snapshot() across days 3–16 propagates any social_event defined on an ArcPhase into the returned WorldSnapshot; days with social_event=None on ArcPhase return WorldSnapshot.social_event=None.",
+    "schema_validity: Every WorldSnapshot returned by get_world_snapshot() for days 1–40 is a valid Pydantic WorldSnapshot instance with no validation errors.",
+    "spec_fields_complete: Every non-None SocialEventSpec in the fallback range has event_type, intensity, reciprocity, and expectedness all populated.",
+    "determinism: Calling get_world_snapshot(day) twice with the same day argument returns the same social_event value both times.",
+    "new_tests_pass: All 12 tests in back/tests/test_p32_t2_world_generator_social_event.py pass.",
+    "full_suite_pass: The full test suite (python3 -m pytest tests/ -v) passes with no regressions.",
+    "round_dir_boundary: The round directory contains only task_contract.json and execution_evidence.json — no attempt_report.json, no other files."
+  ],
+  "required_tests": [
+    "For days 17 through 37 (21-day fallback span), every call to get_world_snapshot returns a valid WorldSnapshot instance with worldDay matching the requested day.",
+    "At least 2 days in the fallback span (days 17–37) return a WorldSnapshot where social_event is a confrontation or withdrawal SocialEventSpec — confirming the injection logic fires.",
+    "No 7-consecutive-day window within the fallback span contains more than 5 days with a qualifying social_event — confirming the low-frequency constraint.",
+    "Calling get_world_snapshot with the same day argument twice returns identical social_event values — confirming determinism.",
+    "For arc days 3–16, the WorldSnapshot.social_event matches the ArcPhase.social_event exactly (None when the phase has no event; the SocialEventSpec when defined on the phase).",
+    "Every non-None SocialEventSpec produced in days 17–37 has all four required fields: event_type, intensity, reciprocity, and expectedness.",
+    "A 14-day simulation run starting at day 17 detects at least one qualifying social event in the world snapshots (days 21 and 28 are expected qualifying days where 21 % 7 == 0 and 28 % 7 == 0).",
+    "A 10-day simulation run starting at day 17 (days 17–26) detects at least one qualifying social event, confirming day 21 is a qualifying day."
+  ],
+  "non_goals": [
+    "Routing or filtering T4 event-aware activation by social_event.target_id.",
+    "Introducing social events for T3, T5, T6, T7, or T8 tick paths.",
+    "Modifying the AppraisalSignal schema or appraisal settlement arithmetic.",
+    "Adding social events to arc phases that do not currently define them.",
+    "UI or API changes to expose social_event to the frontend.",
+    "LLM-based or probabilistic event selection — all logic must be deterministic arithmetic on the day integer."
+  ],
+  "allowed_files": [
+    "back/app/world/generator.py",
+    "back/tests/test_p32_t2_world_generator_social_event.py"
+  ],
+  "forbidden_files": [
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/domain/enums.py",
+    "back/app/domain/models.py",
+    "back/tests/test_social_event_schema.py",
+    "back/tests/test_tick_bridge.py",
+    "back/tests/test_residual_continuity_audit.py",
+    "back/tests/test_residual_persistence.py",
+    "back/tests/test_residual_aware_bridge.py",
+    "back/tests/test_appraisal_settlement.py",
+    "back/tests/test_world_continuity.py",
+    "back/tests/test_t4_social_event_detection.py",
+    "back/tests/test_t4_activation_frequency.py",
+    "back/tests/test_p32_t1_t4_live_audit.py",
+    "docs/vision.md",
+    "docs/road_map.md"
+  ],
+  "artifact_files": {
+    "execution_evidence": "/home/even/projects/orchestration/agent_orchestrator/projects/cyber-community-v2/phases/P32/round-0049/attempt_2/execution_evidence.json",
+    "review_verdict": "/home/even/projects/orchestration/agent_orchestrator/projects/cyber-community-v2/phases/P32/round-0049/attempt_2/review_verdict.json"
+  },
+  "implementation_notes": [
+    "The baseline commit (524f3c7) already contains the generator.py changes and the test file. The working tree is clean.",
+    "The executor must read back/app/world/generator.py and back/tests/test_p32_t2_world_generator_social_event.py, verify the implementation is correct, run all tests, and produce a git commit.",
+    "If the implementation in the baseline is fully correct and all tests pass, the executor should still produce a commit — for example by adding a small inline comment to generator.py documenting the Phase 32 injection trigger condition, or by ensuring the test file is final and committed.",
+    "The fallback injection trigger is: if world_day % 7 == 0, inject a qualifying SocialEventSpec. Days 21, 28, 35 qualify in the range 17–37. The event type alternates between the two _FALLBACK_QUALIFYING_EVENTS entries based on cycle_iteration.",
+    "The executor must NOT create attempt_report.json or any other file in the round directory. Only execution_evidence.json is permitted in the round directory."
+  ]
+}

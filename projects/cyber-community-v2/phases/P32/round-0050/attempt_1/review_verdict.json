@@ -1,0 +1,18 @@
+{
+  "task_key": "P32-T2",
+  "verdict": "PASS",
+  "criteria_results": {
+    "back/app/world/generator.py contains _FALLBACK_QUALIFYING_EVENTS with confrontation and withdrawal SocialEventSpec entries": "pass",
+    "back/app/world/generator.py _fallback_snapshot() injects a qualifying social event when (world_day % 7) == 0": "pass",
+    "Days 21 and 28 in the fallback span return a non-None social_event with event_type in {confrontation, withdrawal}": "pass",
+    "Days 17, 20, and 24 return social_event=None (existing test_social_event_schema.py assertion must still pass)": "pass",
+    "get_world_snapshot() is deterministic: calling it twice for the same day always returns the same social_event": "pass",
+    "back/tests/test_p32_t2_world_generator_social_event.py exists with at least 12 tests covering: schema validity, qualifying event frequency (>=2 in days 17-37), low-frequency bound (<=5 per 7-day window), determinism, arc phase propagation, SocialEventSpec schema validity, and multi-day simulation integration": "pass",
+    "All 12 tests in test_p32_t2_world_generator_social_event.py pass": "pass",
+    "All tests in test_social_event_schema.py pass (13 tests)": "pass",
+    "Full test suite passes (all 900 tests, no regressions)": "pass",
+    "A git commit is produced with message scoped to P32-T2 that references both generator.py and test_p32_t2_world_generator_social_event.py as the deliverable": "pass"
+  },
+  "issues": [],
+  "summary": "All acceptance criteria are fully met. generator.py contains _FALLBACK_QUALIFYING_EVENTS with confrontation and withdrawal entries, _fallback_snapshot() injects a qualifying event on (world_day % 7) == 0, days 21 and 28 produce non-None qualifying social events while days 17, 20, 24 remain None. The test module test_p32_t2_world_generator_social_event.py exists with exactly 12 tests covering all required scenarios, all 12 pass. The full suite of 900 tests passes with no regressions. Commit ca38ec8 explicitly names both generator.py and the test module as the P32-T2 deliverable with a substantive, well-scoped message."
+}

@@ -51,11 +51,16 @@ def run_attempt(
     attempt_num: int,
     model: str = "sonnet",
     timeout: int = 900,
+    baseline_commit: str | None = None,
 ) -> AttemptRecord:
     """Run a single Claude Code invocation for one round attempt.
 
     The round_dir must already contain round_brief.md (written by orchestrator).
     Claude reads it via --add-dir and writes artifact files back to round_dir.
+
+    *baseline_commit*: HEAD commit before this attempt started.  Passed to
+    ``collect_git_evidence`` so it can detect both committed and uncommitted
+    changes made by Claude during this attempt.
     """
     prompt = _build_driver_prompt(round_id=round_id, attempt_num=attempt_num, round_dir=round_dir)
 
@@ -68,7 +73,7 @@ def run_attempt(
     )
 
     # Collect git evidence (authoritative, independent of Claude's self-report)
-    git_evidence = collect_git_evidence(codebase_path)
+    git_evidence = collect_git_evidence(codebase_path, baseline_commit=baseline_commit)
 
     # Read artifact files that Claude wrote
     artifacts = read_artifacts(round_dir)

@@ -1,0 +1,27 @@
+{
+  "summary": "Modified back/app/world/generator.py to inject qualifying SocialEventSpec (confrontation or withdrawal) on fallback-path days where world_day % 7 == 0, enabling the T4 event-aware detection seam to fire deterministically at ~1-in-7 frequency.",
+  "files_changed": [
+    "back/app/world/generator.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v"
+  ],
+  "test_results": "all passed — 900 tests passed in 8.11s",
+  "diff_summary": "Added _FALLBACK_QUALIFYING_EVENTS list with two SocialEventSpec entries (confrontation, withdrawal). Modified _fallback_snapshot() to inject a qualifying event when world_day % 7 == 0, selecting event type deterministically via cycle_iteration % 2. Arc-covered days (3-16) and days 17, 20, 24 remain social_event=None.",
+  "unresolved_issues": [],
+  "task_key": "P32-T2",
+  "files_modified": [
+    "back/app/world/generator.py"
+  ],
+  "git_commit_hash": "ca38ec82c60ae2297d46236cb9aa6516d4e17519",
+  "acceptance_criteria_met": [
+    "get_world_snapshot() returns non-None social_event on fallback days 21, 28, 35 (world_day % 7 == 0)",
+    "Returned social_event.event_type is confrontation on day 21, withdrawal on day 28, confrontation on day 35",
+    "Days 3, 5, 7, 10, 12, 16, 17, 20, 24 all return social_event=None",
+    "Same world_day consistently returns the same social_event (deterministic via cycle_iteration % 2)",
+    "Qualifying events pass through _detect_qualifying_t4_social_event() returning non-None results",
+    "All 900 existing tests pass without modification",
+    "Change committed to git as commit ca38ec82c60ae2297d46236cb9aa6516d4e17519"
+  ],
+  "implementation_summary": "Injected _FALLBACK_QUALIFYING_EVENTS rotation (confrontation, withdrawal) into _fallback_snapshot() with trigger condition world_day % 7 == 0. Event index is cycle_iteration % 2 ensuring determinism. Arc-covered days unchanged. All 900 tests pass."
+}

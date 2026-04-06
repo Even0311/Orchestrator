@@ -1,0 +1,66 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "get_world_snapshot() returns a non-None social_event on fallback-path days 21, 28, and 35 (world_day % 7 == 0)",
+    "Returned social_event.event_type is confrontation on day 21 and 35, withdrawal on day 28 — both are T4-qualifying types",
+    "Days 3, 5, 7, 10, 12, 16, 17, 20, 24 all return social_event=None, preserving the Phase 26A test contract",
+    "Same world_day consistently returns the same social_event across repeated calls (deterministic via cycle_iteration % 2)",
+    "Qualifying events pass through _detect_qualifying_t4_social_event() in tick_bridge.py and return non-None",
+    "All 900 existing tests pass (confirmed by running python3 -m pytest tests/ -v — 900 passed in 8.22s)",
+    "The change is committed to git as commit ca38ec82c60ae2297d46236cb9aa6516d4e17519 with message 'P32-T2: world generator qualifying social event injection complete'"
+  ],
+  "unmet_criteria": [],
+  "criteria_results": [
+    {
+      "criterion": "get_world_snapshot() returns a non-None social_event on at least one fallback-path day within a 7-day window (e.g., day 21, 28, or 35)",
+      "status": "met",
+      "notes": "Days 21, 28, and 35 all return qualifying SocialEventSpec. Day 21: confrontation, Day 28: withdrawal, Day 35: confrontation."
+    },
+    {
+      "criterion": "The returned social_event.event_type is either confrontation or withdrawal on injection days",
+      "status": "met",
+      "notes": "_FALLBACK_QUALIFYING_EVENTS contains exactly two entries: confrontation and withdrawal. event_idx = cycle_iteration % 2 ensures only these two values are produced."
+    },
+    {
+      "criterion": "Days 3, 5, 7, 10, 12, 16, 17, 20, 24 all return social_event=None",
+      "status": "met",
+      "notes": "Verified by direct runtime check. Days 3-16 go through arc path. Days 17, 20, 24 are fallback but their modulo-7 residues (3, 6, 3) are non-zero, so injection does not fire."
+    },
+    {
+      "criterion": "The same world_day consistently returns the same social_event value across repeated calls (determinism)",
+      "status": "met",
+      "notes": "Injection index is cycle_iteration % 2 derived from world_day arithmetic — fully deterministic. Verified by calling get_world_snapshot twice for days 21 and 28."
+    },
+    {
+      "criterion": "Calling get_world_snapshot() on any injected day and passing the result through _detect_qualifying_t4_social_event() in tick_bridge.py returns a non-None qualifying event",
+      "status": "met",
+      "notes": "Verified for days 21, 28, and 35. T4_QUALIFYING_EVENT_TYPES = {confrontation, withdrawal} in tick_bridge.py and injected events use exactly those types."
+    },
+    {
+      "criterion": "All 900 existing tests pass without modification",
+      "status": "met",
+      "notes": "900 passed in 8.22s. Includes 12 new P32-T2 tests in test_p32_t2_world_generator_social_event.py and all pre-existing tests."
+    },
+    {
+      "criterion": "The change is committed to git",
+      "status": "met",
+      "notes": "Commit ca38ec82c60ae2297d46236cb9aa6516d4e17519 is HEAD on main. Commit message and docstring both confirm P32-T2 implementation."
+    }
+  ],
+  "hard_gates_passed": [
+    "git_changes: commit ca38ec8 is present and is HEAD on main branch",
+    "tests_pass: 900 tests pass with no failures",
+    "scope: only back/app/world/generator.py and back/tests/test_p32_t2_world_generator_social_event.py were modified",
+    "no_forbidden_files: appraisal_settlement.py, appraisal_input.py, appraisal_output.py, docs/ not touched",
+    "AppraisalSignal_frozen: no changes to signal field definitions",
+    "T4_path: injection activates only via social event-aware path, not via gate manipulation"
+  ],
+  "hard_gates_failed": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The integration test class TestMultiDaySimulationIntegration silently swallows simulation exceptions and records t4_activated=False — consider making the exception handling more explicit so real failures are not masked."
+  ],
+  "rationale": "All seven acceptance criteria are demonstrably met. The generator correctly injects confrontation or withdrawal SocialEventSpec on fallback days where world_day % 7 == 0. Arc-covered days (3-16) and the specific tested None-days (17, 20, 24) are unaffected. The injection is deterministic and the events pass through the T4 detection seam. 900 tests pass and the change is committed. The implementation is confined to generator.py with a new test file added in back/tests/ — both within allowed_files."
+}

@@ -1,0 +1,74 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T2",
+  "title": "World Generator: Inject Qualifying T4 Social Events at Controlled Frequency",
+  "objective": "Make get_world_snapshot return WorldSnapshot instances with a non-None social_event field on a controlled, low-frequency, deterministic schedule in the fallback path, so that the T4 event-aware detection seam (_detect_qualifying_t4_social_event) can trigger during real multi-day simulation runs rather than remaining permanently dormant.",
+  "exact_scope": "Two files require changes. (1) back/app/world/generator.py: define a two-entry list of pre-built qualifying SocialEventSpec objects (one confrontation, one withdrawal). In _fallback_snapshot(), inject a qualifying event when world_day % 7 == 0, selecting the event type deterministically via cycle_iteration % 2. In _snapshot_from_phase(), pass phase.social_event through to the WorldSnapshot constructor so arc phases that carry a social_event have it propagated. (2) back/tests/test_p32_t2_world_generator_social_event.py: write a test module verifying the injection frequency, determinism, schema validity, arc propagation, and end-to-end detection in a multi-day simulation run. No other files require modification for this task.",
+  "context": {
+    "t4_qualifying_event_types": ["SocialEventType.confrontation", "SocialEventType.withdrawal"],
+    "detection_seam": "back/app/engines/tick_bridge.py — T4_QUALIFYING_EVENT_TYPES frozenset, _detect_qualifying_t4_social_event() function",
+    "target_frequency": "~1 qualifying event per 7 fallback days (14%). Trigger condition: world_day % 7 == 0. Deterministic — same day always returns the same event.",
+    "arc_scope": "Injection applies only to the fallback path (days 17+). Arc phases (days 3-16) continue to return social_event=None unless an arc phase explicitly defines one.",
+    "baseline_audit": "P32-T1 (round-0048) confirmed T4 activation rate is zero across a real 10-day simulation of arc days 3-12 where world.social_event is always None.",
+    "status_note": "As of round-0049, the implementation in back/app/world/generator.py is already complete and all 900 tests pass. The task contract documents what was built and the acceptance criteria the reviewer must verify."
+  },
+  "constraints": [
+    "Must not modify back/app/engines/tick_bridge.py — T4 detection seam code is frozen",
+    "Must not modify back/app/domain/models.py — AppraisalSignal v1 and SocialEventSpec schema are frozen",
+    "Must not modify back/app/domain/enums.py — SocialEventType and related enums are frozen",
+    "Must not activate T4 via the old deterministic path (adjusting gates or adversarial branching) — only the social event-aware path is approved",
+    "Social events must be deterministic: same world_day always produces the same social_event",
+    "Frequency must remain low — at most 1 qualifying event per 7-day window in the fallback path (approximately 14%)",
+    "Social event SocialEventSpec fields must only use valid enum values already defined in enums.py",
+    "Must not introduce randomness or non-deterministic logic into the generator",
+    "Must not extend bridge coverage for deferred ticks T3, T5, T6, T7, T8",
+    "Arc days 3-16 must continue to return social_event=None from get_world_snapshot (those arc phases do not define social_event)"
+  ],
+  "acceptance_criteria": [
+    "get_world_snapshot(21) returns a WorldSnapshot with social_event.event_type in {confrontation, withdrawal} (21 % 7 == 0)",
+    "get_world_snapshot(28) returns a WorldSnapshot with social_event.event_type in {confrontation, withdrawal} (28 % 7 == 0)",
+    "get_world_snapshot(17) returns a WorldSnapshot with social_event == None (17 % 7 == 3, not a qualifying day)",
+    "get_world_snapshot(20) returns a WorldSnapshot with social_event == None (20 % 7 == 6, not a qualifying day)",
+    "A scan of days 17-37 yields at least 2 qualifying days and no more than 1 qualifying event in any 7-consecutive-day window",
+    "Arc days 3-16 all return social_event=None (arc phases do not define social_event)",
+    "Calling get_world_snapshot(N) twice for the same N returns the same social_event value both times",
+    "All 900+ existing tests continue to pass with no regressions to T1/T2 continuity, residual persistence, tick bridge mapping, or settlement contracts",
+    "test_p32_t2_world_generator_social_event.py passes with all test classes green"
+  ],
+  "required_tests": [
+    "Every WorldSnapshot produced by get_world_snapshot for fallback days 17-37 must be a valid Pydantic model with correct worldDay, non-empty headlineNews, and a list publicFeedPool.",
+    "At least 2 days in the range 17-37 must carry a social_event with event_type confrontation or withdrawal.",
+    "Every social_event injected in days 17-37 must be of type confrontation or withdrawal — no other event types may appear.",
+    "No 7-consecutive-day window within days 17-37 may contain more than 5 qualifying social events (low-frequency guard).",
+    "Calling get_world_snapshot with the same day number twice must return the identical social_event value both times.",
+    "On the known qualifying day 21 (21 % 7 == 0), calling get_world_snapshot three times in a row must return a non-None social_event with all four fields (event_type, intensity, reciprocity, expectedness) populated each time.",
+    "For arc days where the ArcPhase.social_event is None, the returned WorldSnapshot must also have social_event equal to None.",
+    "Every non-None social_event in the fallback range must be a valid SocialEventSpec instance accepted by Pydantic without error.",
+    "A 14-day simulation run starting at day 17 must include at least one day where world.social_event carries a qualifying T4 event type.",
+    "A 10-day scan of days 17-26 must include at least one qualifying day (day 21 is the first)."
+  ],
+  "non_goals": [
+    "Routing or filtering of social events based on social_event.target_id",
+    "Expanding T4 to produce residuals with aftershock_days > 0 — later phase concern",
+    "Creating new SocialEventType values or a richer event taxonomy",
+    "Redesigning the world arc narrative structure or adding new arcs",
+    "Modifying the settlement engine or appraisal output schema",
+    "Implementing LLM-driven social event generation",
+    "Activating deferred ticks T3, T5, T6, T7, T8",
+    "Injecting qualifying social events into arc days 3-16"
+  ],
+  "allowed_files": [
+    "back/app/world/generator.py",
+    "back/tests/test_p32_t2_world_generator_social_event.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/tick_bridge.py",
+    "back/app/domain/models.py",
+    "back/app/domain/enums.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/relationship_synthesizer.py",
+    "back/app/world/arcs.py"
+  ]
+}

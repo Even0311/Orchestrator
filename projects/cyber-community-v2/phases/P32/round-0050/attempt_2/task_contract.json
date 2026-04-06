@@ -1,0 +1,55 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T2",
+  "title": "World generator qualifying social event injection",
+  "objective": "Modify back/app/world/generator.py so that the fallback ambient cycle path produces qualifying SocialEventSpec values (confrontation or withdrawal) at a controlled low frequency — approximately 1 in 7 fallback days — enabling the existing T4 event-aware detection seam to trigger during real simulation runs.",
+  "exact_scope": "The change is confined to the fallback path inside _fallback_snapshot() in generator.py. Days covered by a registered arc (Days 3–16) are left unchanged. The injection logic must be deterministic: the same world day always returns the same result. The two qualifying event types must match the types listed in T4_QUALIFYING_EVENT_TYPES in tick_bridge.py (confrontation, withdrawal). No other files are modified.",
+  "constraints": [
+    "Do not modify AppraisalSignal field definitions.",
+    "Do not activate T4 through any path other than social event-aware activation (the Phase 26B approved path).",
+    "Do not expand the bridge for deferred ticks T3, T5, T6, T7, T8.",
+    "Do not touch arc-covered days (Days 3–16); those must continue to return social_event=None unless the arc phase itself defines one.",
+    "Days tested by test_generator_produces_social_event_none (days 3, 5, 7, 10, 12, 16, 17, 20, 24) must remain social_event=None after the change.",
+    "Injection must be deterministic: same world_day always yields the same social_event value.",
+    "Injected event types must come from {confrontation, withdrawal} only, matching T4_QUALIFYING_EVENT_TYPES.",
+    "All existing tests in back/tests/ must continue to pass after the change.",
+    "LLM does not write ledger values directly — all settlement flows through the engine.",
+    "The SocialEventSpec schema (Phase 26A) must not be altered."
+  ],
+  "acceptance_criteria": [
+    "get_world_snapshot() returns a non-None social_event on at least one fallback-path day within a 7-day window (e.g., day 21, 28, or 35).",
+    "The returned social_event.event_type is either confrontation or withdrawal on injection days.",
+    "Days 3, 5, 7, 10, 12, 16, 17, 20, 24 all return social_event=None (preserving the Phase 26A test contract).",
+    "The same world_day consistently returns the same social_event value across repeated calls (determinism).",
+    "Calling get_world_snapshot() on any injected day and passing the result through _detect_qualifying_t4_social_event() in tick_bridge.py returns a non-None qualifying event.",
+    "All 900 existing tests pass without modification.",
+    "The change is committed to git — verified by at least one new commit containing the modified generator.py."
+  ],
+  "required_tests": [
+    "For world days that fall on the injection trigger (e.g., day 21, 28, 35), the generator must return a SocialEventSpec whose event_type is confrontation or withdrawal.",
+    "For all days covered by existing schema tests (3, 5, 7, 10, 12, 16, 17, 20, 24), the generator must return social_event=None — existing test_generator_produces_social_event_none must still pass.",
+    "Calling the generator twice for the same day must produce the same social_event value (determinism requirement).",
+    "A qualifying social event returned by the generator on an injection day must pass through _detect_qualifying_t4_social_event() and return a non-None result, confirming the T4 detection seam can now fire.",
+    "No existing test in back/tests/ may fail as a result of this change."
+  ],
+  "non_goals": [
+    "Do not modify arc-defined events or add social events to arc phases (Days 3–16).",
+    "Do not implement T4 routing or filtering based on social_event.target_id.",
+    "Do not change the T4 settlement logic, bridge architecture, or AppraisalSignal schema.",
+    "Do not expand bridge coverage to T3, T5, T6, T7, or T8.",
+    "Do not redesign the world event taxonomy or introduce new SocialEventType values.",
+    "Do not modify any test files — acceptance is judged against existing tests plus the criteria above.",
+    "Do not produce LLM-driven or stochastic event generation — all output must remain deterministic."
+  ],
+  "allowed_files": [
+    "back/app/world/generator.py",
+    "back/tests/**"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/domain/appraisal_input.py",
+    "back/app/domain/appraisal_output.py"
+  ]
+}
