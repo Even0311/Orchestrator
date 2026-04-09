@@ -1,0 +1,18 @@
+{
+  "can_evaluate": [
+    "1. T4AdjustmentAuditRecord with invoked=True on at least one day — verifiable by inspecting audit records emitted during the multi-day test.",
+    "2. T4AdjustmentAuditRecord.changed_fields is non-empty on at least one invocation — direct field inspection on the record object.",
+    "3. A relational residual with kind=relational exists in simulation output on at least one day — checkable by asserting on the residual list in test output; gate open/close is observable through residual creation as a proxy.",
+    "4. Relationship state (trust or closeness) differs from initial values after multi-day run — compare before/after snapshots captured in the test.",
+    "5. Residual created on day N appears in carried_residuals on day N+1 — verifiable by asserting the residual ID or content is present in the next day's carried_residuals parameter.",
+    "6. The old zero-residual assertion test is updated — verifiable by diff: the assertion that relational residual count == 0 no longer exists (or is replaced by a presence assertion).",
+    "7. All existing tests pass (with the intentional zero-residual assertion update) — run pytest, count failures; '900' is approximate but does not block evaluation.",
+    "8. python3 -m pytest tests/ -v from back/ exits with zero failures — direct command execution."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "criterion_3_note": "The criterion equates wake chain gate opening with 'a relational residual being created with kind=relational'. Acceptable proxy — does not warrant revision.",
+    "criterion_7_note": "The count '900' may be stale. Suggest rewording to 'All pre-existing tests pass' to avoid confusion if test count has changed since writing."
+  },
+  "needs_revision": false
+}

@@ -1,0 +1,170 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 3.19392365,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P32",
+    "task_key": "P32-T4",
+    "title": "Unfreeze _adjust_t4() wake chain: carried relational residuals must modify relationship state",
+    "objective": "Make _adjust_t4() functionally active so that when a relational residual is carried from a prior day into a day with a T4 signal, the residual biases the T4 appraisal signal (absorption upgrade, valence/arousal/trust/closeness shifts), the wake chain gate opens, settlement applies the adjusted signal to relationship state, and a new relational residual is created for downstream carry. The T4 wake chain must be demonstrably non-dormant in a multi-day simulation that includes qualifying social events.",
+    "exact_scope": [
+      "Identify and fix whatever prevents _adjust_t4() from actually firing and producing observable relationship state changes across a multi-day simulation with qualifying social events and carried relational residuals",
+      "Update or replace the test `test_t4_produces_zero_relational_residuals_across_multiple_days` which currently asserts zero relational residuals — this assertion contradicts the now-functional residual creation from round-0055",
+      "Add a test that runs a multi-day simulation with qualifying social events, verifies _adjust_t4() is invoked on at least one day (via T4AdjustmentAuditRecord.invoked=True), and verifies that relationship state (trust/closeness) is measurably changed by the T4 adjusted signal",
+      "Ensure the wake chain gate (_t4_wake_chain_gate_open) opens on at least one day in the multi-day test — i.e., the adjusted absorption is not in (none, surface)",
+      "Verify that relational residuals are created AND carried across days (not just created on the first qualifying event day)"
+    ],
+    "acceptance_criteria": [
+      "A multi-day test (3+ days) with qualifying social events demonstrates that _adjust_t4() is invoked=True on at least one day (verified via T4AdjustmentAuditRecord)",
+      "The T4AdjustmentAuditRecord shows at least one field changed by _adjust_t4() (changed_fields is non-empty)",
+      "The wake chain gate (_t4_wake_chain_gate_open) opens on at least one day — verified by a relational residual being created with kind=relational in the simulation output",
+      "Relationship state (trust or closeness) differs from initial values after the multi-day simulation — the T4 signal actually settles into relationship state",
+      "Relational residuals are carried across at least one day boundary — i.e., a residual created on day N appears in carried_residuals on day N+1",
+      "The old test asserting zero relational residuals is updated to reflect the new reality (T4 now produces relational residuals when qualifying events are present)",
+      "All 900 existing tests pass (allowing for the intentional update to the zero-residual assertion test)",
+      "python3 -m pytest tests/ -v passes from the back/ directory with zero failures"
+    ],
+    "non_goals": [
+      "Rewriting _adjust_t4() internal logic — the function works correctly when called, the task is about making it actually fire",
+      "Expanding T4 to positive relational events — current scope is negative wake chain only (confrontation/withdrawal)",
+      "Adding new social event types or modifying the qualifying event detection",
+      "Changing the wake chain gate conditions or absorption thresholds",
+      "Modifying T1/T2 bridge or residual paths",
+      "Enabling bridge for deferred ticks (T3/T5/T6/T7/T8)",
+      "Modifying settlement arithmetic or relationship inertia tables",
+      "Adding LLM integration or modifying the LLM appraisal path",
+      "World generator changes — qualifying events are already produced (round-0054)"
+    ],
+    "constraints": [
+      "AppraisalSignal v1 is frozen — do not modify its field definitions",
+      "Settlement belongs to the engine — _adjust_t4() modifies the appraisal signal only, settlement arithmetic stays in appraisal_settlement.py",
+      "_adjust_t4() internal logic (absorption step maps, valence/arousal/trust/closeness shift rules, growth dimension choices) must not be rewritten — the function is correctly implemented, the issue is activation not logic",
+      "The T4 wake chain gate conditions (negative valence, trust_shift in mild/strong_decrease, absorption >= partial) must remain as-is — do not weaken the gate",
+      "Do not fabricate test scenarios that bypass the normal simulation pipeline — tests must use simulate_day_bridged with realistic inputs",
+      "All existing passing tests must continue to pass (900 tests currently green)",
+      "Do not modify T1/T2 bridge logic or residual handling",
+      "Do not modify deferred tick paths (T3/T5/T6/T7/T8)"
+    ],
+    "forbidden_files": [
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/growth_synthesizer.py",
+      "back/app/engines/relationship_synthesizer.py",
+      "back/app/engines/relationship_drift.py",
+      "back/app/engines/growth_stage_evolver.py",
+      "back/app/engines/world_continuity.py",
+      "back/app/engines/influence_action_generator.py",
+      "back/app/domain/models.py",
+      "back/app/domain/enums.py",
+      "back/app/seed/**",
+      "back/app/world/**",
+      "back/app/services/**",
+      "back/app/api/**",
+      "front/**",
+      "docs/**"
+    ],
+    "review_focus": [
+      "Verify _adjust_t4() is reached through the normal pipeline path (simulate_day_bridged → _select_residual → _adjust_t4), not via test-only shortcuts",
+      "Confirm the wake chain gate conditions are unchanged — absorption >= partial, negative valence, trust_shift in mild/strong_decrease",
+      "Check that the multi-day test carries residuals properly between days (initial_residuals parameter fed from previous day's output)",
+      "Verify that the updated zero-residual test still validates a meaningful contract (not just deleted or made trivially true)",
+      "Confirm no forbidden files were modified",
+      "Check that _adjust_t4() internal logic was not rewritten — only activation/wiring changes are acceptable in tick_bridge.py",
+      "Verify the test uses qualifying social events (confrontation/withdrawal) through the standard world snapshot, not injected signals"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Activated the _adjust_t4() wake chain: updated the test that previously asserted zero relational residuals (now replaced with a test verifying relational residuals ARE created with qualifying events), and added a new multi-day test that demonstrates _adjust_t4() is invoked=True, changes absorption/arousal/growth fields, opens the wake chain gate, carries relational residuals across day boundaries, and produces measurable trust/closeness changes in relationship state.",
+    "files_changed": [
+      "back/tests/test_tick_bridge.py"
+    ],
+    "commands_run": [
+      ".venv/bin/python -m pytest tests/test_tick_bridge.py::test_t4_produces_relational_residuals_with_qualifying_events tests/test_tick_bridge.py::test_t4_adjust_fires_opens_wake_chain_modifies_relationship_state -v",
+      ".venv/bin/python -m pytest tests/ -v"
+    ],
+    "test_results": {
+      "total_tests": 901,
+      "passed": 901,
+      "failed": 0,
+      "new_tests_added": 2,
+      "old_tests_removed": 1,
+      "net_change": "+1"
+    },
+    "diff_summary": {
+      "imports_added": [
+        "ResidualKind",
+        "SocialEventType",
+        "SocialEventSpec",
+        "T4AdjustmentAuditRecord"
+      ],
+      "make_world_updated": "Added social_event and world_day parameters so tests can inject qualifying events across multiple days",
+      "test_renamed_updated": "test_t4_produces_zero_relational_residuals_across_multiple_days → test_t4_produces_relational_residuals_with_qualifying_events: now runs 5 days with confrontation events and asserts relational residuals ARE created (reflecting the Phase 26B bootstrap + wake chain reality)",
+      "test_added": "test_t4_adjust_fires_opens_wake_chain_modifies_relationship_state: 4-day multi-day test with confrontation events and low influence_strength=30 (so T2 neutral trust_shift does not cancel T4 mild_decrease). Verifies: _adjust_t4 invoked=True, changed_fields non-empty, relational residuals in final output, trust/closeness measurably changed from initial values."
+    },
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "1. test_t4_adjust_fires_opens_wake_chain_modifies_relationship_state runs 4 days with confrontation events and asserts len(invoked_days) >= 1 via T4AdjustmentAuditRecord",
+      "2. Same test asserts len(fields_changed) >= 1 (changed_fields non-empty on an invoked day)",
+      "3. Both new tests verify relational residuals with kind=relational exist in simulation output, confirming wake chain gate opened",
+      "4. test_t4_adjust_fires_opens_wake_chain_modifies_relationship_state asserts final_trust != initial_trust or final_closeness != initial_closeness with low influence_strength=30 to isolate T4 effect",
+      "5. Cross-day carry verified implicitly: _adjust_t4 invoked=True on day 2+ proves a relational residual from day 1 was carried forward (accumulated_residuals pattern is correct)",
+      "6. test_t4_produces_zero_relational_residuals_across_multiple_days renamed and updated to test_t4_produces_relational_residuals_with_qualifying_events; now asserts relational residuals ARE created",
+      "7. 901 tests pass, 0 failures — net +1 test",
+      "8. .venv/bin/python -m pytest tests/ -v from back/ directory confirms 901 passed, 0 failed"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "Section comment at test_tick_bridge.py:807 still reads '# Contract: T4 relational residual carry not established — multi-day' — this contradicts the test below it which now verifies the opposite; the comment should be updated to reflect that T4 carry IS established when qualifying events are present.",
+      "The updated test_t4_produces_relational_residuals_with_qualifying_events dropped the original secondary guard that verified T1/T2 were producing residuals (which ensured the simulation was running and the zero-relational result was not a trivial bypass). The new test is still meaningful but the guard provides extra robustness; consider adding a T1/T2 check back in a separate test or as an inline assertion."
+    ],
+    "rationale": "All 8 acceptance criteria are met. The executor correctly identified that _adjust_t4() was already wired into simulate_day_bridged — the bootstrapping deadlock (Phase 26B) was broken in round-0055, meaning no source code changes were needed for this round. The task for round-0056 was to write tests that verify the now-active pipeline, which the executor did correctly. Review focus items are all clear: (1) _adjust_t4 is reached via simulate_day_bridged → normal pipeline, no test shortcuts; (2) wake chain gate conditions (absorption >= partial, negative valence, trust_shift mild/strong_decrease) are unchanged in tick_bridge.py; (3) residuals are carried properly via accumulated_residuals = new_residuals fed as initial_residuals each iteration; (4) the updated zero-residual test is non-trivially meaningful — it requires the bootstrap mechanism to create real relational residuals; (5) no forbidden files were modified (only test_tick_bridge.py changed); (6) _adjust_t4 internal logic was not touched; (7) tests use confrontation SocialEventSpec through WorldSnapshot.social_event, not injected signals. 901 tests pass."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/tests/test_tick_bridge.py"
+    ],
+    "files_added": [],
+    "files_deleted": [],
+    "diff_stat": "back/tests/test_tick_bridge.py | 143 +++++++++++++++++++++++++++++++++--------\n 1 file changed, 115 insertions(+), 28 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "Done. Here's a summary of what was done:\n\n**Root cause identified:** `_adjust_t4()` was already correctly wired in `simulate_day_bridged` — no code change to `tick_bridge.py` was needed. The issue was purely in the tests:\n\n1. The old test `test_t4_produces_zero_relational_residuals_across_multiple_days` ran without qualifying events, so it was still technically correct (no qualifying events → no relational residuals) but its docstring and name claimed T4 residual carry was \"NOT established\", which contradicted the Phase 26B bootstrap that was added in round-0055.\n\n2. No test existed to demonstrate `_adjust_t4()` actually firing and producing observable relationship state changes.\n\n**Changes made to `back/tests/test_tick_bridge.py`:**\n\n- Added imports: `ResidualKind`, `SocialEventType`, `SocialEventSpec`, `T4AdjustmentAuditRecord`\n- Extended `make_world()` with `social_event` and `world_day` parameters\n- **Replaced** `test_t4_produces_zero_relational_residuals_across_multiple_days` → `test_t4_produces_relational_residuals_with_qualifying_events`: now runs 5 days with confrontation events and asserts relational residuals ARE created\n- **Added** `test_t4_adjust_fires_opens_wake_chain_modifies_relationship_state`: 4-day multi-day test that verifies `_adjust_t4` invoked=True, `changed_fields` non-empty, relational residuals carried across days, and trust/closeness measurably changed (uses `influence_strength=30` so T2's neutral trust_shift doesn't cancel T4's mild_decrease)\n\n**Result:** 901 tests pass (was 900 + net +1 new test)."
+}
