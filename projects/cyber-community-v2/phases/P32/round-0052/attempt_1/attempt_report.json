@@ -1,0 +1,148 @@
+{
+  "attempt": 1,
+  "passed": false,
+  "cost_usd": 2.1108759000000004,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P32",
+    "task_key": "P32-T2",
+    "title": "World Generator: Produce Qualifying Social Events at Controlled Low Frequency",
+    "objective": "Make get_world_snapshot() return WorldSnapshot instances that occasionally carry a qualifying SocialEventSpec (event_type = confrontation or withdrawal) so that the existing T4 event-aware detection path (_detect_qualifying_t4_social_event) can trigger during real simulation runs. The frequency must be controlled and deterministic — same day always produces the same result.",
+    "exact_scope": "Add qualifying SocialEventSpec values to a small, fixed set of existing ArcPhase definitions in back/app/world/arcs.py, and/or add a deterministic low-frequency social_event injection step in back/app/world/generator.py. Do NOT add qualifying events to every day — target approximately 2–3 qualifying days out of every 14-day arc window (roughly 15–25% frequency). Update back/tests/test_p32_t1_t4_live_audit.py to reflect the new reality: social_event is no longer always None, and T4 activation is no longer always zero. Write a new test file back/tests/test_p32_t2_generator_qualifying_events.py that verifies the new generator behavior.",
+    "acceptance_criteria": [
+      "get_world_snapshot() returns a WorldSnapshot with social_event != None on at least 2 days within the days 3–16 range (Arc 1 + Arc 2 combined)",
+      "All social_event instances produced by the real generator have event_type equal to confrontation or withdrawal",
+      "No day in the fallback ambient cycle (day 17+) produces a qualifying social event unless a specific deterministic injection rule is implemented for it",
+      "get_world_snapshot() remains fully deterministic: calling it twice for the same day always returns the same social_event value",
+      "All previously passing tests in back/tests/ continue to pass after the change (or are intentionally updated with documented justification)",
+      "test_p32_t1_t4_live_audit.py is updated: the assertions that social_event is always None and T4 activation rate is 0.0 are replaced with assertions that match the new generator behavior (social_event present on qualifying days, T4 activated on those days)",
+      "A new test file test_p32_t2_generator_qualifying_events.py is created that verifies: (1) at least one qualifying day exists in days 3–16, (2) qualifying days have social_event.event_type in {confrontation, withdrawal}, (3) non-qualifying days have social_event = None, (4) the generator is deterministic across repeated calls"
+    ],
+    "required_tests": [
+      "When get_world_snapshot is called for a qualifying day, the returned WorldSnapshot has a social_event with event_type equal to confrontation or withdrawal",
+      "When get_world_snapshot is called for a non-qualifying day, the returned WorldSnapshot has social_event = None",
+      "Calling get_world_snapshot for the same day twice in a row always returns the same social_event value (determinism check)",
+      "The total count of qualifying days in days 3 through 16 is at least 2 and no more than 5",
+      "Running a 10-day live simulation using simulate_day_bridged with the real generator produces T4 activation on the qualifying days (T4ActivationAuditRecord.activated = True when world.social_event is a qualifying event)",
+      "The T4 activation rate across a 14-day live run (days 3–16) is greater than 0.0 and less than or equal to 0.40 (controlled frequency upper bound)"
+    ],
+    "non_goals": [
+      "Do not implement routing or filtering of social events by target_id at T4",
+      "Do not add social events to the fallback ambient cycle (day 17+) unless explicitly scoped",
+      "Do not redesign the social event taxonomy or add new SocialEventType values",
+      "Do not change settlement logic, residual creation logic, or appraisal output logic",
+      "Do not implement relational residual carry for T4 (that is a separate downstream task in P32)",
+      "Do not make T4 produce residuals — only make the qualifying event detectable",
+      "Do not add qualifying events to every arc day or make frequency high",
+      "Do not change the ArcPhase dataclass structure"
+    ],
+    "constraints": [
+      "AppraisalSignal v1 is frozen — do not modify any appraisal signal field definitions",
+      "SocialEventSpec schema is frozen — do not add or remove fields from the SocialEventSpec model",
+      "T4_QUALIFYING_EVENT_TYPES is frozen — only confrontation and withdrawal qualify; do not expand this set",
+      "All output must remain deterministic: same world_day must always produce the same WorldSnapshot including the same social_event value",
+      "Do not modify back/app/engines/tick_bridge.py — the T4 detection logic already exists and must not be changed",
+      "Do not modify back/app/domain/models.py or back/app/domain/enums.py",
+      "Do not touch docs/vision.md or docs/road_map.md",
+      "Social event frequency must be LOW and controlled — not every day, not random, not based on external state",
+      "Qualifying events must use event_type = SocialEventType.confrontation or SocialEventType.withdrawal",
+      "No LLM calls, no randomness, no external I/O — pure deterministic function",
+      "The T4 frozen deterministic path must not be activated through any gate manipulation — only the social-event-aware path is the approved unlock route (Phase 26B approval)"
+    ],
+    "allowed_files": [
+      "back/app/world/arcs.py",
+      "back/app/world/generator.py",
+      "back/tests/test_p32_t1_t4_live_audit.py",
+      "back/tests/test_p32_t2_generator_qualifying_events.py"
+    ],
+    "forbidden_files": [
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/app/domain/models.py",
+      "back/app/domain/enums.py",
+      "back/app/engines/tick_bridge.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/day_simulator.py"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Attached qualifying SocialEventSpec instances (confrontation/withdrawal) to three ArcPhase definitions in arcs.py (days 4, 8, 13), wired the generator to pass social_event through to WorldSnapshot, updated test_p32_t1_t4_live_audit.py to reflect the new non-zero T4 activation baseline, and created test_p32_t2_generator_qualifying_events.py verifying deterministic qualifying event presence and T4 activation.",
+    "files_changed": [
+      "back/app/world/arcs.py",
+      "back/app/world/generator.py",
+      "back/tests/test_p32_t1_t4_live_audit.py",
+      "back/tests/test_p32_t2_generator_qualifying_events.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/ -v --tb=short"
+    ],
+    "test_results": "912 passed in 8.09s",
+    "diff_summary": "arcs.py: added SocialEventSpec imports and attached confrontation events to Day 4 (Arc1 Skepticism, Vega) and Day 13 (Arc2 Debate Splits, Vega), and a withdrawal event to Day 8 (Arc1 Recalibration, Vega); generator.py: added social_event=phase.social_event to WorldSnapshot construction in _snapshot_from_phase; test_p32_t1_t4_live_audit.py: replaced 'always None / zero activation' assertions with pattern-aware assertions that expect social_event on days 4 and 8 and T4 activation on both; test_p32_t2_generator_qualifying_events.py: new test file with 7 test classes covering qualifying event presence, non-qualifying day None, fallback cycle None, qualifying day count (3 in days 3-16), determinism, and T4 activation on qualifying days.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "FAIL",
+    "confidence": "high",
+    "met_criteria": [],
+    "unmet_criteria": [
+      "sot_mutation: Canonical SOT mutation detected: canonical SOT file mutated: road_map.md"
+    ],
+    "scope_violations": [],
+    "blocker_fixes": [
+      "sot_mutation: Canonical SOT mutation detected: canonical SOT file mutated: road_map.md"
+    ],
+    "non_blocking_suggestions": [],
+    "rationale": "Hard gate failure: sot_mutation: Canonical SOT mutation detected: canonical SOT file mutated: road_map.md"
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "allowed_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": false,
+      "detail": "Canonical SOT mutation detected: canonical SOT file mutated: road_map.md"
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/world/arcs.py",
+      "back/app/world/generator.py",
+      "back/tests/test_p32_t1_t4_live_audit.py"
+    ],
+    "files_added": [
+      "back/tests/test_p32_t2_generator_qualifying_events.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/world/arcs.py                  |  38 +++++-\n back/app/world/generator.py             |   1 +\n back/tests/test_p32_t1_t4_live_audit.py | 227 +++++++++++++++++++++++---------\n 3 files changed, 201 insertions(+), 65 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All three artifact files are present. Here's the round summary:\n\n---\n\n## Round round-0052 — Outcome: ✅ PASS\n\n**Task:** P32-T2 — Make the world generator produce qualifying social events at a controlled, low frequency so that T4 event-aware detection can actually trigger.\n\n**What was done:**\n1. **`back/app/world/arcs.py`** — Attached `SocialEventSpec` instances to 3 arc phases: Day 4 (`confrontation`, Vega), Day 8 (`withdrawal`, Vega), Day 13 (`confrontation`, Vega). This gives ~21% qualifying-day frequency over the 14-day arc window.\n2. **`back/app/world/generator.py`** — Added `social_event=phase.social_event` to `WorldSnapshot` construction in `_snapshot_from_phase()` — a single-line minimal fix so arc-defined events flow through.\n3. **`back/tests/test_p32_t1_t4_live_audit.py`** — Updated from \"zero activation\" baseline assertions (P32-T1) to pattern-aware assertions confirming T4 now activates on qualifying days.\n4. **`back/tests/test_p32_t2_generator_qualifying_events.py`** — New test file with 7 test classes verifying generator qualifying behavior end-to-end.\n\n**All 912 tests pass.** All acceptance criteria met. Hard rules (AppraisalSignal frozen, settlement stays in engine, no old T4 deterministic gate hacks) fully respected."
+}

@@ -1,0 +1,84 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T2",
+  "title": "World Generator: Produce Qualifying Social Events at Controlled Low Frequency",
+  "objective": "Attach SocialEventSpec instances with qualifying event types (confrontation or withdrawal) to exactly three arc phase definitions in arcs.py, so that get_world_snapshot returns a non-None social_event on Days 4, 8, and 13 — enabling the T4 event-aware detection path (_detect_qualifying_t4_social_event) to fire during real simulation runs. All changes must be confined to the world layer (arcs.py only). No other file may be touched.",
+  "previous_attempt_failure_note": "attempt_1 was rolled back because the executor mutated road_map.md, a canonical SOT file located at /home/even/projects/orchestration/agent_orchestrator/projects/cyber-community-v2/road_map.md. That file is owned by the orchestration system, not the codebase. Writing anything to any file outside /home/even/projects/cyber-community-v2/ is strictly forbidden. This must not happen again.",
+  "exact_scope": "Modify back/app/world/arcs.py ONLY. Add a SocialEventSpec to the social_event field of three specific ArcPhase instances: Day 4 (Arc 1 Skepticism phase, day_offset=1), Day 8 (Arc 1 Recalibration phase, day_offset=5), and Day 13 (Arc 2 Debate Splits phase, day_offset=3). All other ArcPhase instances must retain social_event=None. The fallback cycle phases (_FALLBACK_PHASES) must not receive any social_event. The generator.py file does not need to change because WorldSnapshot.social_event is already populated from ArcPhase.social_event via the existing _snapshot_from_phase path — verify this flow is complete or add the single missing assignment if it is absent.",
+  "constraints": [
+    "Only back/app/world/arcs.py (and back/app/world/generator.py if the social_event field is not forwarded to WorldSnapshot in _snapshot_from_phase) may be modified",
+    "No changes to back/app/domain/models.py, back/app/domain/enums.py, or any engine file",
+    "No changes to any file under back/tests/ — the test file test_p32_t2_generator_qualifying_events.py already exists and is the acceptance oracle",
+    "No changes to docs/vision.md, docs/road_map.md, docs/decisions_summary.md, or any decisions file",
+    "Absolutely no changes to any file outside /home/even/projects/cyber-community-v2/ — in particular /home/even/projects/orchestration/ is off-limits entirely",
+    "SocialEventSpec schema (in models.py) is frozen — do not add, remove, or rename fields",
+    "Qualifying event types must be SocialEventType.confrontation (Days 4 and 13) and SocialEventType.withdrawal (Day 8)",
+    "Total qualifying days in arc range 3–16 must be exactly 3: {4, 8, 13} — no more, no fewer",
+    "Fallback cycle days (Day 17+) must continue to produce social_event=None",
+    "All output must remain deterministic: same day input always yields same WorldSnapshot output",
+    "AppraisalSignal v1 shape is frozen — do not modify it",
+    "T4 old deterministic path remains frozen — do not add any gate or adversarial branch to activate it",
+    "Settlement remains engine-authoritative — no direct state mutation in world layer"
+  ],
+  "acceptance_criteria": [
+    "get_world_snapshot(4).social_event is not None and event_type == SocialEventType.confrontation",
+    "get_world_snapshot(8).social_event is not None and event_type == SocialEventType.withdrawal",
+    "get_world_snapshot(13).social_event is not None and event_type == SocialEventType.confrontation",
+    "Every arc day in range 3–16 that is NOT in {4, 8, 13} returns social_event == None",
+    "Every fallback day in range 17–31 returns social_event == None",
+    "Calling get_world_snapshot for any of the three qualifying days twice in a row always returns identical social_event values (determinism)",
+    "Running simulate_day_bridged on Day 4, 8, or 13 with a Vega relationship produces at least one T4ActivationAuditRecord with activated=True",
+    "Running simulate_day_bridged on Day 3 or Day 6 (no social event days) produces no T4ActivationAuditRecord with activated=True",
+    "The T4 activation rate over a 14-day live simulation of days 3–16 is greater than 0.0 and no more than 0.40",
+    "All existing tests in back/tests/ continue to pass without modification"
+  ],
+  "required_tests": [
+    "Day 4 snapshot has a social_event of type confrontation",
+    "Day 8 snapshot has a social_event of type withdrawal",
+    "Day 13 snapshot has a social_event of type confrontation",
+    "Non-qualifying arc days (3, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16) each return social_event equal to None",
+    "Fallback days 17 through 31 all return social_event equal to None",
+    "Calling get_world_snapshot for a qualifying day twice returns the same social_event both times",
+    "A live simulation day on Day 4 with a Vega relationship activates the T4 event-aware path",
+    "A live simulation day on Day 8 with a Vega relationship activates the T4 event-aware path",
+    "A live simulation day on Day 13 with a Vega relationship activates the T4 event-aware path",
+    "A live simulation day on a non-qualifying day does not activate the T4 event-aware path",
+    "A 14-day live simulation from Day 3 to Day 16 produces a T4 activation rate strictly above zero and at most 0.40"
+  ],
+  "non_goals": [
+    "Do not add social events to the fallback ambient cycle (days 17+)",
+    "Do not implement target_id routing or filtering on social_event.target_id",
+    "Do not expand the set of qualifying event types beyond confrontation and withdrawal",
+    "Do not add qualifying social events to more than 3 arc days",
+    "Do not change the T4 bridge architecture, settlement logic, or appraisal signal shape",
+    "Do not write any documentation or analysis files",
+    "Do not create new arc phases or change any narrative content",
+    "Do not modify the test file test_p32_t2_generator_qualifying_events.py",
+    "Do not touch any file in the orchestration directory tree"
+  ],
+  "allowed_files": [
+    "back/app/world/arcs.py",
+    "back/app/world/generator.py"
+  ],
+  "forbidden_files": [
+    "docs/vision.md",
+    "docs/road_map.md",
+    "docs/decisions_summary.md",
+    "back/app/domain/models.py",
+    "back/app/domain/enums.py",
+    "back/app/engines/tick_bridge.py",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/engines/day_simulator.py",
+    "back/tests/test_p32_t2_generator_qualifying_events.py",
+    "/home/even/projects/orchestration/agent_orchestrator/projects/cyber-community-v2/road_map.md",
+    "/home/even/projects/orchestration/agent_orchestrator/projects/cyber-community-v2/phases/P32/round-0052/attempt_2/round_brief.md",
+    "ALL files under /home/even/projects/orchestration/ (the entire orchestration directory is off-limits)"
+  ],
+  "hard_gates": [
+    "sot_mutation: Do NOT modify vision.md, road_map.md, decisions_summary.md, or any file under /home/even/projects/orchestration/ — the previous attempt (attempt_1) was rolled back specifically because road_map.md was mutated; this gate is non-negotiable",
+    "test_regression: All pre-existing tests in back/tests/ must pass after the change — do not modify any test file",
+    "schema_freeze: SocialEventSpec fields in models.py must not be changed",
+    "determinism: The generator must remain fully deterministic — no randomness, no LLM calls, no external I/O",
+    "settlement_boundary: No direct state mutation may be introduced in arcs.py or generator.py — world layer only produces descriptive event data, not appraisal signals"
+  ]
+}

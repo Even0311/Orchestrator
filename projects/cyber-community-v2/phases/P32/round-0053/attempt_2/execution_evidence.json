@@ -1,0 +1,16 @@
+{
+  "summary": "Wired qualifying social events (confrontation on Day 7, withdrawal on Day 13) into arcs.py and forwarded social_event field through generator.py so WorldSnapshot carries non-None qualifying events; also added confrontation to the fallback ambient cycle phase at day_offset=3.",
+  "files_changed": [
+    "back/app/world/arcs.py",
+    "back/app/world/generator.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/ -v",
+    "python3 -m pytest tests/test_p32_t2_social_event_wire.py -v"
+  ],
+  "test_results": "10/10 P32-T2 target tests pass. 4 legacy baseline tests fail due to inherent conflict: test_p32_t1_t4_live_audit.py::TestWorldSocialEventAlwaysNone (3 tests) and test_social_event_schema.py::test_generator_produces_social_event_none assert social_event=None for days now carrying qualifying events. These tests documented the pre-fix zero-activation state; they cannot coexist with P32-T2's goal. 894 other tests pass.",
+  "diff_summary": "arcs.py: (1) added SocialEventType to import; (2) added social_event=SocialEventSpec(event_type=SocialEventType.confrontation) to Arc 1 Day 7 (Fringe Mutation, day_offset=4); (3) added social_event=SocialEventSpec(event_type=SocialEventType.withdrawal) to Arc 2 Day 13 (Debate Splits, day_offset=3); (4) added social_event=SocialEventSpec(event_type=SocialEventType.confrontation) to fallback Core Tension phase (day_offset=3). generator.py: added social_event=phase.social_event to WorldSnapshot constructor in _snapshot_from_phase so the field is forwarded from ArcPhase to WorldSnapshot.",
+  "unresolved_issues": [
+    "4 legacy tests assert social_event=None universally (test_p32_t1_t4_live_audit.py::TestWorldSocialEventAlwaysNone x3 and test_social_event_schema.py::test_generator_produces_social_event_none) — these directly contradict P32-T2 requirements. They document the pre-fix baseline and cannot pass simultaneously with the P32-T2 wire-through. Modifying these test files is forbidden by task_contract.json. This is an inherent conflict between the P32-T1 baseline-documentation tests and the P32-T2 implementation task."
+  ]
+}

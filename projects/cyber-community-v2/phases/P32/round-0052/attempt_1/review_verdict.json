@@ -1,0 +1,39 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "task_key": "P32-T2",
+  "met_criteria": [
+    "get_world_snapshot() returns social_event != None on at least 2 days within days 3-16 (qualifying days: 4, 8, 13 = 3 qualifying days)",
+    "All social_event instances have event_type equal to confrontation or withdrawal (day 4: confrontation, day 8: withdrawal, day 13: confrontation)",
+    "No day in fallback ambient cycle (day 17+) produces a qualifying social event — fallback phases have social_event=None by default and dataclasses.replace() does not inject events",
+    "get_world_snapshot() remains fully deterministic — static arc definitions, no randomness, no external I/O",
+    "All previously passing tests continue to pass — 912 tests passed",
+    "test_p32_t1_t4_live_audit.py is updated: previous 'always None / zero activation' assertions replaced with pattern-aware assertions for qualifying days 4 and 8 in the 10-day audit range",
+    "New test file test_p32_t2_generator_qualifying_events.py created with 7 test classes covering: qualifying event presence per day, non-qualifying days return None, fallback cycle returns None, qualifying day count in arc range (3 days, within 2-5 bound), determinism across repeated calls, T4 activation on individual qualifying days, 14-day activation rate check (3/14 = ~0.214, within 0.0-0.40 bounds)",
+    "AppraisalSignal v1 not modified",
+    "SocialEventSpec schema not modified",
+    "T4_QUALIFYING_EVENT_TYPES not expanded",
+    "tick_bridge.py not modified",
+    "domain/models.py and domain/enums.py not modified",
+    "docs/vision.md and docs/road_map.md not modified",
+    "T4 old deterministic path not reactivated through gate manipulation",
+    "No LLM calls, no randomness, no external I/O in generator",
+    "All changes confined to allowed_files: arcs.py, generator.py, test_p32_t1_t4_live_audit.py, test_p32_t2_generator_qualifying_events.py"
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "The module docstring in test_p32_t2_generator_qualifying_events.py (lines 10-11) incorrectly states 'Day 7 — Arc 1 Fringe Mutation — withdrawal' when the actual qualifying day is Day 8 (Arc 1 Recalibration, withdrawal). All test assertions reference day 8 correctly — this is a stale copy-paste in the docstring comment only and does not affect test correctness."
+  ],
+  "findings": [
+    "arcs.py: SocialEventSpec added to Day 4 (confrontation, Vega), Day 8 (withdrawal, Vega), Day 13 (confrontation, Vega) — 3 qualifying days in arc range, frequency ~21% over 14-day window",
+    "generator.py: social_event=phase.social_event added to WorldSnapshot construction in _snapshot_from_phase() — correct minimal change, no other logic altered",
+    "test_p32_t1_t4_live_audit.py: baseline assertions updated from zero-activation to QUALIFYING_DAYS_IN_AUDIT_RANGE={4, 8} with matching T4_EXPECTED_ACTIVATED_DAYS={4, 8} — both days have Vega as influencer matching the test Vega relationship",
+    "test_p32_t2_generator_qualifying_events.py: 7 test classes, all required_tests from contract covered — non-trivial assertions with specific day checks, count bounds, and live simulation activation",
+    "912 tests pass, no regressions"
+  ],
+  "tests_passed": true,
+  "contract_met": true,
+  "rationale": "All 7 acceptance criteria are met. The implementation correctly attaches qualifying SocialEventSpec instances (confrontation/withdrawal) to 3 arc phases (days 4, 8, 13), wires the generator to pass them through to WorldSnapshot, updates the T1/T4 audit test to reflect non-zero activation, and creates a comprehensive new test file. All hard rules from CLAUDE.md are respected: no forbidden files modified, AppraisalSignal frozen, T4 old path not activated via gate manipulation, settlement remains in engine. The 14-day activation rate is 3/14 = ~0.214, within the required 0.0-0.40 bound. One minor stale docstring comment exists in the new test file but does not affect correctness."
+}

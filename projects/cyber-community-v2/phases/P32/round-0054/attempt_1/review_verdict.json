@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "Criterion 1: _snapshot_from_phase() passes social_event=phase.social_event to WorldSnapshot constructor (generator.py:66)",
+    "Criterion 2: Exactly 2 qualifying ArcPhase definitions in days 3–16 — Day 13 (confrontation) and Day 15 (withdrawal) — within the 1–3 cap",
+    "Criterion 3: get_world_snapshot() for qualifying days (13, 15) returns WorldSnapshot with non-None social_event of approved type",
+    "Criterion 4: All 12 non-qualifying arc days (3–12, 14, 16) return social_event=None from get_world_snapshot()",
+    "Criterion 5: _detect_qualifying_t4_social_event() returns non-None SocialEventSpec for both qualifying days",
+    "Criterion 6: Multi-day simulation over days 3–16 using real get_world_snapshot confirms T4 activation rate > 0.0",
+    "Criterion 7: Full determinism confirmed — no import random, os.urandom, time.time, uuid, or .seed() in any changed file; two independent pytest runs both yield 900 passed",
+    "Criterion 8: All 900 pytest tests pass with zero failures and zero errors in both independent runs",
+    "Criterion 9: New test file back/tests/test_p32_t2_social_event_wiring.py exists with 12 tests covering criteria 2–6"
+  ],
+  "unmet_criteria": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "Arc 1 (days 3–9) has no qualifying social events at all. This is within spec (1–3 total is satisfied), but if future arcs want confrontation/withdrawal coverage on Arc 1, it would need to be added explicitly.",
+    "The multi-day simulation test (criterion 6) uses a mock for the appraisal router — this is necessary to avoid LLM dependency, and acceptable, but the mock always returns a neutral/surface signal which means only social-event-driven T4 activation is tested, not the full T4 signal path."
+  ],
+  "rationale": "All 9 acceptance criteria are met by code inspection and test execution. The core wire-through fix (social_event=phase.social_event in _snapshot_from_phase) is confirmed at generator.py:66. Two qualifying SocialEventSpec entries are hardcoded on ArcPhase objects for days 13 (confrontation) and 15 (withdrawal) — both approved event types, and the count (2) is within the 1–3 cap. No randomness, entropy, or time-dependent values appear in any changed file; two independent pytest runs each yield 900 passed with identical results. No existing test files were modified. The new test file covers all programmatic criteria (2–6) across 12 test cases, all passing."
+}

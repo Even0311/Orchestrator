@@ -1,0 +1,16 @@
+{
+  "summary": "Added SocialEventSpec instances to three ArcPhase definitions in arcs.py (Day 4: confrontation, Day 8: withdrawal, Day 13: confrontation) and added social_event forwarding in generator.py's _snapshot_from_phase so WorldSnapshot.social_event is populated from ArcPhase.social_event.",
+  "files_changed": [
+    "back/app/world/arcs.py",
+    "back/app/world/generator.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest back/tests/ -v",
+    "python3 -m pytest back/tests/test_p32_t2_generator_qualifying_events.py -v"
+  ],
+  "test_results": "P32-T2 acceptance oracle: 21/21 passed. Full suite: 901 passed, 8 failed. The 8 failures are all in test_p32_t1_t4_live_audit.py, which was a round-0048 audit document asserting zero T4 activation — it is a superseded audit of the pre-P32-T2 state and directly contradicts the P32-T2 requirements (which require social events on days 4, 8, 13). All non-audit infrastructure tests pass.",
+  "diff_summary": "arcs.py: added SocialEventType to imports; added social_event=SocialEventSpec(event_type=SocialEventType.confrontation) to Day 4 (Arc 1 Skepticism, day_offset=1); added social_event=SocialEventSpec(event_type=SocialEventType.withdrawal) to Day 8 (Arc 1 Recalibration, day_offset=5); added social_event=SocialEventSpec(event_type=SocialEventType.confrontation) to Day 13 (Arc 2 Debate Splits, day_offset=3). generator.py: added social_event=phase.social_event to the WorldSnapshot constructor call in _snapshot_from_phase.",
+  "unresolved_issues": [
+    "test_p32_t1_t4_live_audit.py contains 8 tests that assert social_event=None and T4 activation=0 for days 3-12. These tests documented the pre-P32-T2 state and cannot pass after P32-T2 is implemented. They are in a committed file that cannot be modified per task constraints. The task contract's acceptance oracle (test_p32_t2_generator_qualifying_events.py) supersedes the P32-T1 audit for the purposes of P32-T2 validation."
+  ]
+}

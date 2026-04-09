@@ -1,0 +1,61 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T2",
+  "title": "Wire qualifying social events into world generator so T4 can trigger",
+  "objective": "Modify the world generator so that WorldSnapshot objects carry a non-None social_event field with a qualifying SocialEventType (confrontation or withdrawal) on roughly 1-in-7 days. This gives the T4 event-aware detection path an actual qualifying event to detect during live simulation runs, closing the gap where T4 activation rate is permanently zero because no qualifying event ever reaches the world snapshot.",
+  "exact_scope": "Add SocialEventSpec instances with event_type=confrontation or event_type=withdrawal to selected ArcPhase entries in arcs.py, and ensure the generator passes world.social_event through to the assembled WorldSnapshot. At least one qualifying social event must appear in each named arc (Arc 1 and Arc 2) and at least one in the fallback ambient cycle. The qualifying event frequency across the full day range must be low (approximately 1 in 7 days or less) — not every day. The social_event field already exists on both ArcPhase and WorldSnapshot as Optional[SocialEventSpec]; the generator already assembles WorldSnapshot via _snapshot_from_phase — the missing step is (a) populating the social_event field on the relevant ArcPhase entries in arcs.py, and (b) forwarding world.social_event from the ArcPhase into the assembled WorldSnapshot inside generator.py.",
+  "constraints": [
+    "Do not modify any file under back/tests/ — all test files are strictly forbidden",
+    "Do not modify back/tests/test_social_event_schema.py specifically — this was the cause of the prior attempt failure",
+    "Do not modify back/tests/test_p32_t2_social_event_wire.py or any other test file",
+    "Do not modify docs/vision.md or docs/road_map.md",
+    "AppraisalSignal v1 schema is frozen — do not touch appraisal_settlement.py signal field definitions",
+    "T4 qualifying event types are frozen at confrontation and withdrawal only (T4_QUALIFYING_EVENT_TYPES in tick_bridge.py) — do not expand this set",
+    "The social_event field on ArcPhase and WorldSnapshot already exists from Phase 26A — do not add new fields to domain models",
+    "Social event frequency must be low and controlled — no more than approximately 1 qualifying event per 7-day arc or cycle window",
+    "Determinism must be preserved: same day must always produce same WorldSnapshot",
+    "No randomness, no LLM calls, no external I/O in generator logic"
+  ],
+  "acceptance_criteria": [
+    "Calling get_world_snapshot(day) for at least one day in Arc 1 (days 3–9) returns a WorldSnapshot where social_event is not None and social_event.event_type is confrontation or withdrawal",
+    "Calling get_world_snapshot(day) for at least one day in Arc 2 (days 10–16) returns a WorldSnapshot where social_event is not None and social_event.event_type is confrontation or withdrawal",
+    "Calling get_world_snapshot(day) for at least one day in the fallback cycle (day 17+) returns a WorldSnapshot where social_event is not None and social_event.event_type is confrontation or withdrawal",
+    "Qualifying events appear on no more than 1 day per 7-day window across any continuous range — the frequency is low and controlled, not every day",
+    "All existing tests continue to pass without modification — back/tests/test_social_event_schema.py and all other test files are untouched",
+    "get_world_snapshot is still deterministic: calling it multiple times for the same day returns identical WorldSnapshot output",
+    "Days that do not have a qualifying event still return social_event=None (no unintended bleed across days)",
+    "The assembled WorldSnapshot's social_event field reflects exactly the SocialEventSpec declared on the corresponding ArcPhase — no transformation or filtering is applied"
+  ],
+  "required_tests": [
+    "At least one day in the Arc 1 range (days 3–9) must produce a world snapshot with a qualifying social event (confrontation or withdrawal) attached",
+    "At least one day in the Arc 2 range (days 10–16) must produce a world snapshot with a qualifying social event attached",
+    "At least one day in the fallback range (day 17+) must produce a world snapshot with a qualifying social event attached",
+    "Across any 7-day window the total number of days with qualifying social events must be 1 or fewer — confirming controlled low frequency",
+    "Days that have no qualifying social event in their arc phase definition must return social_event=None in the snapshot — no phantom event leakage",
+    "Repeated calls to get_world_snapshot for the same day must return identical results — determinism is not broken by the addition of social events"
+  ],
+  "non_goals": [
+    "Expanding T4_QUALIFYING_EVENT_TYPES to include event types other than confrontation and withdrawal",
+    "Adding new fields to SocialEventSpec, WorldSnapshot, or ArcPhase",
+    "Modifying the appraisal settlement engine or AppraisalSignal schema",
+    "Modifying any test file under back/tests/",
+    "Implementing routing or filtering of social events by target_id inside the T4 path",
+    "Extending T4 bridge coverage to deferred ticks (T3, T5, T6, T7, T8)",
+    "Adding non-qualifying event types (broadcast, collaboration, disclosure, endorsement) as qualifying triggers",
+    "Designing a rich narrative or story purpose for every social event added — minimal SocialEventSpec instances with event_type are sufficient"
+  ],
+  "allowed_files": [
+    "back/app/world/arcs.py",
+    "back/app/world/generator.py"
+  ],
+  "forbidden_files": [
+    "back/tests/test_social_event_schema.py",
+    "back/tests/test_p32_t2_social_event_wire.py",
+    "back/tests/**",
+    "docs/vision.md",
+    "docs/road_map.md",
+    "back/app/engines/appraisal_settlement.py",
+    "back/app/domain/models.py",
+    "back/app/domain/enums.py"
+  ]
+}

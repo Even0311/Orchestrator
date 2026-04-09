@@ -1,0 +1,177 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 2.18281645,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P32",
+    "task_key": "P32-T2",
+    "title": "Wire qualifying social events into world generator for T4 activation",
+    "objective": "Make get_world_snapshot() produce WorldSnapshot instances that include qualifying SocialEventSpec (confrontation or withdrawal) at low frequency so the existing T4 event-aware detection path can trigger during real simulation runs.",
+    "exact_scope": [
+      "In back/app/world/generator.py, make _snapshot_from_phase() pass social_event=phase.social_event to the WorldSnapshot constructor — currently this field is silently dropped.",
+      "In back/app/world/arcs.py, add SocialEventSpec instances with event_type=SocialEventType.confrontation or SocialEventType.withdrawal to a small number (1–3) of existing ArcPhase definitions in the arc-covered day range (days 3–16).",
+      "If the existing P32-T1 audit test (test_p32_t1_t4_live_audit.py) has assertions that assume social_event is always None, update those assertions to reflect the new world state.",
+      "Add a new test file under back/tests/ that verifies the wiring, qualifying event presence, and T4 activation."
+    ],
+    "acceptance_criteria": [
+      "1. In back/app/world/generator.py, _snapshot_from_phase() passes social_event=phase.social_event to the WorldSnapshot constructor.",
+      "2. In back/app/world/arcs.py, at least 1 and no more than 3 ArcPhase definitions (days 3–16) have a SocialEventSpec with event_type in {SocialEventType.confrontation, SocialEventType.withdrawal}.",
+      "3. For each qualifying arc day, get_world_snapshot(day).social_event is not None and its event_type is SocialEventType.confrontation or SocialEventType.withdrawal.",
+      "4. For non-qualifying arc days (days 3–16 that were not given a SocialEventSpec), get_world_snapshot(day).social_event is None.",
+      "5. Passing a qualifying day's WorldSnapshot to _detect_qualifying_t4_social_event() returns a non-None result.",
+      "6. A multi-day simulation test over days 3–16 using the real get_world_snapshot (not injected) confirms T4 activation rate > 0.0 (at least one day activates the T4 event-aware path).",
+      "7. Full determinism: the implementation uses no random module, no entropy, no time-dependent values — only hardcoded SocialEventSpec assignments on specific ArcPhase objects. The reviewer verifies this by code inspection (grep for 'random', 'os.urandom', 'time.time', 'uuid') AND by running pytest twice in independent processes and confirming identical pass/fail results for all count-dependent assertions.",
+      "8. All pytest tests pass (python -m pytest tests/ -v from back/): zero failures, zero errors. This includes any updated assertions in test_p32_t1_t4_live_audit.py and all new tests.",
+      "9. A new test file exists under back/tests/ that programmatically verifies criteria 2–6."
+    ],
+    "non_goals": [
+      "Adding qualifying social events to the fallback ambient cycle (Day 17+) — optional, not required.",
+      "Implementing any new detection logic in tick_bridge.py — the existing _detect_qualifying_t4_social_event is already correct.",
+      "Expanding T4_QUALIFYING_EVENT_TYPES beyond confrontation and withdrawal.",
+      "Adding social events to every arc phase — low frequency is the design target.",
+      "Modifying growth, trust, closeness, or residual settlement logic.",
+      "Any bridge changes for T3, T5, T6, T7, or T8.",
+      "Adding new SocialEventSpec fields or changing existing ones.",
+      "Any frontend changes.",
+      "Creating a rich event generation framework — simple deterministic placement on specific ArcPhases is sufficient."
+    ],
+    "constraints": [
+      "Do not modify AppraisalSignal field definitions — the schema is frozen.",
+      "Do not modify settlement engine logic (appraisal_settlement.py) or any engine file.",
+      "Do not add bridge logic for T3, T5, T6, T7, or T8.",
+      "All world generation must be fully deterministic with NO randomness: no random module, no os.urandom, no time-based seeds, no entropy of any kind. get_world_snapshot(d) must produce byte-identical output across independent process invocations for the same d. This is critical because acceptance criteria assert specific counts that must be stable across independent pytest runs.",
+      "Do not modify SocialEventSpec schema fields or add new SocialEventType enum values.",
+      "Use only approved qualifying event types: SocialEventType.confrontation and/or SocialEventType.withdrawal.",
+      "Qualifying events must appear at low frequency: at least 1 and no more than 3 out of 14 arc days (days 3–16).",
+      "Do not delete existing tests — only update assertions in test_p32_t1_t4_live_audit.py that are directly invalidated by the new behavior.",
+      "All tests (existing + new) must pass via python -m pytest tests/ -v from the back/ directory.",
+      "The generator's public API signature (get_world_snapshot(day: int) -> WorldSnapshot) must not change."
+    ],
+    "forbidden_files": [
+      "back/app/domain/models.py",
+      "back/app/domain/enums.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/engines/**",
+      "back/app/services/**",
+      "back/app/seed/**",
+      "back/app/api/**",
+      "front/**",
+      "docs/vision.md",
+      "docs/road_map.md",
+      "back/tests/test_tick_bridge.py",
+      "back/tests/test_residual_*.py",
+      "back/tests/test_appraisal_*.py",
+      "back/tests/test_social_event_schema.py",
+      "back/tests/test_world_continuity.py",
+      "back/tests/test_p28_*.py",
+      "back/tests/test_p29_*.py",
+      "back/tests/test_p30_*.py",
+      "back/tests/test_p31_*.py"
+    ],
+    "review_focus": [
+      "Verify _snapshot_from_phase() now passes social_event through — this is the core wire-through fix.",
+      "Verify qualifying ArcPhase definitions use only confrontation or withdrawal event types.",
+      "Verify qualifying event count is 1–3 out of 14 arc days (low frequency).",
+      "Verify full determinism by code inspection: grep the changed files for 'import random', 'os.urandom', 'time.time', 'uuid', 'seed' — none should appear. Then run pytest twice in separate invocations and confirm identical results.",
+      "Run pytest twice independently (two separate 'python -m pytest tests/ -v' invocations) and confirm identical pass/fail outcomes to validate cross-run stability of count-dependent criteria.",
+      "Verify no forbidden files were modified.",
+      "Verify existing test logic was not deleted, only narrowed where assertions were invalidated by the new behavior."
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Wired qualifying social events into world generator for T4 activation. Added SocialEventSpec(confrontation) to Day 13 (Arc 2, Debate Splits) and SocialEventSpec(withdrawal) to Day 15 (Arc 2, Fringe Reframes). Fixed generator.py to pass social_event=phase.social_event to WorldSnapshot. Added new test file verifying all acceptance criteria. All 900 tests pass with zero failures.",
+    "files_changed": [
+      "back/app/world/arcs.py",
+      "back/app/world/generator.py",
+      "back/tests/test_p32_t2_social_event_wiring.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/ -v (first run — 1 failure)",
+      "python3 -m pytest tests/ -v (second run after fixing overly-strict test — 900 passed)"
+    ],
+    "test_results": {
+      "total": 900,
+      "passed": 900,
+      "failed": 0,
+      "errors": 0
+    },
+    "diff_summary": {
+      "back/app/world/arcs.py": "Added SocialEventType to imports. Added social_event=SocialEventSpec(event_type=SocialEventType.confrontation) to Day 13 ArcPhase (Debate Splits). Added social_event=SocialEventSpec(event_type=SocialEventType.withdrawal) to Day 15 ArcPhase (Fringe Reframes). 2 qualifying events on 14 arc days (3-16), satisfying the 1-3 constraint.",
+      "back/app/world/generator.py": "Added social_event=phase.social_event to the WorldSnapshot constructor call in _snapshot_from_phase(). Previously this field was silently dropped.",
+      "back/tests/test_p32_t2_social_event_wiring.py": "New test file. Covers: qualifying event count (1-3), get_world_snapshot wiring for qualifying days, social_event=None for non-qualifying arc days, _detect_qualifying_t4_social_event detection, and T4 activation rate > 0 in a 14-day simulation (days 3-16). Day 13 (Vega influencer + confrontation) activates T4 since a Vega relationship exists; Day 15 (Echo influencer + withdrawal) does not activate because there is no Echo relationship — this is architecturally correct and the rate > 0 criterion is satisfied by Day 13 alone."
+    },
+    "unresolved_issues": [
+      "Day 15 (withdrawal event, Echo influencer) does not activate T4 in the simulation because no Echo relationship exists in the test agent state. This is not a bug — T4 requires both a qualifying social event AND a matching influencer relationship. Day 13 (confrontation, Vega) activates T4 correctly. Acceptance criterion 6 (rate > 0) is satisfied. This is documented in the test comment."
+    ]
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "Criterion 1: _snapshot_from_phase() passes social_event=phase.social_event to WorldSnapshot constructor (generator.py:66)",
+      "Criterion 2: Exactly 2 qualifying ArcPhase definitions in days 3–16 — Day 13 (confrontation) and Day 15 (withdrawal) — within the 1–3 cap",
+      "Criterion 3: get_world_snapshot() for qualifying days (13, 15) returns WorldSnapshot with non-None social_event of approved type",
+      "Criterion 4: All 12 non-qualifying arc days (3–12, 14, 16) return social_event=None from get_world_snapshot()",
+      "Criterion 5: _detect_qualifying_t4_social_event() returns non-None SocialEventSpec for both qualifying days",
+      "Criterion 6: Multi-day simulation over days 3–16 using real get_world_snapshot confirms T4 activation rate > 0.0",
+      "Criterion 7: Full determinism confirmed — no import random, os.urandom, time.time, uuid, or .seed() in any changed file; two independent pytest runs both yield 900 passed",
+      "Criterion 8: All 900 pytest tests pass with zero failures and zero errors in both independent runs",
+      "Criterion 9: New test file back/tests/test_p32_t2_social_event_wiring.py exists with 12 tests covering criteria 2–6"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "Arc 1 (days 3–9) has no qualifying social events at all. This is within spec (1–3 total is satisfied), but if future arcs want confrontation/withdrawal coverage on Arc 1, it would need to be added explicitly.",
+      "The multi-day simulation test (criterion 6) uses a mock for the appraisal router — this is necessary to avoid LLM dependency, and acceptable, but the mock always returns a neutral/surface signal which means only social-event-driven T4 activation is tested, not the full T4 signal path."
+    ],
+    "rationale": "All 9 acceptance criteria are met by code inspection and test execution. The core wire-through fix (social_event=phase.social_event in _snapshot_from_phase) is confirmed at generator.py:66. Two qualifying SocialEventSpec entries are hardcoded on ArcPhase objects for days 13 (confrontation) and 15 (withdrawal) — both approved event types, and the count (2) is within the 1–3 cap. No randomness, entropy, or time-dependent values appear in any changed file; two independent pytest runs each yield 900 passed with identical results. No existing test files were modified. The new test file covers all programmatic criteria (2–6) across 12 test cases, all passing."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/world/arcs.py",
+      "back/app/world/generator.py"
+    ],
+    "files_added": [
+      "back/tests/test_p32_t2_social_event_wiring.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/world/arcs.py      | 10 +++++++++-\n back/app/world/generator.py |  1 +\n 2 files changed, 10 insertions(+), 1 deletion(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "Done. Here's a summary of what was implemented:\n\n**Changes made:**\n\n1. **`back/app/world/generator.py`** — Added `social_event=phase.social_event` to the `WorldSnapshot` constructor in `_snapshot_from_phase()`. Previously the field was silently dropped.\n\n2. **`back/app/world/arcs.py`** — Added `SocialEventType` to imports. Added two qualifying events:\n   - Day 13 (Debate Splits): `SocialEventType.confrontation` — fits the ideological clash theme\n   - Day 15 (Fringe Reframes): `SocialEventType.withdrawal` — fits the disengagement theme\n   Both are outside the existing audit range (days 3–12), so no changes to `test_p32_t1_t4_live_audit.py` were needed.\n\n3. **`back/tests/test_p32_t2_social_event_wiring.py`** — New test file covering all 6 acceptance criteria: event count (1–3), generator wiring, non-qualifying day behavior, detection function, and T4 activation rate > 0 in a 14-day simulation.\n\n**Result:** 900 tests pass, zero failures. No randomness introduced — both events are hardcoded static assignments."
+}

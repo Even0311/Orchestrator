@@ -26,7 +26,7 @@ from a partially implemented path into a real, stage-closing relational contract
 
 ## Task Queue
 - [x] P32-T1: Audit the current T4 path end-to-end in a live multi-day simulation — confirm actual activation rate is zero, identify every point where the path goes dormant, and document the exact chain of blockers preventing real T4 relational output — Round round-0048 — T4 End-to-End Audit: Confirm Zero Activation Rate and Docume
-- [ ] P32-T2: Make the world generator produce qualifying social events at a controlled, low frequency so that the T4 event-aware detection path can actually trigger during real simulation runs
+- [x] P32-T2: Make the world generator produce qualifying social events at a controlled, low frequency so that the T4 event-aware detection path can actually trigger during real simulation runs — Round round-0054 — Wire qualifying social events into world generator for T4 ac
 - [ ] P32-T3: Complete the T4 appraisal-to-residual pipeline so that a detected qualifying event produces a real, persisted relational residual — not just a detection log — closing the gap between event detection and downstream relational effect
 - [ ] P32-T4: Unfreeze `_adjust_t4()` so it applies the relational residual to the appropriate relationship state, making the T4 wake chain functional rather than permanently dormant
 - [ ] P32-T5: Validate same-day T2/T4 composition by running a multi-day simulation where both T2 social ticks and T4 relational ticks fire on the same day, confirming no double-counting, no state corruption, and correct ordering of effects

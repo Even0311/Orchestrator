@@ -1,0 +1,19 @@
+{
+  "can_evaluate": [
+    "1. Iterate days 3-60, count days where get_world_snapshot(d).social_event is not None; assert 6 <= count <= 14.",
+    "2. From the same iteration, count days where social_event.event_type in {'confrontation', 'withdrawal'}; assert count >= 2.",
+    "3. Iterate days 3-16, assert any day has non-None social_event.",
+    "4. Iterate days 17-60, assert any day has non-None social_event.",
+    "5. Iterate days 61-120, count non-None social_event days; assert 1 <= count <= 18.",
+    "6. Call _snapshot_from_phase with a constructed ArcPhase whose social_event is set to a known value; assert the returned WorldSnapshot.social_event equals that value.",
+    "8. Run `python -m pytest back/tests/ -v` and assert exit code 0.",
+    "9. Assert a new test file exists under back/tests/ and contains test functions that call get_world_snapshot and assert conditions for day ranges 3-16, 17-60, 61-120, plus _snapshot_from_phase and determinism."
+  ],
+  "cannot_evaluate": [
+    "7 (partial): Criterion 7 only requires intra-process call-level determinism ('calling get_world_snapshot(d) twice returns identical objects'). Criteria 1-5 require stable *count* outcomes across independent pytest runs. If the generator seeds from entropy at startup rather than a fixed constant, counts will vary between test runs, making criteria 1-5 non-deterministically verifiable even if criterion 7 passes within a single run."
+  ],
+  "suggested_changes": {
+    "criterion_7_rewrite": "World generation is deterministic both within a single process and across independent runs: the generator uses a fixed seed (e.g. derived from the day number alone, or a hardcoded constant). Verified by: (a) calling get_world_snapshot(d) twice within one run returns equal WorldSnapshot objects for all d in 3-60, AND (b) the new test file includes an assertion that the count of non-None social_events across days 3-60 equals a specific expected integer (proving cross-run stability)."
+  },
+  "needs_revision": true
+}

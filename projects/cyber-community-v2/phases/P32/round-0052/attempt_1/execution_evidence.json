@@ -1,0 +1,15 @@
+{
+  "summary": "Attached qualifying SocialEventSpec instances (confrontation/withdrawal) to three ArcPhase definitions in arcs.py (days 4, 8, 13), wired the generator to pass social_event through to WorldSnapshot, updated test_p32_t1_t4_live_audit.py to reflect the new non-zero T4 activation baseline, and created test_p32_t2_generator_qualifying_events.py verifying deterministic qualifying event presence and T4 activation.",
+  "files_changed": [
+    "back/app/world/arcs.py",
+    "back/app/world/generator.py",
+    "back/tests/test_p32_t1_t4_live_audit.py",
+    "back/tests/test_p32_t2_generator_qualifying_events.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/ -v --tb=short"
+  ],
+  "test_results": "912 passed in 8.09s",
+  "diff_summary": "arcs.py: added SocialEventSpec imports and attached confrontation events to Day 4 (Arc1 Skepticism, Vega) and Day 13 (Arc2 Debate Splits, Vega), and a withdrawal event to Day 8 (Arc1 Recalibration, Vega); generator.py: added social_event=phase.social_event to WorldSnapshot construction in _snapshot_from_phase; test_p32_t1_t4_live_audit.py: replaced 'always None / zero activation' assertions with pattern-aware assertions that expect social_event on days 4 and 8 and T4 activation on both; test_p32_t2_generator_qualifying_events.py: new test file with 7 test classes covering qualifying event presence, non-qualifying day None, fallback cycle None, qualifying day count (3 in days 3-16), determinism, and T4 activation on qualifying days.",
+  "unresolved_issues": []
+}

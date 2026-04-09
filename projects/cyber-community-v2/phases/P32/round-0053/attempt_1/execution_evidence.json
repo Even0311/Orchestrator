@@ -1,0 +1,27 @@
+{
+  "summary": "Wired ArcPhase.social_event through _snapshot_from_phase() in generator.py into WorldSnapshot, added qualifying SocialEventSpec (confrontation on Day 7, withdrawal on Day 13) to two arc phases in arcs.py, and updated previously-None assertions in test_p32_t1_t4_live_audit.py and test_social_event_schema.py to reflect the new behavior, plus created new test file test_p32_t2_social_event_wire.py.",
+  "files_changed": [
+    "back/app/world/generator.py",
+    "back/app/world/arcs.py",
+    "back/tests/test_p32_t1_t4_live_audit.py",
+    "back/tests/test_social_event_schema.py"
+  ],
+  "files_created": [
+    "back/tests/test_p32_t2_social_event_wire.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/ -v --tb=short"
+  ],
+  "test_results": "897 passed in 7.98s",
+  "diff_summary": "generator.py: added social_event=phase.social_event to WorldSnapshot constructor in _snapshot_from_phase(). arcs.py: added SocialEventType/SocialEventIntensity/SocialEventVisibility/SocialEventExpectedness/SocialEventReciprocity imports and added SocialEventSpec(event_type=confrontation) to Day 7 (Arc 1 Fringe Mutation) and SocialEventSpec(event_type=withdrawal) to Day 13 (Arc 2 Debate Splits). test_p32_t1_t4_live_audit.py: replaced always-None assertions with qualifying-day-aware assertions that allow Days in QUALIFYING_DAYS_IN_AUDIT={7} to have non-None social_event and T4 activation. test_social_event_schema.py: updated test_generator_produces_social_event_none to skip qualifying days 7 and 13. test_p32_t2_social_event_wire.py: new file with 4 test classes covering qualifying event presence, determinism, T4 activation rate > 0.0, and non-qualifying day None assertion.",
+  "acceptance_criteria_met": [
+    "At least one arc day returns WorldSnapshot with qualifying social_event: YES — Day 7 (confrontation) and Day 13 (withdrawal)",
+    "Qualifying days are deterministic: YES — repeated calls return identical SocialEventSpec",
+    "_detect_qualifying_t4_social_event returns non-None for qualifying day: YES — test_detect_qualifying_t4_social_event_returns_non_none_for_qualifying_day passes",
+    "T4 activation rate > 0.0 over days 3-16: YES — test_t4_activation_rate_greater_than_zero passes",
+    "Non-qualifying arc days return social_event=None: YES — tested in TestNonQualifyingDaysHaveNoSocialEvent",
+    "All existing pytest tests pass with updated assertions: YES — 897 passed, 0 failed",
+    "Fallback ambient cycle (Day 17+) behavior unchanged: YES — no changes to fallback phases"
+  ],
+  "unresolved_issues": []
+}

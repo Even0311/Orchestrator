@@ -1,0 +1,69 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "At least one arc day (days 3-16) returns a WorldSnapshot where social_event is not None and event_type is SocialEventType.confrontation or SocialEventType.withdrawal — Day 7 (confrontation) and Day 13 (withdrawal) both qualify.",
+    "Qualifying days are deterministic: same day always returns the same SocialEventSpec (pure function, no randomness; confirmed by test_qualifying_day_same_result_repeated_calls and test_all_arc_days_deterministic).",
+    "_detect_qualifying_t4_social_event returns non-None for qualifying days — confirmed by test_detect_qualifying_t4_social_event_returns_non_none_for_qualifying_day.",
+    "Multi-day simulation over days 3-16 using real get_world_snapshot produces T4 activation rate > 0.0 — confirmed by test_t4_activation_rate_greater_than_zero.",
+    "Non-qualifying arc days continue to return social_event=None — confirmed by TestNonQualifyingDaysHaveNoSocialEvent and test_generator_produces_social_event_none_for_non_qualifying_days.",
+    "All 897 existing pytest tests pass with updated assertions in test_p32_t1_t4_live_audit.py and test_social_event_schema.py.",
+    "Fallback ambient cycle (Day 17+) behavior is unchanged — no modifications made to fallback phases or _fallback_snapshot logic.",
+    "Qualifying event frequency is 2 out of 14 arc days (14.3%), well within the 1-in-4 (25%) cap constraint."
+  ],
+  "unmet_criteria": [],
+  "scope_violations": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "test_social_event_schema.py was modified (not in the explicit allowed_files list) but is permitted by the contract constraint 'Tests may be created or modified freely'. The change narrows the none-assertion to exclude known qualifying days 7 and 13, which is precisely what was required. No concern."
+  ],
+  "rationale": "The implementation correctly addresses both required changes: (1) generator.py now passes social_event=phase.social_event into the WorldSnapshot constructor in _snapshot_from_phase(), fixing the silent-drop bug, and (2) arcs.py has two qualifying SocialEventSpec instances added — Day 7 (confrontation, Arc 1 Fringe Mutation) and Day 13 (withdrawal, Arc 2 Debate Splits). The new test file test_p32_t2_social_event_wire.py covers all four required test categories with non-trivial assertions. The updated test_p32_t1_t4_live_audit.py correctly narrows formerly-blanket None assertions to non-qualifying days only. No frozen fields were modified, no forbidden files were touched, no T3/T5/T6/T7/T8 bridge logic was added, and the full test suite passes with 897 tests in 8.36 seconds.",
+  "criteria_results": [
+    {
+      "criterion": "get_world_snapshot(day) for at least one arc day returns WorldSnapshot with qualifying social_event",
+      "result": "pass",
+      "notes": "Day 7 returns confrontation, Day 13 returns withdrawal."
+    },
+    {
+      "criterion": "Qualifying days always return same SocialEventSpec for same day (deterministic)",
+      "result": "pass",
+      "notes": "Pure function with no randomness; confirmed by determinism tests."
+    },
+    {
+      "criterion": "_detect_qualifying_t4_social_event returns non-None for qualifying day WorldSnapshot",
+      "result": "pass",
+      "notes": "Tested directly in test_p32_t2_social_event_wire.py."
+    },
+    {
+      "criterion": "Multi-day simulation over days 3-16 produces T4 activation rate > 0.0",
+      "result": "pass",
+      "notes": "test_t4_activation_rate_greater_than_zero uses real get_world_snapshot with mocked LLM router."
+    },
+    {
+      "criterion": "Non-qualifying arc days return social_event=None",
+      "result": "pass",
+      "notes": "Verified by TestNonQualifyingDaysHaveNoSocialEvent and updated schema test."
+    },
+    {
+      "criterion": "All existing pytest tests pass with updated assertions",
+      "result": "pass",
+      "notes": "897 passed, 0 failed, 0 errors."
+    },
+    {
+      "criterion": "Fallback ambient cycle (Day 17+) behavior unchanged",
+      "result": "pass",
+      "notes": "No changes to _FALLBACK_PHASES or _fallback_snapshot; fallback phases have no social_event set."
+    }
+  ],
+  "test_results": {
+    "total_passed": 897,
+    "total_failed": 0,
+    "total_errors": 0,
+    "duration_seconds": 8.36,
+    "new_tests_added": [
+      "back/tests/test_p32_t2_social_event_wire.py (4 test classes, 10 test methods)"
+    ]
+  },
+  "constraint_violations": [],
+  "forbidden_file_violations": []
+}
