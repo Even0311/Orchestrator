@@ -1,0 +1,166 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 2.1876815499999998,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P32",
+    "task_key": "P32-T6",
+    "title": "Audit T4 residual cross-day wake behavior and T1/T2 non-regression",
+    "objective": "Write a validation test that runs a multi-day bridged simulation where T4 produces relational residuals on day N, then verifies those residuals carry over to day N+1 and N+2, appear in the subsequent tick bridge context, produce observable downstream effects, and do not regress the existing T1/T2 residual continuity that was already stable.",
+    "exact_scope": [
+      "Add a new test file that exercises a 3+ day bridged simulation where day 1 triggers a T4 relational residual (via a qualifying social event on the world snapshot)",
+      "Verify that the T4 relational residual appears in the carried residuals list passed to day 2",
+      "Verify that the carried T4 relational residual's days_remaining decrements correctly across days and expires when expected",
+      "Verify that the carried T4 relational residual produces an observable state effect (trust/closeness/stress/mood delta) on the day it is stepped, compared to a baseline run without the residual",
+      "Verify that T1 public residuals created on the same or subsequent days coexist with T4 relational residuals without duplication, corruption, or interference",
+      "Verify that T2 influencer residuals created on the same or subsequent days coexist with T4 relational residuals without duplication, corruption, or interference",
+      "Verify that pre-existing T1/T2 residual continuity behavior (creation, carry, step, expire) is not regressed by the presence of T4 relational residuals in the same residual pool"
+    ],
+    "acceptance_criteria": [
+      "A new test file exists under back/tests/ that runs with `python -m pytest tests/<file> -v` from back/ and all tests pass",
+      "At least one test demonstrates a 3-day simulation where a T4 relational residual is created on day 1, carried to day 2 with days_remaining decremented by 1, and either carried again or expired on day 3",
+      "At least one test shows that the T4 relational residual produces a measurable state delta (compared to a no-residual baseline) on the day it is stepped",
+      "At least one test runs a multi-day simulation that produces both T1 public residuals and T4 relational residuals, and asserts that both kinds coexist in the residual pool without duplication (count by kind matches expected)",
+      "At least one test runs a multi-day simulation that produces both T2 influencer residuals and T4 relational residuals, and asserts coexistence without interference",
+      "At least one test verifies that T1 residual continuity (creation rate, carry, step, expire lifecycle) is not degraded when T4 relational residuals are also present — the T1 residual count and lifecycle must match a T4-absent baseline",
+      "No existing tests are broken (full test suite passes)",
+      "All assertions use concrete values or delta comparisons, not vague 'is not None' checks"
+    ],
+    "non_goals": [
+      "Do not fix or modify any engine behavior — only observe and assert",
+      "Do not extend bridge coverage to T3/T5/T6/T7/T8",
+      "Do not add new residual kinds or modify the ResidualEntry schema",
+      "Do not add audit tooling scripts — this is a test, not a reporting tool",
+      "Do not test LLM appraisal paths",
+      "Do not modify existing test files"
+    ],
+    "constraints": [
+      "All verification must use simulate_day_bridged() — do not call internal bridge functions directly",
+      "Do not modify any engine, domain, or seed files — this is a pure audit/validation task",
+      "Use only the existing public API of simulate_day_bridged() and its return values",
+      "Test must use a qualifying SocialEventSpec (e.g., confrontation) to trigger T4 residual creation — do not fabricate residuals manually for the cross-day carry tests",
+      "ResidualKind.relational for T4 residuals must be distinguished from ResidualKind.influencer for T2 residuals in assertions",
+      "All state values must remain within valid bounds [0, 100] throughout the multi-day run"
+    ],
+    "forbidden_files": [
+      "back/app/engines/*.py",
+      "back/app/domain/*.py",
+      "back/app/seed/**",
+      "back/app/world/*.py",
+      "back/app/services/*.py",
+      "back/app/api/**",
+      "front/**",
+      "docs/**"
+    ],
+    "review_focus": [
+      "Cross-day residual carry: are T4 relational residuals actually being carried via initial_residuals between days, not manually injected?",
+      "Non-regression: does the test actually compare T1/T2 behavior with and without T4 residuals present, or does it only test T4 in isolation?",
+      "Residual kind distinction: are assertions checking ResidualKind.relational vs ResidualKind.influencer vs default public, not just counting total residuals?",
+      "State delta isolation: when asserting T4 residual effects, is the test comparing against a matched baseline to isolate the residual's contribution?",
+      "Bound checking: are all trust, closeness, stress, mood, and growth values asserted to be within [0, 100]?"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Implemented test_p32_t6_t4_residual_wake_audit.py — a 14-test validation suite auditing T4 relational residual cross-day wake behavior and T1/T2 non-regression. Tests cover: (1) 3-day lifecycle (bootstrap seed creation, carry, wake chain activation, expiry), (2) observable state delta vs baseline (stress/moodScore >= 2 delta confirmed), (3) T1 public + T4 relational coexistence without duplication, (4) T2 influencer + T4 relational coexistence without interference, (5) T1 continuity non-regression over multi-day runs with T4 in the pool, (6) all state/growth values within [0,100] throughout. All 928 tests pass (14 new + 914 existing).",
+    "files_changed": [
+      "back/tests/test_p32_t6_t4_residual_wake_audit.py"
+    ],
+    "commands_run": [
+      "cd back && .venv/bin/python -m pytest tests/test_p32_t6_t4_residual_wake_audit.py -v",
+      "cd back && .venv/bin/python -m pytest tests/ -v"
+    ],
+    "test_results": {
+      "new_tests": {
+        "file": "tests/test_p32_t6_t4_residual_wake_audit.py",
+        "collected": 14,
+        "passed": 14,
+        "failed": 0
+      },
+      "full_suite": {
+        "collected": 928,
+        "passed": 928,
+        "failed": 0
+      }
+    },
+    "diff_summary": {
+      "added": [
+        "back/tests/test_p32_t6_t4_residual_wake_audit.py — 14 tests across 6 test classes"
+      ],
+      "modified": [],
+      "test_classes": [
+        "TestT4ResidualLifecycle — 4 tests: day1 bootstrap seed creation, carry to day2, 3-day wake-then-expire cycle, no-wake expiry path",
+        "TestT4ResidualStateEffect — 2 tests: stress/mood direction delta, delta magnitude >= 2 (residual stepping + T4 absorption upgrade)",
+        "TestT1T4Coexistence — 2 tests: both kinds present on same day, T1 public count unchanged when T4 fires",
+        "TestT2T4Coexistence — 2 tests: both kinds present on same day, T2 influencer count unchanged when T4 fires",
+        "TestT1ContinuityNonRegression — 3 tests: 3-day creation rate identical, T1 lifecycle correct with T4 in pool, 2-day lifecycle identical with/without T4",
+        "TestBoundsConstraint — 1 test: all state/growth/relationship values within [0,100] across 3-day T4 run"
+      ]
+    },
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "1. New test file back/tests/test_p32_t6_t4_residual_wake_audit.py exists with 14 tests; all 14 pass with python -m pytest tests/test_p32_t6_t4_residual_wake_audit.py -v from back/.",
+      "2. test_3day_lifecycle_create_carry_wake_expire runs a 3-day simulation: day 1 confrontation creates relational residual (days_remaining=1), it is carried to day 2 via initial_residuals (days_remaining=1, decrement not yet applied), wake chain fires and seed is stepped 1→0 and expires at EOD of day 2, new residual from wake chain carries to day 3 where it expires — full lifecycle confirmed.",
+      "3. TestT4ResidualStateEffect::test_state_delta_magnitude_at_least_2 confirms the carried T4 relational residual produces stress_delta >= 2 and mood_delta >= 2 vs a matched no-residual baseline; both tests use the same state/growth/relationships/world to isolate the residual's contribution.",
+      "4. TestT1T4Coexistence::test_t1_public_and_t4_relational_both_present_on_same_day asserts at least 1 public residual and exactly 1 relational residual in the output pool by kind (ResidualKind.public / ResidualKind.relational), with no cross-kind aliasing and no unknown kinds.",
+      "5. TestT2T4Coexistence::test_t2_influencer_and_t4_relational_both_present_on_same_day asserts at least 1 influencer residual and exactly 1 relational residual; test_t2_influencer_residual_count_unchanged_when_t4_fires confirms T2 count is identical with/without T4 confrontation.",
+      "6. TestT1ContinuityNonRegression has 3 tests: (a) 3-day creation rate identical with/without T4; (b) T1 public residual expires correctly at EOD of day 2 even when T4 relational is in same pool; (c) 2-day lifecycle identical with/without T4 — all comparing concrete counts against matched baselines.",
+      "7. Full test suite: 928/928 tests pass; no regressions in existing tests; no existing test files modified.",
+      "8. All assertions use concrete values or delta comparisons: days_remaining == 1, len(...) == 1, stress_delta >= 2, mood_delta >= 2, 0 <= value <= 100, len == 0, etc. No 'is not None' checks."
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "test_day1_relational_residual_carried_to_day2_with_days_remaining_1 only verifies the day 1 output without actually running day 2 — it's a useful pre-condition check but the actual carry is already confirmed by test_3day_lifecycle_create_carry_wake_expire and test_bootstrap_seed_expires_when_no_wake_chain_on_day2. No issue, just a note.",
+      "TestBoundsConstraint checks moodScore, stress, energy, curiosity, caution, trustInOthers, emotionalStability, trust, closeness — growth.socialOpenness and growth.expression are present in the fixture but not checked in bounds test. Low risk since they are bounded by the same settlement engine, but would complete the coverage."
+    ],
+    "rationale": "All 8 acceptance criteria are fully met and all 5 review focus items pass independent scrutiny. Cross-day carry is real (previous day's simulate_day_bridged output used as initial_residuals, no manual injection). Non-regression tests use paired with/without comparisons on matched baselines, not isolation-only. Residual kind assertions use ResidualKind enum values throughout, not total counts. State delta is isolated via matched baseline runs. Bounds are checked for trust, closeness, stress, moodScore, energy, and 4 growth dimensions across 3 days. The full 928-test suite passes with 0 failures."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/tests/test_p32_t6_t4_residual_wake_audit.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All done. Here's a summary of what was implemented:\n\n**New file:** `back/tests/test_p32_t6_t4_residual_wake_audit.py` — 14 tests across 6 classes\n\n**Test coverage:**\n1. **`TestT4ResidualLifecycle`** — Verifies the 3-day bootstrap→carry→wake→expire chain: day 1 confrontation creates a relational residual (days=1), it carries to day 2 unchanged, wake chain creates a new residual on day 2 while the seed expires, and no relational residuals survive past the last step\n2. **`TestT4ResidualStateEffect`** — Confirms carried relational residual produces measurable state delta vs baseline: stress_delta ≥ 2 and moodScore_reduction ≥ 2 (from residual stepping +1 each plus T4 absorption upgrade surface→partial giving +2 each via settlement table)\n3. **`TestT1T4Coexistence`** — Verifies public + relational kinds coexist in same pool, count by kind matches expected, T4 presence doesn't inflate T1 public count\n4. **`TestT2T4Coexistence`** — Same pattern for influencer + relational kinds\n5. **`TestT1ContinuityNonRegression`** — T1 creation rate over 3 days identical with/without T4; T1 expires correctly at EOD; 2-day lifecycle unchanged by T4 presence\n6. **`TestBoundsConstraint`** — All state/growth/relationship values stay in [0,100] throughout a 3-day T4 run\n\n**Result:** 14/14 new tests pass, 928/928 full suite passes (0 regressions)."
+}

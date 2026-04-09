@@ -1,0 +1,38 @@
+{
+  "summary": "Implemented test_p32_t6_t4_residual_wake_audit.py — a 14-test validation suite auditing T4 relational residual cross-day wake behavior and T1/T2 non-regression. Tests cover: (1) 3-day lifecycle (bootstrap seed creation, carry, wake chain activation, expiry), (2) observable state delta vs baseline (stress/moodScore >= 2 delta confirmed), (3) T1 public + T4 relational coexistence without duplication, (4) T2 influencer + T4 relational coexistence without interference, (5) T1 continuity non-regression over multi-day runs with T4 in the pool, (6) all state/growth values within [0,100] throughout. All 928 tests pass (14 new + 914 existing).",
+  "files_changed": [
+    "back/tests/test_p32_t6_t4_residual_wake_audit.py"
+  ],
+  "commands_run": [
+    "cd back && .venv/bin/python -m pytest tests/test_p32_t6_t4_residual_wake_audit.py -v",
+    "cd back && .venv/bin/python -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "new_tests": {
+      "file": "tests/test_p32_t6_t4_residual_wake_audit.py",
+      "collected": 14,
+      "passed": 14,
+      "failed": 0
+    },
+    "full_suite": {
+      "collected": 928,
+      "passed": 928,
+      "failed": 0
+    }
+  },
+  "diff_summary": {
+    "added": [
+      "back/tests/test_p32_t6_t4_residual_wake_audit.py — 14 tests across 6 test classes"
+    ],
+    "modified": [],
+    "test_classes": [
+      "TestT4ResidualLifecycle — 4 tests: day1 bootstrap seed creation, carry to day2, 3-day wake-then-expire cycle, no-wake expiry path",
+      "TestT4ResidualStateEffect — 2 tests: stress/mood direction delta, delta magnitude >= 2 (residual stepping + T4 absorption upgrade)",
+      "TestT1T4Coexistence — 2 tests: both kinds present on same day, T1 public count unchanged when T4 fires",
+      "TestT2T4Coexistence — 2 tests: both kinds present on same day, T2 influencer count unchanged when T4 fires",
+      "TestT1ContinuityNonRegression — 3 tests: 3-day creation rate identical, T1 lifecycle correct with T4 in pool, 2-day lifecycle identical with/without T4",
+      "TestBoundsConstraint — 1 test: all state/growth/relationship values within [0,100] across 3-day T4 run"
+    ]
+  },
+  "unresolved_issues": []
+}

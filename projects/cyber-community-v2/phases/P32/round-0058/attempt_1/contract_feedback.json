@@ -1,0 +1,17 @@
+{
+  "can_evaluate": [
+    "1. A new test file exists under back/tests/ that runs with `python -m pytest tests/<file> -v` from back/ and all tests pass — verifiable by file existence check and pytest exit code.",
+    "2. At least one test demonstrates a 3-day simulation where a T4 relational residual is created on day 1, carried to day 2 with days_remaining decremented by 1, and either carried again or expired on day 3 — verifiable by reading the test and confirming the simulation structure and day-by-day assertions.",
+    "3. At least one test shows that the T4 relational residual produces a measurable state delta compared to a no-residual baseline — verifiable by confirming the test runs two simulation branches (with/without residual) and asserts a numeric difference in state values.",
+    "4. At least one test runs a multi-day simulation that produces both T1 public residuals and T4 relational residuals, and asserts coexistence without duplication (count by kind matches expected) — verifiable by checking assertions filter residuals by ResidualKind and compare against expected integer counts.",
+    "5. At least one test runs a multi-day simulation that produces both T2 influencer residuals and T4 relational residuals, and asserts coexistence without interference — verifiable at a reasonable level by confirming the test asserts T2 residual counts or lifecycle metrics are unaffected when T4 residuals are also present.",
+    "6. At least one test verifies that T1 residual continuity is not degraded when T4 relational residuals are also present, with T1 counts and lifecycle matching a T4-absent baseline — verifiable by confirming two simulation runs (with/without T4) and explicit numeric equality assertions on T1 residual counts and lifecycle stages.",
+    "7. No existing tests are broken — verifiable by running the full pytest suite and checking the exit code.",
+    "8. All assertions use concrete values or delta comparisons, not vague 'is not None' checks — verifiable by reading every assert statement in the new test file."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "5": "Criterion 5 says 'without interference' but does not specify the assertion form. Criterion 6 is a stronger model ('must match a T4-absent baseline'). Consider tightening criterion 5 to: 'asserts that T2 influencer residual counts and carry behavior match a T4-absent baseline run' to eliminate ambiguity about what constitutes interference."
+  },
+  "needs_revision": false
+}
