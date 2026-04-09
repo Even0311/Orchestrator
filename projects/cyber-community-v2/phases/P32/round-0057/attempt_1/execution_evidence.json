@@ -1,0 +1,26 @@
+{
+  "summary": "Created test_p32_t5_t2_t4_same_day_composition.py in back/tests/ with 13 deterministic tests validating same-day T2/T4 composition in multi-day simulation. All acceptance criteria met: multi-day runs (3 days) with qualifying confrontation events, relationship bounds checked, residual kind distinctness verified, carryover across days confirmed, composition_audit_out collision recording tested, state/growth bounds validated, and T2-before-T4 ordering confirmed via upper-boundary clamping. All 914 existing tests continue to pass.",
+  "files_changed": [
+    "back/tests/test_p32_t5_t2_t4_same_day_composition.py"
+  ],
+  "commands_run": [
+    ".venv/bin/python -m pytest tests/test_p32_t5_t2_t4_same_day_composition.py -v",
+    ".venv/bin/python -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "new_tests": {
+      "file": "tests/test_p32_t5_t2_t4_same_day_composition.py",
+      "total": 13,
+      "passed": 13,
+      "failed": 0
+    },
+    "full_suite": {
+      "total": 914,
+      "passed": 914,
+      "failed": 0,
+      "regressions": 0
+    }
+  },
+  "diff_summary": "Added new file back/tests/test_p32_t5_t2_t4_same_day_composition.py with 13 tests covering:\n1. test_multiday_simulation_no_exception_with_qualifying_events — 3-day run, confrontation every day, no exception\n2. test_relationship_trust_and_closeness_within_bounds_on_collision_day — trust/closeness in [0,100] on single collision day\n3. test_multiday_relationship_bounds_maintained_across_3_days — bounds across all 3 days\n4. test_t2_and_t4_residuals_are_distinct_entries_with_correct_kinds — T2 creates influencer residual, T4 creates relational residual (Phase 26B bootstrap)\n5. test_t4_bootstrap_residual_tagged_relational_with_target_id — Phase 26B seed has kind=relational, target_id=vega-001\n6. test_residuals_from_day_n_are_carried_into_day_n1 — day-1 seed enables _adjust_t4 on day-2, wake chain gate opens\n7. test_residual_days_remaining_decremented_across_days — carried residual steps from days_remaining=2 to 1\n8. test_composition_audit_records_collision_on_confrontation_day — collision_detected=True in audit\n9. test_composition_audit_records_collision_across_all_3_days — collision on every day\n10. test_all_state_bounds_maintained_after_3_day_composition — mood, stress, energy, all growth dims in [0,100]\n11. test_t2_applied_before_t4_within_same_day — trust=100 boundary reveals T2-first order gives trust=98\n12. test_t2_closeness_applied_before_t4_closeness — closeness=100 boundary gives closeness=99\n13. test_wake_chain_residual_on_day2_is_relational_kind — day-2 wake-chain residual is ResidualKind.relational with negative valence",
+  "unresolved_issues": []
+}

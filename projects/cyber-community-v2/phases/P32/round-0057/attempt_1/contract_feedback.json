@@ -1,0 +1,19 @@
+{
+  "can_evaluate": [
+    "1. File existence: glob back/tests/test_p32_t5_*.py — binary check.",
+    "2. Multi-day simulation: read test source, confirm a test loops simulate_day_bridged() (or equivalent) for >= 3 days with social event objects present in input.",
+    "3. No-double-count assertion: inspect test source for an assertion that trust/closeness values after T2+T4 same-day composition equal a single-increment amount (not two additive increments); also confirm T2 is invoked with bridge_mode=True.",
+    "4. Distinct residual kinds: inspect assertions that the returned residual list contains entries with ResidualKind.influencer AND ResidualKind.relational as separate objects.",
+    "5. Day-N residuals in day-N+1 carried_residuals: inspect assertions that the carried_residuals argument/field on the day-(N+1) call contains the residual IDs/objects produced on day N.",
+    "6. composition_audit_out collision record: inspect assertions that composition_audit_out (or equivalent audit structure) contains an entry flagging the T2/T4 collision on the shared relationship.",
+    "7. Bounds assertions: inspect test source for explicit assert statements checking each named dimension (trust, closeness, mood, stress, growth dimensions) against their valid numeric ranges.",
+    "8. Existing tests pass: run `python -m pytest tests/ -v` from back/ — binary pass/fail.",
+    "9. New tests pass: run `python -m pytest tests/test_p32_t5_*.py -v` from back/ — binary pass/fail."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "criterion_3_note": "Criterion 3 is verifiable at the assertion-existence level. The Review Focus adds a stronger bar ('would fail if bridge_mode disabled') — that bar is not in the criterion itself and is not required for PASS. If the designer intends the stronger bar, it should be added as an explicit criterion: 'At least one double-counting test must fail when simulate_day_bridged() is called without bridge_mode=True on T2.' As written, the criterion is fine to evaluate as-is.",
+    "criterion_6_note": "Ensure the field name 'composition_audit_out' is the actual attribute name in the codebase; if it differs, the criterion may need a name correction. This is a minor lookup, not a reason for revision."
+  },
+  "needs_revision": false
+}

@@ -1,0 +1,57 @@
+{
+  "phase_id": "P32",
+  "task_key": "P32-T5",
+  "title": "Validate same-day T2/T4 composition in multi-day simulation",
+  "objective": "Write a validation test that runs a multi-day bridged simulation where both T2 (social_interaction) and T4 (relationship_shift) fire on the same day targeting the same relationship, confirming no double-counting of relationship effects, no state corruption, and correct ordering of settlement effects.",
+  "exact_scope": [
+    "Create a new test file (e.g. test_p32_t5_t2_t4_same_day_composition.py) in back/tests/",
+    "The test must run simulate_day_bridged() for at least 3 consecutive days where a qualifying social event is present (so T4 activates) on at least one day",
+    "On days where both T2 and T4 fire targeting the same relationship (the influencer), verify: (a) trust and closeness changes are not double-counted — T2 must not write relational fields and T4 must handle them via its own settlement path, (b) final relationship state values remain within valid bounds [0, 100], (c) residuals created by T2 (influencer kind) and T4 (relational kind) are distinct entries with correct ResidualKind tags, (d) no unhandled exceptions across the full multi-day run",
+    "Verify that the composition_audit_out list from simulate_day_bridged correctly records same-day T2/T4 collisions when both target the same relationship ID",
+    "Verify that T4 residuals created on day N are carried into day N+1 and are available for _adjust_t4() on the next qualifying day",
+    "Verify ordering: T2 settlement effects are applied before T4 settlement effects within the same day (T2 tick 1147, T4 tick 1510)"
+  ],
+  "acceptance_criteria": [
+    "A new test file exists in back/tests/ that validates same-day T2/T4 composition",
+    "At least one test runs a multi-day simulation (>= 3 days) with qualifying social events present",
+    "At least one test asserts that on a same-day T2+T4 collision, relationship trust and closeness are not double-counted (T2 bridge_mode suppresses relational writes, T4 handles them)",
+    "At least one test asserts that T2 residuals (ResidualKind.influencer) and T4 residuals (ResidualKind.relational) are created as distinct entries",
+    "At least one test asserts that residuals from day N appear in the carried_residuals on day N+1",
+    "At least one test asserts composition_audit_out records the T2/T4 collision when both target the same relationship",
+    "At least one test asserts no state value (trust, closeness, mood, stress, growth dimensions) exceeds its valid bounds after multi-day composition",
+    "All existing tests continue to pass: python -m pytest tests/ -v from back/",
+    "The new tests themselves pass: python -m pytest tests/test_p32_t5_*.py -v from back/"
+  ],
+  "non_goals": [
+    "Do not fix or change any engine behavior — only observe and validate",
+    "Do not expand bridge coverage to T3/T5/T6/T7/T8",
+    "Do not add new audit record types or new fields to existing models",
+    "Do not create or modify any production code",
+    "Do not test LLM path behavior — test only the deterministic fallback path",
+    "Do not redesign the composition audit mechanism"
+  ],
+  "constraints": [
+    "Use only the existing simulate_day_bridged() API from tick_bridge.py — do not call internal functions directly",
+    "Do not modify any engine, domain, or service code — this is a validation-only task",
+    "Use the existing fixture patterns from test_t2_t4_composition_audit.py or test_residual_continuity_audit.py as reference for building test fixtures",
+    "All assertions must be deterministic — no flaky or probabilistic checks",
+    "The test must pass with the current codebase as-is (this validates existing behavior, not new behavior)"
+  ],
+  "forbidden_files": [
+    "back/app/engines/*.py",
+    "back/app/domain/*.py",
+    "back/app/services/*.py",
+    "back/app/api/**",
+    "back/app/seed/**",
+    "back/app/world/**",
+    "front/**",
+    "docs/**"
+  ],
+  "review_focus": [
+    "Verify that double-counting assertions are meaningful — they must actually detect the specific boundary where T2 bridge_mode suppresses relational writes and T4 settlement handles them",
+    "Verify that multi-day residual carryover is tested with real simulate_day_bridged() calls chaining day-over-day, not mocked",
+    "Verify that the test would actually fail if T2 started writing relational fields in non-bridge-mode (i.e., the double-counting check is not vacuous)",
+    "Verify that qualifying social events are correctly constructed to trigger T4 activation (matching the patterns from round-0054/0055)",
+    "Confirm no production code was modified"
+  ]
+}
