@@ -1,0 +1,31 @@
+{
+  "can_evaluate": [
+    {
+      "id": "ac-1",
+      "reason": "Objective: run pytest, count passed/failed. 900 passed, 0 failed is a binary outcome."
+    },
+    {
+      "id": "ac-2",
+      "reason": "Objective: run pytest on the specific file, check 21 passed. The 3 previously-failing tests are named in the review focus, making regression detection unambiguous."
+    },
+    {
+      "id": "ac-3",
+      "reason": "Verifiable if the executor writes the described test. Criterion specifies exact setup (confrontation event, initial_residuals=[]) and exact assertion (pending_residuals contains ResidualEntry with kind=relational). I can locate the test, run it, and inspect the assertion."
+    },
+    {
+      "id": "ac-4",
+      "reason": "Verifiable if the two-day test is written. Setup and expected outcome are precisely specified: day-1 produces relational residual, day-2 feeds it back in, adjustment_audit shows invoked=True. All three conditions are grep/assertion checkable."
+    },
+    {
+      "id": "ac-5",
+      "reason": "Objective: named test must pass. No ambiguity — test either passes or fails."
+    },
+    {
+      "id": "ac-6",
+      "reason": "Fully objective: grep for two literal strings in tick_bridge.py. Zero matches = pass."
+    }
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": [],
+  "needs_revision": false
+}
