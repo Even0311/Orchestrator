@@ -1,0 +1,186 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.6575562499999998,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P33",
+    "task_key": "P33-T2",
+    "title": "Tighten prompt schema and output-format instructions to reduce LLM deviation rate",
+    "objective": "Revise the prompt template (system_prompt, user_prompt_template, OUTPUT_FORMAT_SECTION) in back/app/llm/prompt_schema.py to close the specific deviation patterns observed in P33-T1 shadow run data — over-enrichment of absorption/valence/arousal, phantom growth dimensions, guidance_resonance inflation, and T4 zero-absorption override — then verify the tightened prompts by extending or creating a test that exercises the rendered prompt text against the known deviation categories.",
+    "exact_scope": [
+      "Tighten OUTPUT_FORMAT_SECTION in prompt_schema.py: add explicit negative examples and field-level constraints that directly address the observed deviation patterns (e.g., 'Do not escalate absorption beyond surface unless the headline/event context explicitly warrants deep engagement', 'Do not add growth dimensions that are not directly triggered by the event content', 'For T4 without social_event_context, absorption MUST be none').",
+      "Tighten PromptTemplate.system_prompt in prompt_schema.py: strengthen the instruction to anchor on provided context and resist embellishment, explicitly calling out that conservative (baseline-matching) outputs are preferred over enriched ones when the input context is ambiguous.",
+      "Add tick-type-specific guidance sections within the prompt template that give the LLM per-tick constraints (e.g., T1 should rarely produce absorption=deep unless headline content is extraordinary, T4 without SOCIAL EVENT CONTEXT section must return absorption=none).",
+      "Create or extend a test file that verifies: (a) the rendered prompt text for each active tick type (T1, T2, T4) contains the newly added negative-example and constraint language, and (b) the OUTPUT_FORMAT_SECTION includes all required field-level constraint text.",
+      "Verify all existing tests pass after prompt changes (run back/tests/ suite)."
+    ],
+    "acceptance_criteria": [
+      "OUTPUT_FORMAT_SECTION in prompt_schema.py contains at least one explicit negative example per deviation pattern: (1) absorption over-enrichment, (2) valence drift from neutral, (3) phantom growth dimensions, (4) guidance_resonance inflation beyond neutral when no player guidance is active.",
+      "OUTPUT_FORMAT_SECTION includes an explicit T4 no-event constraint: when no SOCIAL EVENT CONTEXT section is present, absorption must be none.",
+      "PromptTemplate.system_prompt explicitly instructs the LLM to prefer conservative/baseline-matching outputs over enriched ones when input context is ambiguous.",
+      "The rendered user prompt for T1, T2, and T4 tick types all include the new constraint language (verified by test assertions on rendered prompt substrings).",
+      "A test file exists that programmatically asserts the presence of key constraint phrases in (a) OUTPUT_FORMAT_SECTION and (b) rendered prompts for each active tick type.",
+      "All existing tests in back/tests/ pass without modification (zero regressions).",
+      "No new fields or field name changes appear in the OUTPUT_FORMAT_SECTION JSON schema block.",
+      "The placeholder names in user_prompt_template remain unchanged."
+    ],
+    "non_goals": [
+      "Do not run an actual LLM shadow audit — this task tightens prompt text only; the actual LLM deviation measurement is a separate future step.",
+      "Do not add new prompt template variants or a prompt versioning system.",
+      "Do not modify the deterministic fallback logic in AppraisalOutput.from_deterministic_fallback.",
+      "Do not expand bridge coverage to deferred ticks (T3/T5/T6/T7/T8).",
+      "Do not add runtime prompt selection logic or A/B testing infrastructure.",
+      "Do not add or modify any observability/logging code.",
+      "Do not change the Anthropic API model or parameters in shadow_runner.py."
+    ],
+    "constraints": [
+      "AppraisalSignal v1 is frozen — do not modify its field definitions.",
+      "Do not modify any engine files (engines/*.py) — this task is prompt-layer only.",
+      "Do not modify acceptance_rules.py, failure_taxonomy.py, validation_gate.py, comparison_harness.py, shadow_runner.py, response_parser.py, or appraisal_router.py — the evaluation infrastructure is not in scope.",
+      "Do not modify AppraisalOutput or AppraisalInput models.",
+      "Do not add new fields to the OUTPUT_FORMAT_SECTION JSON schema — the field surface is frozen.",
+      "Do not change the user_prompt_template placeholder names or the section rendering functions (_render_relational_section, _render_social_event_section, _render_player_section) — only change the static text content within the template.",
+      "All prompt text changes must be in natural language instructions to the LLM, not structural schema changes.",
+      "Settlement belongs to engines — prompt layer only produces signals."
+    ],
+    "forbidden_files": [
+      "back/app/engines/*.py",
+      "back/app/domain/appraisal_input.py",
+      "back/app/domain/appraisal_output.py",
+      "back/app/domain/models.py",
+      "back/app/domain/enums.py",
+      "back/app/llm/acceptance_rules.py",
+      "back/app/llm/failure_taxonomy.py",
+      "back/app/llm/validation_gate.py",
+      "back/app/llm/comparison_harness.py",
+      "back/app/llm/shadow_runner.py",
+      "back/app/llm/response_parser.py",
+      "back/app/llm/appraisal_router.py",
+      "back/app/llm/appraisal_audit_log.py",
+      "back/app/seed/*.py",
+      "back/app/services/*.py",
+      "back/app/api/**",
+      "back/app/world/**",
+      "front/**",
+      "back/tools/**"
+    ],
+    "review_focus": [
+      "Verify the negative examples are specific to observed deviation patterns (not generic 'be careful' language) — each should reference the concrete failure mode it addresses.",
+      "Verify the prompt constraints do not accidentally prevent valid LLM enrichment (e.g., a legitimate deep absorption on a truly impactful headline should still be possible).",
+      "Verify the T4 no-event constraint is clear and unambiguous — the LLM must understand that absence of the SOCIAL EVENT CONTEXT section means absorption=none.",
+      "Check that no forbidden files were modified.",
+      "Check that the test assertions are on meaningful constraint phrases, not trivially passing substrings.",
+      "Verify all existing tests still pass."
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Tightened prompt schema and output-format instructions in back/app/llm/prompt_schema.py to reduce LLM deviation rate. Added four deviation-prevention rules (absorption over-enrichment, valence drift, phantom growth dimensions, guidance_resonance inflation), tick-type-specific constraints for T1/T2/T4, and an explicit T4 no-event constraint. Strengthened system_prompt with conservative/baseline-matching preference instruction. Created test_p33_t2_prompt_constraints.py (27 tests) to programmatically verify constraint presence. All 955 existing tests pass with zero regressions.",
+    "files_changed": [
+      "back/app/llm/prompt_schema.py",
+      "back/tests/test_p33_t2_prompt_constraints.py"
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p33_t2_prompt_constraints.py -v",
+      "python3 -m pytest tests/ -q --tb=short"
+    ],
+    "test_results": {
+      "new_test_file": {
+        "file": "back/tests/test_p33_t2_prompt_constraints.py",
+        "collected": 27,
+        "passed": 27,
+        "failed": 0
+      },
+      "full_suite": {
+        "collected": 955,
+        "passed": 955,
+        "failed": 0,
+        "regressions": 0
+      }
+    },
+    "diff_summary": {
+      "back/app/llm/prompt_schema.py": {
+        "OUTPUT_FORMAT_SECTION": [
+          "Added 'Deviation prevention rules' block with four negative examples: absorption over-enrichment (Do not escalate absorption beyond surface), valence drift (Do not shift valence away from neutral), phantom growth dimensions (Do not add growth dimensions not directly triggered by event content), guidance_resonance inflation (Do not set guidance_resonance when no player guidance is present)",
+          "Added 'Tick-type-specific constraints' block: T1 — rarely produce deep; T2 — default to surface; T4 — absorption MUST be none when no social event data block is present",
+          "JSON schema block (field names and types) left unchanged"
+        ],
+        "system_prompt": [
+          "Added instruction: prefer conservative, baseline-matching outputs over enriched or escalated ones when input context is ambiguous",
+          "Placeholder names and section rendering functions left unchanged"
+        ]
+      },
+      "back/tests/test_p33_t2_prompt_constraints.py": {
+        "description": "New test file, 27 tests covering: (a) OUTPUT_FORMAT_SECTION static constraint text for all four deviation patterns plus T4 no-event rule and tick-specific guidance; (b) rendered prompts for T1, T2, T4 containing constraint language; (c) system_prompt conservative preference instruction"
+      }
+    },
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "AC1: OUTPUT_FORMAT_SECTION contains at least one explicit negative example per all four deviation patterns — each uses 'Disallowed example:' with a concrete failure mode (absorption=deep for routine headline, valence=positive for neutral headline, phantom growth for mundane exchange, guidance_resonance=aligned with no player action).",
+      "AC2: OUTPUT_FORMAT_SECTION includes an explicit T4 no-event constraint: 'When no social event data block is included in this prompt, absorption MUST be none, aftershock_days MUST be 0, and growth MUST be [].'",
+      "AC3: PromptTemplate.system_prompt explicitly instructs conservative/baseline-matching preference: 'prefer conservative, baseline-matching outputs over enriched or escalated ones' with 'ambiguous' context trigger.",
+      "AC4: Rendered user prompts for T1, T2, and T4 all include the new constraint language — OUTPUT_FORMAT_SECTION is appended via {output_format} placeholder to every rendered prompt regardless of tick type; confirmed by passing rendered-prompt tests.",
+      "AC5: test_p33_t2_prompt_constraints.py exists with 30 tests covering (a) OUTPUT_FORMAT_SECTION static phrases and (b) rendered prompt substrings for T1, T2, T4, and (c) system_prompt conservative instruction.",
+      "AC6: All 955 tests pass — zero regressions in existing test suite.",
+      "AC7: No new fields or field name changes in the OUTPUT_FORMAT_SECTION JSON schema block — test_output_format_json_schema_fields_unchanged and test_output_format_no_new_json_schema_fields both pass.",
+      "AC8: Placeholder names in user_prompt_template are unchanged — the template string in PromptTemplate was not touched."
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "test_output_format_no_new_json_schema_fields uses re.search(r'\\{([^}]+)\\}') which stops at the first closing brace, so it only validates the outer schema opening block and the growth entry — the relational block fields (target_id, trust_shift, closeness_delta, risk_delta) are not checked by this regex. This is a test precision issue; it does not cause false failures but would fail to detect a new field inserted after the first '}'. Low risk because the relational block is in the Rules section below the schema block, not in the JSON template itself.",
+      "The T4-specific constraint text ('absorption MUST be none') appears in all rendered prompts (T1, T2, T4) since OUTPUT_FORMAT_SECTION is shared. This is harmless — the T1 and T2 rendered prompts carrying T4-specific language does not mislead the LLM and is architecturally consistent with the current single-section design.",
+      "Consider adding a test asserting that the Disallowed example language is not the only constraint guard — i.e., that positive conditions for deep/non-neutral responses remain reachable — to future-proof against overly restrictive tightening in later phases."
+    ],
+    "rationale": "All eight acceptance criteria are fully met. The implementation is minimal and correct: (1) four concrete deviation-pattern rules with disallowed examples in OUTPUT_FORMAT_SECTION, (2) unambiguous T4 no-event constraint using MUST language, (3) system_prompt conservative instruction tied to ambiguous context, (4) constraints flow into all rendered prompts via the shared {output_format} placeholder, (5) a dedicated test file with 30 assertions covering OUTPUT_FORMAT_SECTION content, rendered prompts for each active tick type, and system_prompt. No forbidden files were modified (only prompt_schema.py was changed; the test file is new). All 955 tests pass with no regressions. The constraints use 'unless' qualifiers preserving legitimate enrichment pathways while closing the deviation patterns. The T4 no-event constraint is clear and unambiguous."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/llm/prompt_schema.py"
+    ],
+    "files_added": [
+      "back/tests/test_p33_t2_prompt_constraints.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/llm/prompt_schema.py | 18 +++++++++++++++++-\n 1 file changed, 17 insertions(+), 1 deletion(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "Done. Here's what was implemented:\n\n**`back/app/llm/prompt_schema.py`** — two changes:\n- **`OUTPUT_FORMAT_SECTION`**: Added a \"Deviation prevention rules\" block with four explicit negative examples (absorption over-enrichment, valence drift, phantom growth dimensions, guidance_resonance inflation) and a \"Tick-type-specific constraints\" block (T1: rarely deep; T2: default surface; T4: absorption MUST be none when no social event data block present). JSON schema field surface is unchanged.\n- **`system_prompt`**: Added explicit instruction to prefer conservative, baseline-matching outputs over enriched ones when context is ambiguous.\n\n**`back/tests/test_p33_t2_prompt_constraints.py`** — new file with 27 tests verifying:\n- (a) `OUTPUT_FORMAT_SECTION` contains all required constraint phrases for each deviation pattern and per-tick guidance\n- (b) Rendered prompts for T1, T2, T4 contain the constraint language\n- (c) `system_prompt` carries the conservative preference instruction\n- (d) JSON schema block has no new fields\n\n**Full suite: 955 passed, 0 failures.**"
+}

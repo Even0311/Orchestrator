@@ -1,0 +1,42 @@
+{
+  "summary": "Tightened prompt schema and output-format instructions in back/app/llm/prompt_schema.py to reduce LLM deviation rate. Added four deviation-prevention rules (absorption over-enrichment, valence drift, phantom growth dimensions, guidance_resonance inflation), tick-type-specific constraints for T1/T2/T4, and an explicit T4 no-event constraint. Strengthened system_prompt with conservative/baseline-matching preference instruction. Created test_p33_t2_prompt_constraints.py (27 tests) to programmatically verify constraint presence. All 955 existing tests pass with zero regressions.",
+  "files_changed": [
+    "back/app/llm/prompt_schema.py",
+    "back/tests/test_p33_t2_prompt_constraints.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/test_p33_t2_prompt_constraints.py -v",
+    "python3 -m pytest tests/ -q --tb=short"
+  ],
+  "test_results": {
+    "new_test_file": {
+      "file": "back/tests/test_p33_t2_prompt_constraints.py",
+      "collected": 27,
+      "passed": 27,
+      "failed": 0
+    },
+    "full_suite": {
+      "collected": 955,
+      "passed": 955,
+      "failed": 0,
+      "regressions": 0
+    }
+  },
+  "diff_summary": {
+    "back/app/llm/prompt_schema.py": {
+      "OUTPUT_FORMAT_SECTION": [
+        "Added 'Deviation prevention rules' block with four negative examples: absorption over-enrichment (Do not escalate absorption beyond surface), valence drift (Do not shift valence away from neutral), phantom growth dimensions (Do not add growth dimensions not directly triggered by event content), guidance_resonance inflation (Do not set guidance_resonance when no player guidance is present)",
+        "Added 'Tick-type-specific constraints' block: T1 — rarely produce deep; T2 — default to surface; T4 — absorption MUST be none when no social event data block is present",
+        "JSON schema block (field names and types) left unchanged"
+      ],
+      "system_prompt": [
+        "Added instruction: prefer conservative, baseline-matching outputs over enriched or escalated ones when input context is ambiguous",
+        "Placeholder names and section rendering functions left unchanged"
+      ]
+    },
+    "back/tests/test_p33_t2_prompt_constraints.py": {
+      "description": "New test file, 27 tests covering: (a) OUTPUT_FORMAT_SECTION static constraint text for all four deviation patterns plus T4 no-event rule and tick-specific guidance; (b) rendered prompts for T1, T2, T4 containing constraint language; (c) system_prompt conservative preference instruction"
+    }
+  },
+  "unresolved_issues": []
+}

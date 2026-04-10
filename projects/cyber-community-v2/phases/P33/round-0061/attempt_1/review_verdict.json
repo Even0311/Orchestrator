@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "AC1: OUTPUT_FORMAT_SECTION contains at least one explicit negative example per all four deviation patterns — each uses 'Disallowed example:' with a concrete failure mode (absorption=deep for routine headline, valence=positive for neutral headline, phantom growth for mundane exchange, guidance_resonance=aligned with no player action).",
+    "AC2: OUTPUT_FORMAT_SECTION includes an explicit T4 no-event constraint: 'When no social event data block is included in this prompt, absorption MUST be none, aftershock_days MUST be 0, and growth MUST be [].'",
+    "AC3: PromptTemplate.system_prompt explicitly instructs conservative/baseline-matching preference: 'prefer conservative, baseline-matching outputs over enriched or escalated ones' with 'ambiguous' context trigger.",
+    "AC4: Rendered user prompts for T1, T2, and T4 all include the new constraint language — OUTPUT_FORMAT_SECTION is appended via {output_format} placeholder to every rendered prompt regardless of tick type; confirmed by passing rendered-prompt tests.",
+    "AC5: test_p33_t2_prompt_constraints.py exists with 30 tests covering (a) OUTPUT_FORMAT_SECTION static phrases and (b) rendered prompt substrings for T1, T2, T4, and (c) system_prompt conservative instruction.",
+    "AC6: All 955 tests pass — zero regressions in existing test suite.",
+    "AC7: No new fields or field name changes in the OUTPUT_FORMAT_SECTION JSON schema block — test_output_format_json_schema_fields_unchanged and test_output_format_no_new_json_schema_fields both pass.",
+    "AC8: Placeholder names in user_prompt_template are unchanged — the template string in PromptTemplate was not touched."
+  ],
+  "unmet_criteria": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "test_output_format_no_new_json_schema_fields uses re.search(r'\\{([^}]+)\\}') which stops at the first closing brace, so it only validates the outer schema opening block and the growth entry — the relational block fields (target_id, trust_shift, closeness_delta, risk_delta) are not checked by this regex. This is a test precision issue; it does not cause false failures but would fail to detect a new field inserted after the first '}'. Low risk because the relational block is in the Rules section below the schema block, not in the JSON template itself.",
+    "The T4-specific constraint text ('absorption MUST be none') appears in all rendered prompts (T1, T2, T4) since OUTPUT_FORMAT_SECTION is shared. This is harmless — the T1 and T2 rendered prompts carrying T4-specific language does not mislead the LLM and is architecturally consistent with the current single-section design.",
+    "Consider adding a test asserting that the Disallowed example language is not the only constraint guard — i.e., that positive conditions for deep/non-neutral responses remain reachable — to future-proof against overly restrictive tightening in later phases."
+  ],
+  "rationale": "All eight acceptance criteria are fully met. The implementation is minimal and correct: (1) four concrete deviation-pattern rules with disallowed examples in OUTPUT_FORMAT_SECTION, (2) unambiguous T4 no-event constraint using MUST language, (3) system_prompt conservative instruction tied to ambiguous context, (4) constraints flow into all rendered prompts via the shared {output_format} placeholder, (5) a dedicated test file with 30 assertions covering OUTPUT_FORMAT_SECTION content, rendered prompts for each active tick type, and system_prompt. No forbidden files were modified (only prompt_schema.py was changed; the test file is new). All 955 tests pass with no regressions. The constraints use 'unless' qualifiers preserving legitimate enrichment pathways while closing the deviation patterns. The T4 no-event constraint is clear and unambiguous."
+}

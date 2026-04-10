@@ -1,0 +1,17 @@
+{
+  "can_evaluate": [
+    "1. OUTPUT_FORMAT_SECTION in prompt_schema.py contains at least one explicit negative example per deviation pattern: verify by reading the section and checking for examples that reference each of the 4 named patterns (absorption over-enrichment, valence drift from neutral, phantom growth dimensions, guidance_resonance inflation beyond neutral). Pattern names are specific enough to judge whether each example addresses the correct failure mode.",
+    "2. OUTPUT_FORMAT_SECTION includes an explicit T4 no-event constraint: verify by reading the section and checking for clear language stating absorption must be none when no SOCIAL EVENT CONTEXT section is present.",
+    "3. PromptTemplate.system_prompt explicitly instructs conservative/baseline-matching preference over enriched outputs when context is ambiguous: verify by reading the system_prompt field and confirming the instruction is present as text (not merely implied).",
+    "4. Rendered user prompt for T1, T2, T4 tick types include new constraint language: verifiable indirectly via the test assertions required by criterion 5 — if those tests pass, the constraint language is confirmed present in rendered output.",
+    "5. A test file exists with programmatic assertions on (a) OUTPUT_FORMAT_SECTION key phrases and (b) rendered prompts per tick type: verify by reading the test file for existence and for assertions targeting both locations.",
+    "6. All existing tests in back/tests/ pass without modification: verify by running pytest back/tests/ and checking zero failures.",
+    "7. No new fields or field name changes in OUTPUT_FORMAT_SECTION JSON schema block: verify by reading the JSON schema block and confirming field names match the original.",
+    "8. Placeholder names in user_prompt_template remain unchanged: verify by reading user_prompt_template and confirming placeholder names are identical to original."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "criterion_4_clarification": "Criterion 4 says 'new constraint language' without defining it. This is not a blocker because criterion 5 requires test assertions on 'key constraint phrases', which operationally defines what counts. However, for precision, criterion 4 could be rewritten as: 'The rendered user prompt for T1, T2, and T4 tick types all include the constraint phrases asserted in the test file required by criterion 5.' This eliminates the ambiguity without requiring a full revision."
+  },
+  "needs_revision": false
+}
