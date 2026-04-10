@@ -1,0 +1,21 @@
+{
+  "can_evaluate": [
+    "1. File existence check: `docs/stage1_t4_relational_continuity_contract.md` presence is a binary stat/ls check.",
+    "2. Section on valid T4 output: verifiable by grepping for P0/Pattern A/Pattern B names and their stated event types, reciprocity, and intensity values, then cross-checking against the engine code.",
+    "3. Section on activation frequency: verifiable by checking the document for 'event-driven' claim and a reference to the world generator's qualifying-event emission.",
+    "4. Section on wake chain lifecycle: verifiable by checking for the specific gate conditions (valence==negative, trust_shift in {mild_decrease, strong_decrease}, absorption not in {none, surface}) as literal text in the document.",
+    "5. Wake chain depth limit: verifiable by checking the document states 'days_remaining=1' and explains self-limiting property.",
+    "6. _adjust_t4() section: verifiable by checking for the three specific bounds (trust_shift capped at mild_decrease, closeness_delta [-2, +2], absorption ceiling deep) and cross-referencing the engine code.",
+    "7. T2/T4 same-day composition section: verifiable by checking for a section that references settlement order (T2 before T4).",
+    "8. Cross-day residual carry section: verifiable by checking for a section that asserts T4 residuals coexist with T1/T2 without interference.",
+    "9. Stage 2 deferred section: verifiable by checking for T3/T5/T6/T7/T8 bridge expansion, multi-target routing, and LLM-driven T4 appraisal as named items.",
+    "10. Test module list: verifiable by checking for the three filenames (test_t4_behavior_contract.py, test_residual_continuity_audit.py, test_residual_persistence.py) in the document.",
+    "11. No existing files modified: objectively verified via `git diff --name-only` — only the new doc file should appear.",
+    "12. Test suite passes: objectively verified by running `cd back && python -m pytest tests/ -v` and checking exit code 0."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "note": "No revision needed. All criteria are objectively verifiable. One clarification that would strengthen criterion 2 without requiring revision: it would help to know whether 'exact activation conditions' means the document must match the code precisely (factual accuracy review) or just name the conditions at all. The Review Focus section already covers factual accuracy, so this is handled. No changes required."
+  },
+  "needs_revision": false
+}
