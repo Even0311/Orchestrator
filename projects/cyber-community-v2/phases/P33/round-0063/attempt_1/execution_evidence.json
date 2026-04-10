@@ -1,0 +1,26 @@
+{
+  "summary": "Implemented P33-T4: Automatic recovery logic with exponential backoff after extended fallback. Extended DegradationTracker with per-tick-type probe-retry state (fallback_activated_day, consecutive_failure_cycles, next_probe_day, explicitly_disengaged) and three new methods: notify_auto_fallback_active, record_probe_outcome, should_probe, get_backoff_state. Modified simulate_day_bridged to use probe logic at T1/T2/T4 check points. Updated AppraisalAuditLog with probe_attempted and probe_backoff_state metadata fields. Wrote 30 new tests covering all acceptance criteria.",
+  "files_changed": [
+    "back/app/llm/degradation_tracker.py",
+    "back/app/llm/appraisal_audit_log.py",
+    "back/app/engines/tick_bridge.py",
+    "back/tests/test_p33_t4_probe_retry.py"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "total": 1017,
+    "passed": 1017,
+    "failed": 0,
+    "new_tests": 30,
+    "regressions": 0
+  },
+  "diff_summary": {
+    "back/app/llm/degradation_tracker.py": "Added 4 new fields (base_cooldown=1, multiplier=2, max_cooldown=14, fallback_activated_day, consecutive_failure_cycles, next_probe_day, explicitly_disengaged). Added notify_auto_fallback_active(), record_probe_outcome(), should_probe(), get_backoff_state() methods. Modified is_auto_fallback_active() to check explicitly_disengaged flag. Modified record_outcome() to clear explicitly_disengaged on non-acceptable outcomes.",
+    "back/app/llm/appraisal_audit_log.py": "Added probe_attempted (dict[str, bool]) and probe_backoff_state (dict[str, dict]) fields to AppraisalAuditLog.",
+    "back/app/engines/tick_bridge.py": "Added OutcomeClass import. For T1, T2, T4: replaced simple is_auto_fallback_active binary check with 3-branch logic (regular auto-fallback / probe attempt / normal path). Added notify_auto_fallback_active and should_probe calls. Probe path calls route() and records outcome via both record_outcome and record_probe_outcome. Updated audit log assembly to populate probe_attempted and probe_backoff_state.",
+    "back/tests/test_p33_t4_probe_retry.py": "New test file with 30 tests in 7 classes: TestProbeAfterCooldown (7), TestSuccessfulProbeDisengagesFallback (6), TestFailedProbeEscalatesBackoff (4), TestMaxCooldownCap (3), TestMultiDayRecoveryCycle (2), TestMultiDayPersistentFailure (4), TestTrackerSerializationWithProbeState (4)."
+  },
+  "unresolved_issues": []
+}

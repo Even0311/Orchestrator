@@ -1,0 +1,19 @@
+{
+  "can_evaluate": [
+    "1. DegradationTracker has new fields for per-tick-type recovery state (fallback_activated_day, consecutive_failure_cycles, next_probe_day) that serialize/deserialize correctly via model_dump()/model_validate().",
+    "2. A new method (e.g. should_probe) returns True only when auto-fallback is active AND the current world_day >= next_probe_day for that tick type.",
+    "3. simulate_day_bridged correctly performs a probe LLM call (via route()) when should_probe is True, instead of unconditionally skipping.",
+    "4. A successful probe (acceptable outcome) resets consecutive_failure_cycles to 0 and disengages auto-fallback for that tick type.",
+    "5. A failed probe (degraded or invalid outcome) increments consecutive_failure_cycles and sets next_probe_day using exponential backoff: base_cooldown * (multiplier ^ consecutive_failure_cycles), capped at max_cooldown.",
+    "6. Default configuration: base_cooldown=1, multiplier=2, max_cooldown=14.",
+    "7. AppraisalAuditLog includes per-tick-type probe metadata (whether a probe was attempted, current backoff state).",
+    "8. All existing tests in test_p33_t3_degradation_tracker.py continue to pass without modification.",
+    "9. New test file exists with tests covering: probe fires after cooldown, successful probe resets state, failed probe escalates backoff, max cap is respected, full multi-day fallback-probe-recovery cycle, full multi-day persistent-failure escalation cycle.",
+    "10. python -m pytest tests/ -v passes with zero failures."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "7": "Criterion 7 is slightly imprecise — 'probe metadata' doesn't name exact fields. However, it is still verifiable: I will check that AppraisalAuditLog (or each per-tick audit entry) contains at minimum (a) a boolean or flag indicating whether a probe was attempted, and (b) the current backoff state (consecutive_failure_cycles and/or next_probe_day). If both are present in any reasonable form, the criterion passes. No revision needed — just noting the interpretive latitude I am applying."
+  },
+  "needs_revision": false
+}
