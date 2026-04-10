@@ -12,110 +12,175 @@
                                  |
                                  v
 +================================================================+
-|                      ORCHESTRATOR                              |
+|                      ORCHESTRATOR (Python, deterministic)       |
 |                                                                |
 |  +------------------+  +------------------+  +---------------+ |
 |  | SOT Manager      |  | Round Engine     |  | Hard Gates    | |
 |  | (sot.py)         |  | (orchestrator.py)|  | (hard_gates)  | |
 |  |                  |  |                  |  |               | |
-|  | parse phase      |  | run loop         |  | git_changes   | |
-|  | mark complete    |  | attempt mgmt     |  | protected     | |
-|  | track decisions  |  | escalation       |  | allowed/forb  | |
-|  | phase status     |  | commit both      |  | round_dir     | |
+|  | parse phase      |  | 10-step flow     |  | git_changes   | |
+|  | mark complete    |  | per-role briefs  |  | protected     | |
+|  | track decisions  |  | cold CLI calls   |  | forbidden     | |
+|  | phase status     |  | escalation       |  | round_dir     | |
 |  +------------------+  +------------------+  | sot_mutation  | |
 |                                              | pytest        | |
 |  +------------------+  +------------------+  +---------------+ |
 |  | Briefing Engine   |  | Phase Planner   |                    |
 |  | (briefing.py)     |  | (phase_planner) |                    |
 |  |                   |  |                 |                    |
-|  | round_brief.md    |  | roadmap parse   |                    |
-|  | vision summary    |  | Claude Opus     |                    |
-|  | roadmap context   |  | task breakdown  |                    |
+|  | designer_brief    |  | roadmap parse   |                    |
+|  | executor_brief    |  | Claude Opus     |                    |
+|  | evaluator briefs  |  | task breakdown  |                    |
 |  +------------------+  +-----------------+                     |
 +================================================================+
          |                          ^
-         | claude -p ... --agent    | JSON artifacts
-         | round-driver             | + git evidence
-         | --add-dir <attempt_dir>  |
+         | Independent cold-start   | JSON artifacts
+         | Claude CLI sessions      | + git evidence
+         | (no shared context)      |
          v                          |
 +================================================================+
-|              CLAUDE CODE (target repo cwd)                     |
+|         INDEPENDENT CLAUDE CLI SESSIONS                        |
 |                                                                |
-|  +------------------+                                          |
-|  | Round Driver     |  tools: Agent, Read, Write               |
-|  | (round-driver.md)|  model: sonnet                           |
-|  +--------+---------+                                          |
-|           |                                                    |
-|           | 1. Spawn designer (opus)                           |
-|           | 2. Spawn executor (sonnet)                         |
-|           | 3. Spawn reviewer (sonnet)                         |
-|           v                                                    |
-|  +--------+---------+  +------------------+  +---------------+ |
-|  | Designer          |  | Executor         |  | Reviewer      | |
-|  | (designer.md)     |  | (executor.md)    |  | (reviewer.md) | |
-|  |                   |  |                  |  |               | |
-|  | reads:            |  | reads:           |  | reads:        | |
-|  |  round_brief.md   |  |  task_contract   |  |  task_contract| |
-|  |  CLAUDE.md        |  |  CLAUDE.md       |  |  exec_evidence| |
-|  |                   |  |                  |  |  actual code  | |
-|  | writes:           |  | writes:          |  |               | |
-|  |  task_contract    |  |  code + tests    |  | writes:       | |
-|  |  .json            |  |  exec_evidence   |  |  review_verdict|
-|  |                   |  |  .json           |  |  .json        | |
-|  +-------------------+  +------------------+  +---------------+ |
+|  Session #1: Designer (Opus)                                   |
+|    reads: designer_brief.md (vision, roadmap, phase, decisions)|
+|    writes: task_contract.json                                  |
+|                                                                |
+|  Session #2: Evaluator — Contract Review (Sonnet)              |
+|    reads: evaluator_contract_brief.md (criteria only)          |
+|    writes: contract_feedback.json                              |
+|                                                                |
+|  Session #1b: Designer Revision (Opus, if needed)              |
+|    reads: designer_brief.md + contract_feedback.json           |
+|    writes: revised task_contract.json                          |
+|                                                                |
+|  Session #3: Executor (Sonnet)                                 |
+|    reads: executor_brief.md + source code                      |
+|    writes: code changes + execution_evidence.json              |
+|                                                                |
+|  Session #4: Evaluator — Code Review (Sonnet)                  |
+|    reads: evaluator_review_brief.md (git diff + criteria)      |
+|    writes: review_verdict.json                                 |
 +================================================================+
 ```
 
 ## Data Flow Per Round
 
 ```
-ORCHESTRATOR                           CLAUDE CODE
-============                           ==========
+ORCHESTRATOR                           CLAUDE CLI SESSIONS
+============                           ===================
 
 1. Parse current_phase.md
    -> PhaseInfo (task_key, goal,
       scope, recent completed)
-                    |
-2. Generate round_brief.md -------->  round-driver reads brief
-   (vision + roadmap + phase +            |
-    decisions + recent rounds +           |
-    prior failure)                        v
-                                     designer reads brief + CLAUDE.md
-                                     designer writes task_contract.json
-                                          |
+
+2. Generate designer_brief.md ------> CLI #1: Designer (Opus)
+   (vision + roadmap + phase +              |
+    decisions + prior failure)              v
+                                      writes task_contract.json
+                                      (acceptance_criteria + review_focus)
+
+3. Generate evaluator_contract     --> CLI #2: Evaluator (Sonnet)
+   _brief.md (criteria only)              |
                                           v
-                                     executor reads task_contract.json
-                                     executor modifies code + tests
-                                     executor runs pytest
-                                     executor writes execution_evidence.json
-                                          |
+                                      writes contract_feedback.json
+                                      (can_evaluate / cannot_evaluate)
+
+4. [If revision needed]
+   Generate designer_brief.md  -----> CLI #1b: Designer (Opus)
+   + contract_feedback.json               |
                                           v
-                                     reviewer reads task_contract + evidence
-                                     reviewer inspects actual code changes
-                                     reviewer writes review_verdict.json
-                                          |
-3. Read 3 artifact files  <----------  round complete
-4. Collect git evidence
-   (diff, status, files changed)
-5. Run hard gates:
+                                      writes revised task_contract.json
+
+5. Hard gate: forbidden_files check
+6. Snapshot SOT + baseline commit
+7. Generate executor_brief.md  -----> CLI #3: Executor (Sonnet)
+   (task_contract only)                    |
+                                          v
+                                      modifies code + tests
+                                      writes execution_evidence.json
+
+8. Hard gates:
    - git_changes
    - target_protected_files
-   - allowed_files / forbidden_files
+   - forbidden_files
    - round_dir_boundary
    - sot_mutation
    - pytest
-6. Adjudicate:
-   hard gate overrides Claude verdict
+   FAIL -> skip evaluator, roll back
+
+9. Generate evaluator_review       --> CLI #4: Evaluator (Sonnet)
+   _brief.md (git diff + criteria)        |
+                                          v
+                                      writes review_verdict.json
+
+10. Adjudicate:
+    hard gate overrides evaluator
                     |
         +-----------+-----------+
         |                       |
      PASS                    FAIL
         |                       |
-  mark task [x]          attempt < max?
-  commit both repos      yes -> retry
-  append decision        no  -> escalate
-  next task                     -> human
+  mark task [x]          problems -> designer
+  commit both repos      attempt < max?
+  append decision        yes -> new attempt
+  next task              no  -> escalate
 ```
+
+## Context Isolation
+
+Each agent gets a different brief with only the context it needs:
+
+| Agent | Sees | Does NOT See |
+|-------|------|-------------|
+| Designer | vision.md, road_map.md, current_phase.md, decisions.md, code structure, prior failure | executor code, evaluator reasoning |
+| Evaluator (contract) | acceptance_criteria, review_focus | vision, roadmap, designer reasoning |
+| Executor | task_contract.json (final), source code | designer reasoning, vision, evaluator |
+| Evaluator (review) | git diff, acceptance_criteria, review_focus | executor reasoning, designer reasoning |
+
+## Contract Schema
+
+```json
+{
+  "phase_id": "P29",
+  "task_key": "P29-T1",
+  "title": "Extract appraisal input schema",
+  "objective": "...",
+  "exact_scope": "...",
+  "constraints": ["architectural constraints"],
+  "forbidden_files": ["docs/vision.md", "back/app/domain/**"],
+  "non_goals": ["explicitly out of scope"],
+  "acceptance_criteria": ["each must be objectively verifiable"],
+  "review_focus": ["evaluator pays special attention to these"]
+}
+```
+
+**Design principles:**
+- No `allowed_files` — executor is free outside forbidden_files
+- No `required_tests` — executor decides how to test
+- Deterministic boundaries use hard gates, judgment boundaries use evaluator
+
+## Hard Gates (Deterministic, Override Evaluator)
+
+| Gate | What It Checks | Failure Means |
+|------|---------------|---------------|
+| `git_changes` | Claude must have made git changes | No work done |
+| `target_protected_files` | CLAUDE.md, .claude/agents/** untouched | Control plane violated |
+| `forbidden_files` | No changes to forbidden patterns | Constraint violated |
+| `round_dir_boundary` | Only allowed artifact files in round dir | Path traversal / pollution |
+| `sot_mutation` | SOT files (vision, roadmap, phase, decisions) unmodified | SOT integrity violated |
+| `pytest` | Project test suite passes | Regression introduced |
+
+Hard gates run BEFORE evaluator. If they fail, evaluator is skipped (saves tokens).
+
+## Model Assignment
+
+| Role | Model | Rationale |
+|------|-------|-----------|
+| Designer | **Opus** | Strategic task decomposition needs strongest reasoning |
+| Executor | Sonnet | Code implementation, cost-efficient |
+| Evaluator (contract) | Sonnet | Criteria review, lightweight |
+| Evaluator (review) | Sonnet | Code verification against criteria |
+| Phase Planner | **Opus** | Phase-level task breakdown |
 
 ## SOT Directory Structure
 
@@ -129,82 +194,25 @@ projects/<project_name>/           # orchestrator repo
   +-- decisions.md                 # append-only: timestamped decision log
   +-- context/                     # optional persistent context files
   |
-  +-- P28/                         # phase directory (auto-created)
-  |     +-- round-0028/
-  |     |     +-- attempt_1/
-  |     |     |     +-- round_brief.md           [orchestrator -> Claude]
-  |     |     |     +-- task_contract.json        [designer output]
-  |     |     |     +-- execution_evidence.json   [executor output]
-  |     |     |     +-- review_verdict.json       [reviewer output]
-  |     |     |     +-- attempt_report.json       [orchestrator record]
-  |     |     +-- audit.md                        [round summary]
-  |     +-- round-0029/
-  |           +-- ...
-  |
-  +-- P29/
-        +-- round-0030/
+  +-- phases/
+        +-- P28/
+        |     +-- round-0028/
+        |     |     +-- attempt_1/
+        |     |     |     +-- designer_brief.md            [orch -> designer]
+        |     |     |     +-- executor_brief.md            [orch -> executor]
+        |     |     |     +-- evaluator_contract_brief.md  [orch -> evaluator]
+        |     |     |     +-- evaluator_review_brief.md    [orch -> evaluator]
+        |     |     |     +-- task_contract.json           [designer output]
+        |     |     |     +-- contract_feedback.json       [evaluator output]
+        |     |     |     +-- execution_evidence.json      [executor output]
+        |     |     |     +-- review_verdict.json          [evaluator output]
+        |     |     |     +-- attempt_report.json          [orch record]
+        |     |     +-- audit.md                           [round summary]
+        |     +-- round-0029/
+        |           +-- ...
+        +-- P29/
               +-- ...
 ```
-
-## Artifact Schemas
-
-### task_contract.json (Designer -> Executor)
-
-```json
-{
-  "phase_id": "P29",
-  "task_key": "P29-T1",
-  "title": "Extract appraisal input schema",
-  "objective": "...",
-  "exact_scope": "...",
-  "constraints": ["..."],
-  "acceptance_criteria": ["criterion 1", "criterion 2"],
-  "required_tests": ["test expectation in business language"],
-  "non_goals": ["..."],
-  "allowed_files": ["back/**/*.py"],
-  "forbidden_files": ["docs/vision.md"]
-}
-```
-
-### execution_evidence.json (Executor -> Reviewer)
-
-```json
-{
-  "summary": "Implemented ...",
-  "files_changed": ["back/engines/foo.py", "back/tests/test_foo.py"],
-  "commands_run": ["pytest tests/ -v"],
-  "test_results": "42 passed",
-  "diff_summary": "...",
-  "unresolved_issues": []
-}
-```
-
-### review_verdict.json (Reviewer -> Orchestrator)
-
-```json
-{
-  "verdict": "PASS",
-  "confidence": "high",
-  "met_criteria": ["criterion 1 met because ..."],
-  "unmet_criteria": [],
-  "scope_violations": [],
-  "blocker_fixes": [],
-  "non_blocking_suggestions": ["consider ..."],
-  "rationale": "All acceptance criteria met, tests pass."
-}
-```
-
-## Hard Gates (Programmatic, Override Claude)
-
-| Gate | What It Checks | Failure Means |
-|------|---------------|---------------|
-| `git_changes` | Claude must have made git changes | No work done |
-| `target_protected_files` | CLAUDE.md, .claude/agents/** untouched | Control plane violated |
-| `allowed_files` | All changes within allowed glob patterns | Scope violation |
-| `forbidden_files` | No changes to forbidden patterns | Constraint violated |
-| `round_dir_boundary` | Only 3 artifact files written to round dir | Path traversal / pollution |
-| `sot_mutation` | SOT files (vision, roadmap, phase, decisions) unmodified | SOT integrity violated |
-| `pytest` | Project test suite passes | Regression introduced |
 
 ## Phase Lifecycle
 
@@ -227,16 +235,6 @@ Phase complete (all tasks [x])
          v
   orch run  (proceeds with new phase)
 ```
-
-## Model Assignment
-
-| Role | Model | Rationale |
-|------|-------|-----------|
-| Designer | **Opus** | Strategic task decomposition needs strongest reasoning |
-| Round Driver | Sonnet | Coordination only, no creative work |
-| Executor | Sonnet | Code implementation, cost-efficient |
-| Reviewer | Sonnet | Verification against criteria |
-| Phase Planner | **Opus** | Phase-level task breakdown |
 
 ## Resolution Flow (Human-in-the-Loop)
 

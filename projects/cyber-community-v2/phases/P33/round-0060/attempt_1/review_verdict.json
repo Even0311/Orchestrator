@@ -1,0 +1,28 @@
+{
+  "verdict": "REVISION_REQUIRED",
+  "confidence": "high",
+  "met_criteria": [
+    "1: back/tools/audit_llm_deviation.py exists with shebang line and if __name__ == '__main__' block — runnable as standalone script from back/.",
+    "2: --days N flag present with default=5 (argparse, line 761-765).",
+    "3b: aggregate_summary section present in JSON output with per_field_deviation_counts and per_tick_type_counts (lines 447-474).",
+    "4a: Ranked deviation patterns table ('## Deviation Patterns Ranked by Frequency') in markdown report (lines 602-617).",
+    "4b: FIELD_TO_RULE mapping links every field to its specific OUTPUT_FORMAT rule; per-field table includes this column (lines 57-66, 558-561).",
+    "4c: '## Summary: Structural Failures vs Semantic Deviations vs Passes' section present (lines 626-638).",
+    "5: _run_tick_comparison wraps run_comparison() in try/except and returns LLM_CONNECTION_FAILURE dict on exception; outer day loop does not abort on individual tick failure (lines 245-266).",
+    "6: Only new file added; all state mutations are in-memory (reset_to_seed + advance_day on in-memory stores, no seed or engine files modified).",
+    "7: Imports and calls comparison_harness.run_comparison() exclusively for deviation detection (line 47, 246) — no deviation logic reimplemented."
+  ],
+  "unmet_criteria": [
+    "3a (BLOCKER): Per-tick records include a raw_llm_response field, but it is hardcoded to None on every path (line 347: '\"raw_llm_response\": None,  # not exposed via ComparisonReport — use shadow_runner directly'). The field is structurally present but semantically absent. Since raw LLM text is the primary input for P33-T2 prompt tightening, always-null defeats the stated purpose of the audit. ShadowRunResult.raw_response (shadow_runner.py line 60) already holds this value — it just isn't threaded through ComparisonReport."
+  ],
+  "blocker_fixes": [
+    "raw_llm_response always None — fix required before this audit is useful for P33-T2. The simplest correct fix: in _run_tick_comparison(), after calling run_comparison(), also call shadow_runner.run(appraisal_input) to retrieve the ShadowRunResult directly, and use ShadowRunResult.raw_response as the raw_llm_response value. This does not violate criterion 7 (comparison_harness.run_comparison() is still used for deviation detection); it only supplements it to capture raw text that ComparisonReport intentionally omits. Alternatively, extend ComparisonReport with an optional raw_llm_response field and thread it through run_comparison() — but that modifies an existing module, which is higher-risk."
+  ],
+  "non_blocking_suggestions": [
+    "The --days flag silently clamps to max(5, args.days) (line 767), so '--days 3' runs 5 days without warning. Consider printing a notice ('--days 3 < minimum 5; running 5 days') to avoid silent behavior.",
+    "The OUTPUT_FORMAT rule strings in FIELD_TO_RULE (lines 57-66) are author-written descriptions, not verbatim quotes from the actual prompt template. If the prompt template changes in a later phase, FIELD_TO_RULE will silently go stale. A future improvement would be to extract these strings from the prompt schema itself, but this is not blocking for P33-T1.",
+    "The per-day summary table uses a local nested function _fmt() defined inside a for-loop body (line 665). This is syntactically valid Python but slightly unusual; a module-level helper or inline ternary would be cleaner.",
+    "The state slicing note in the report header accurately documents the pre-day-state simplification. This is good transparency; no action required."
+  ],
+  "rationale": "The script is well-structured, correctly uses comparison_harness.run_comparison() for deviation detection, does not modify any forbidden files, handles failures gracefully, and produces a markdown report that maps deviations to OUTPUT_FORMAT rules. All 928 existing tests pass with no regressions. However, criterion 3(a) is materially unmet: raw_llm_response is always null because ComparisonReport does not expose ShadowRunResult.raw_response. The comment at line 347 acknowledges this gap but leaves it unresolved. Since the explicit purpose of P33-T1 is to collect raw LLM output for P33-T2 prompt tightening, shipping with raw_llm_response=null throughout makes the audit JSON incomplete for its stated downstream use. The fix is small (one additional shadow_runner.run() call in _run_tick_comparison) and does not require touching any protected modules."
+}

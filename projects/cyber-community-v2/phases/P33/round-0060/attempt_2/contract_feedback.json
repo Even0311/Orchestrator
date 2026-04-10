@@ -1,0 +1,43 @@
+{
+  "can_evaluate": [
+    {
+      "id": "1",
+      "rationale": "File existence check (Glob/Read) + inspect argparse/click for --days flag. Fully mechanical."
+    },
+    {
+      "id": "2",
+      "rationale": "Grep for 'from ... import ... run_comparison' and a call site of 'run_comparison('. Unambiguous."
+    },
+    {
+      "id": "3a",
+      "rationale": "Two-part check: (a) Grep source for shadow_runner.run() call and assignment of .raw_response; (b) inspect p33_t1_deviation_audit.json — for every record where llm_used==true, raw_llm_response must not be null. Both checks are mechanical. The '(or equivalent)' hedge is acceptable because the observable contract (non-null value in output) is the definitive test."
+    },
+    {
+      "id": "3b",
+      "rationale": "Read p33_t1_deviation_audit.json, confirm every record contains exactly these keys: world_day, tick_type, agent_id, verdict, field_diffs, raw_llm_response, llm_used, failure_reason."
+    },
+    {
+      "id": "4",
+      "rationale": "Read prompt_schema.py to enumerate OUTPUT_FORMAT rule identifiers, then grep the markdown report for those identifiers. A deviation entry that references no rule name from that file fails. Verifiable."
+    },
+    {
+      "id": "5",
+      "rationale": "File existence check on both paths. Trivially verifiable."
+    },
+    {
+      "id": "6",
+      "rationale": "Read the aggregate summary section of the report/JSON and confirm presence of: (a) a total-ticks count, (b) an LLM success rate value, (c) deviation counts broken down by category, (d) a top-violated-rules list. All are structural checks."
+    },
+    {
+      "id": "7",
+      "rationale": "Run 'python -m pytest tests/ -v' from back/. Pass/fail is objective."
+    },
+    {
+      "id": "8",
+      "rationale": "git diff --name-only HEAD filtered to back/app/, back/tests/, front/, docs/ must be empty. Mechanical."
+    }
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": [],
+  "needs_revision": false
+}

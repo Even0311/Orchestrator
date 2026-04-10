@@ -1,0 +1,39 @@
+{
+  "summary": "Fixed back/tools/audit_llm_deviation.py to satisfy all P33-T1 acceptance criteria. The script already existed but had three key gaps: (1) raw_llm_response was always None (comment noted 'use shadow_runner directly'), (2) per-tick records were missing required fields agent_id, field_diffs, llm_used, failure_reason, (3) aggregate summary was missing llm_success_rate and top_violated_prompt_rules. Added import of shadow_runner.run, call it first in _run_tick_comparison to capture raw_response, then call run_comparison() for deviation verdict. Added all missing per-tick fields. Added llm_success_rate and top_violated_prompt_rules to aggregate and markdown report. All 928 existing tests pass with zero regressions.",
+  "files_changed": [
+    "back/tools/audit_llm_deviation.py"
+  ],
+  "commands_run": [
+    "python3 -m pytest tests/ -v (from back/ directory)",
+    "python3 -c \"import tools.audit_llm_deviation; print('import OK')\""
+  ],
+  "test_results": {
+    "total": 928,
+    "passed": 928,
+    "failed": 0,
+    "errors": 0,
+    "output": "928 passed in 10.72s"
+  },
+  "diff_summary": {
+    "back/tools/audit_llm_deviation.py": {
+      "status": "modified (was untracked new file from previous attempt)",
+      "changes": [
+        "Added: from app.llm.shadow_runner import run as _run_shadow (line 48)",
+        "Added: Step 1 in _run_tick_comparison — call _run_shadow(appraisal_input) to get raw_response, llm_used, failure_reason before calling run_comparison()",
+        "Added: agent_id field to both error-path and success-path per-tick records",
+        "Added: field_diffs field — dict keyed by field name, containing structural_failure or semantic_deviation details",
+        "Fixed: raw_llm_response now set from shadow_result.raw_response (was always None)",
+        "Added: llm_used field (was shadow_llm_used)",
+        "Added: failure_reason field (was shadow_failure_reason)",
+        "Added: llm_success_rate to _build_aggregate_summary return dict",
+        "Added: top_violated_prompt_rules to _build_aggregate_summary (top 5 fields mapped to FIELD_TO_RULE)",
+        "Added: top_violated_prompt_rules to aggregate JSON output",
+        "Added: '## Top Violated OUTPUT_FORMAT Prompt Rules' section to markdown report",
+        "Added: LLM success rate row to 'LLM Call Outcomes' table in markdown report"
+      ]
+    }
+  },
+  "unresolved_issues": [
+    "The script calls shadow_runner.run() AND comparison_harness.run_comparison() per tick — both internally call the LLM, meaning 2 LLM calls per active tick. This is the unavoidable consequence of the contract requiring both: shadow_runner for raw_response capture and run_comparison for deviation detection without reimplementing comparison logic. The script is functional and correct; this is a performance trade-off inherent in the contract design."
+  ]
+}

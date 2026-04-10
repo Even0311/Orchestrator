@@ -1,34 +1,30 @@
-# P32: T4 Reality Closure
+# P33: Appraisal Discipline Hardening
 <!-- status: approved -->
 
 ## Phase Goal
-Close the remaining Stage 1 gap by turning the existing T4 event-aware seam
-from a partially implemented path into a real, stage-closing relational contract.
+Harden the live appraisal path so Stage 2 begins from explicit evaluation discipline rather than vague prompt optimism.
 
 ## In Scope
-- close the remaining T4 partial-unlock gap identified in the current repo status
-- make the existing T4 event-aware path capable of completing the approved relational wake chain
-- validate that T4 can progress beyond detection-only / negative-signal-only behavior
-- verify that downstream relational residual creation becomes real and auditable
-- verify that `_adjust_t4()` is no longer permanently dormant
-- audit same-day T2/T4 composition and downstream wake behavior after closure
-- produce explicit contract notes describing what Stage 1 now considers valid T4 relational continuity
+- tighten prompt / schema / evaluation discipline for current live-authority ticks
+- define explicit classes for:
+  - acceptable output
+  - degraded-but-usable output
+  - invalid / forced-fallback output
+- improve live-path observability and reviewability
+- audit multi-day drift and failure accumulation, not only single-tick correctness
+- document what Stage 2 considers safe appraisal deepening versus dangerous narrative drift
 
 ## Out of Scope
-- no deferred tick bridge or live-authority expansion for T3 / T5 / T6 / T7 / T8
-- no broad social world redesign
-- no rich new event taxonomy expansion
-- no settlement / substrate redesign
-- no bridge architecture rewrite
-- no freeform memory / personality / identity-deepening work
-- no uncontrolled broadening of LLM authority
-- no rewriting Stage 1 into a richer Stage 2 system
+- no deferred-tick live-authority expansion yet
+- no freeform memory system
+- no identity-growth implementation yet
+- no player influence redesign
+- no world-generator redesign
 
 ## Task Queue
-- [x] P32-T1: Audit the current T4 path end-to-end in a live multi-day simulation — confirm actual activation rate is zero, identify every point where the path goes dormant, and document the exact chain of blockers preventing real T4 relational output — Round round-0048 — T4 End-to-End Audit: Confirm Zero Activation Rate and Docume
-- [x] P32-T2: Make the world generator produce qualifying social events at a controlled, low frequency so that the T4 event-aware detection path can actually trigger during real simulation runs — Round round-0054 — Wire qualifying social events into world generator for T4 ac
-- [x] P32-T3: Complete the T4 appraisal-to-residual pipeline so that a detected qualifying event produces a real, persisted relational residual — not just a detection log — closing the gap between event detection and downstream relational effect — Round round-0055 — Complete T4 appraisal-to-residual pipeline: break bootstrapp
-- [x] P32-T4: Unfreeze `_adjust_t4()` so it applies the relational residual to the appropriate relationship state, making the T4 wake chain functional rather than permanently dormant — Round round-0056 — Unfreeze _adjust_t4() wake chain: carried relational residua
-- [x] P32-T5: Validate same-day T2/T4 composition by running a multi-day simulation where both T2 social ticks and T4 relational ticks fire on the same day, confirming no double-counting, no state corruption, and correct ordering of effects — Round round-0057 — Validate same-day T2/T4 composition in multi-day simulation
-- [x] P32-T6: Audit downstream wake behavior after T4 closure — verify that T4-produced residuals carry over across days, appear in subsequent tick contexts, and do not regress T1/T2 continuity that was already stable — Round round-0058 — Audit T4 residual cross-day wake behavior and T1/T2 non-regr
-- [x] P32-T7: Write explicit Stage 1 T4 relational continuity contract notes — define what constitutes valid T4 output, what activation frequency is expected, and what remains deferred to Stage 2 — Round round-0059 — Write Stage 1 T4 relational continuity contract notes
+- [ ] P33-T1: Audit prompt and output-format contract tightness — run a controlled multi-day simulation, collect raw LLM responses, classify every deviation between LLM output and deterministic baseline, and report which prompt instructions the LLM most frequently violates or stretches
+- [ ] P33-T2: Tighten prompt schema and output-format instructions to close the specific deviation patterns found in T1 — reduce ambiguity in field-level guidance, add explicit negative examples for the most common failure modes, and verify tightened prompts reduce deviation rate in a repeat audit
+- [ ] P33-T3: Implement rolling degradation-rate tracking — add per-tick-type failure and degradation counters to the audit log, compute a rolling window degradation rate, and define the threshold above which the live path must auto-fallback to deterministic output
+- [ ] P33-T4: Implement automatic recovery logic — define when the system retries LLM after an extended fallback period, add exponential backoff for repeated failures, and verify the fallback-to-retry cycle works correctly across multi-day simulation
+- [ ] P33-T5: Run a full multi-day drift audit (30+ simulated days) — measure state-value drift, growth-buffer accumulation patterns, residual stacking behavior, and degradation-rate trends over time, and flag any unbounded or monotonic drift patterns
+- [ ] P33-T6: Write the Stage 2 appraisal safety contract — document explicitly what constitutes safe appraisal deepening versus dangerous narrative drift, define the preconditions that must hold before any new tick gains live LLM authority, and specify the monitoring gates Stage 2 must pass

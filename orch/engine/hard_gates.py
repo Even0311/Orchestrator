@@ -31,6 +31,17 @@ ALLOWED_ROUND_ARTIFACTS = frozenset({
     "task_contract.json",
     "execution_evidence.json",
     "review_verdict.json",
+    "contract_feedback.json",
+})
+
+# Files written by the orchestrator (not Claude) — allowed in round_dir
+ORCHESTRATOR_WRITTEN_FILES = frozenset({
+    "round_brief.md",           # legacy
+    "designer_brief.md",
+    "executor_brief.md",
+    "evaluator_contract_brief.md",
+    "evaluator_review_brief.md",
+    "attempt_report.json",
 })
 
 # Canonical SOT files under projects/<name>/ that Claude must never mutate directly.
@@ -83,11 +94,14 @@ def run_hard_gates(
     codebase_path: Path,
     git_evidence: GitEvidence,
     round_dir: Path | None = None,
-    allowed_files: list[str] | None = None,
     forbidden_files: list[str] | None = None,
     test_cmd: str | None = None,
 ) -> HardGateResults:
-    """Run all hard gates and return aggregate results."""
+    """Run all hard gates and return aggregate results.
+
+    Gates run after executor completes, before evaluator reviews.
+    Any failure here skips the evaluator and directly fails the round.
+    """
     results = HardGateResults()
 
     # Gate 1: Git diff — must have changes
@@ -96,19 +110,15 @@ def run_hard_gates(
     # Gate 2: Target-repo control-plane files (CLAUDE.md, .claude/agents/**)
     results.gates.append(_gate_target_protected_files(git_evidence))
 
-    # Gate 3: Allowed files (if specified — already validated by scope policy)
-    if allowed_files:
-        results.gates.append(_gate_allowed_files(git_evidence, allowed_files))
-
-    # Gate 4: Forbidden files (if specified)
+    # Gate 3: Forbidden files (if specified)
     if forbidden_files:
         results.gates.append(_gate_forbidden_files(git_evidence, forbidden_files))
 
-    # Gate 5: Round-dir artifact boundary (orchestrator-side SOT protection)
+    # Gate 4: Round-dir artifact boundary (orchestrator-side SOT protection)
     if round_dir:
         results.gates.append(_gate_round_dir_boundary(round_dir))
 
-    # Gate 6: Pytest
+    # Gate 5: Pytest
     results.gates.append(_gate_pytest(codebase_path, test_cmd))
 
     return results
@@ -183,12 +193,11 @@ def _gate_round_dir_boundary(round_dir: Path) -> GateResult:
             violations.append(f"file outside round dir: {item.name}")
             continue
 
-        # Check the file was created after the round brief
-        # (round_brief.md is orchestrator-written, not Claude-written)
-        if item.name == "round_brief.md":
+        # Skip orchestrator-written files (briefs, reports)
+        if item.name in ORCHESTRATOR_WRITTEN_FILES:
             continue
 
-        # Check it's an allowed artifact
+        # Check it's an allowed Claude-written artifact
         if item.name not in ALLOWED_ROUND_ARTIFACTS:
             violations.append(f"unexpected file in round dir: {item.name}")
 
@@ -199,20 +208,6 @@ def _gate_round_dir_boundary(round_dir: Path) -> GateResult:
         )
     return GateResult(name="round_dir_boundary", passed=True)
 
-
-def _gate_allowed_files(git_evidence: GitEvidence, allowed_patterns: list[str]) -> GateResult:
-    """Verify all changed files match at least one allowed pattern."""
-    all_changed = git_evidence.files_modified + git_evidence.files_added + git_evidence.files_deleted
-    violations = []
-    for f in all_changed:
-        if not any(fnmatch.fnmatch(f, pat) for pat in allowed_patterns):
-            violations.append(f)
-    if violations:
-        return GateResult(
-            name="allowed_files", passed=False,
-            detail=f"Files outside allowed patterns: {', '.join(violations[:5])}",
-        )
-    return GateResult(name="allowed_files", passed=True)
 
 
 def _gate_forbidden_files(git_evidence: GitEvidence, forbidden_patterns: list[str]) -> GateResult:
@@ -367,18 +362,9 @@ def _is_under(child: Path, parent: Path) -> bool:
         return False
 
 
-# ── Scope policy: validate Claude-proposed allowed_files ─────────────────────
+# ── Scope policy: validate forbidden_files ─────────────────────────────────
 
-# Patterns that are too broad to be safe as allowed_files
-UNSAFE_SCOPE_PATTERNS = (
-    "**",
-    "*",
-    "**/*",
-    "*.*",
-    "**/*.*",
-)
-
-# Patterns that must never appear in allowed_files (they'd cover control-plane)
+# Patterns that must never appear in allowed scope (they'd cover control-plane)
 CONTROL_PLANE_OVERLAP_PATTERNS = (
     "CLAUDE.md",
     ".claude/**",
@@ -397,48 +383,16 @@ class ScopeValidationResult:
 
 
 def validate_proposed_scope(
-    proposed_allowed: list[str],
     proposed_forbidden: list[str],
-    git_evidence: GitEvidence,
 ) -> ScopeValidationResult:
-    """Validate and normalize Claude-proposed allowed_files / forbidden_files.
+    """Validate and normalize designer-proposed forbidden_files.
 
-    Rejects unsafe scope. Does NOT trust Claude as final authority.
-
-    Rules:
-    1. Repo-wide wildcards (**, *, **/*) are rejected
-    2. Patterns covering control-plane files are rejected
-    3. Empty allowed_files when code changes exist is rejected
-    4. Forbidden_files must not be empty if allowed is broad
+    Ensures control-plane files are always in the forbidden list.
+    allowed_files is no longer used — executor is free to modify any file
+    not in forbidden_files, with hard gates protecting SOT and control-plane.
     """
     violations = []
-    sanitized_allowed = []
     sanitized_forbidden = list(proposed_forbidden)
-
-    # Check each proposed allowed pattern
-    for pat in proposed_allowed:
-        pat = pat.strip()
-        if not pat:
-            continue
-
-        # Reject repo-wide wildcards
-        if pat in UNSAFE_SCOPE_PATTERNS:
-            violations.append(f"allowed_files pattern too broad: '{pat}'")
-            continue
-
-        # Reject patterns that overlap control-plane
-        if _pattern_overlaps_control_plane(pat):
-            violations.append(f"allowed_files overlaps control-plane: '{pat}'")
-            continue
-
-        sanitized_allowed.append(pat)
-
-    # If Claude proposed nothing but made changes, that's suspect
-    all_changed = git_evidence.files_modified + git_evidence.files_added + git_evidence.files_deleted
-    if not proposed_allowed and all_changed:
-        # No allowed_files proposed: don't enforce allowed_files gate
-        # (the gate simply won't run — absence is permissive by design)
-        pass
 
     # Always ensure control-plane is in forbidden
     for cpat in CONTROL_PLANE_OVERLAP_PATTERNS:
@@ -447,7 +401,7 @@ def validate_proposed_scope(
 
     return ScopeValidationResult(
         valid=len(violations) == 0,
-        sanitized_allowed=sanitized_allowed,
+        sanitized_allowed=[],
         sanitized_forbidden=sanitized_forbidden,
         violations=violations,
     )

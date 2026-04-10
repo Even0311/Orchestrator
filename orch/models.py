@@ -17,11 +17,10 @@ class TaskContract:
     objective: str
     exact_scope: str = ""
     acceptance_criteria: list[str] = field(default_factory=list)
-    required_tests: list[str] = field(default_factory=list)
     non_goals: list[str] = field(default_factory=list)
     constraints: list[str] = field(default_factory=list)
-    allowed_files: list[str] = field(default_factory=list)      # glob patterns Claude may touch
     forbidden_files: list[str] = field(default_factory=list)    # glob patterns Claude must NOT touch
+    review_focus: list[str] = field(default_factory=list)       # evaluator重点关注事项
 
     # Backward compat with old TaskDefinition
     @property
@@ -40,11 +39,10 @@ class TaskContract:
             "objective": self.objective,
             "exact_scope": self.exact_scope,
             "acceptance_criteria": self.acceptance_criteria,
-            "required_tests": self.required_tests,
             "non_goals": self.non_goals,
             "constraints": self.constraints,
-            "allowed_files": self.allowed_files,
             "forbidden_files": self.forbidden_files,
+            "review_focus": self.review_focus,
         }
 
     def to_json(self) -> str:
@@ -59,15 +57,55 @@ class TaskContract:
             objective=data.get("objective", ""),
             exact_scope=data.get("exact_scope", ""),
             acceptance_criteria=data.get("acceptance_criteria", []),
-            required_tests=data.get("required_tests", []),
             non_goals=data.get("non_goals", []),
             constraints=data.get("constraints", []),
-            allowed_files=data.get("allowed_files", []),
             forbidden_files=data.get("forbidden_files", []),
+            review_focus=data.get("review_focus", []),
         )
 
     @classmethod
     def from_json_file(cls, path) -> TaskContract:
+        data = json.loads(path.read_text())
+        return cls.from_dict(data)
+
+
+# ── ContractFeedback ─────────────────────────────────────────────────────────
+
+@dataclass
+class ContractFeedback:
+    """Feedback from evaluator on proposed contract (contract negotiation phase).
+
+    Evaluator reviews the acceptance_criteria and review_focus from the designer's
+    proposed contract and reports which criteria it can/cannot objectively verify,
+    along with suggested modifications.
+    """
+    can_evaluate: list[str] = field(default_factory=list)       # criteria evaluator can verify
+    cannot_evaluate: list[str] = field(default_factory=list)    # criteria too vague to verify
+    suggested_changes: list[str] = field(default_factory=list)  # proposed rewrites/additions
+    needs_revision: bool = False                                 # True if contract needs designer revision
+
+    def to_dict(self) -> dict:
+        return {
+            "can_evaluate": self.can_evaluate,
+            "cannot_evaluate": self.cannot_evaluate,
+            "suggested_changes": self.suggested_changes,
+            "needs_revision": self.needs_revision,
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> ContractFeedback:
+        return cls(
+            can_evaluate=data.get("can_evaluate", []),
+            cannot_evaluate=data.get("cannot_evaluate", []),
+            suggested_changes=data.get("suggested_changes", []),
+            needs_revision=data.get("needs_revision", False),
+        )
+
+    @classmethod
+    def from_json_file(cls, path) -> ContractFeedback:
         data = json.loads(path.read_text())
         return cls.from_dict(data)
 

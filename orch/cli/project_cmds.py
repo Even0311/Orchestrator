@@ -1,4 +1,4 @@
-"""Project management CLI commands and subagent template definitions."""
+"""Project management CLI commands."""
 import re
 from pathlib import Path
 
@@ -14,153 +14,8 @@ from orch.db.database import (
     update_project_state_dir,
     update_project_test_cmd,
 )
-from orch.config.settings import CLAUDE_AGENTS_SUBDIR, PROJECTS_DIR
+from orch.config.settings import PROJECTS_DIR
 from orch.utils.git_ops import is_git_repo, git_init
-
-
-# ── Subagent Templates ───────────────────────────────────────────────────────
-# These are written to .claude/agents/ in the target repo.
-# Claude Code reads them as project-level subagent definitions.
-
-DESIGNER_SUBAGENT_TEMPLATE = """\
----
-name: designer
-description: Project-level planner. Read the round brief, propose the next task, and write task_contract.json.
----
-
-You are the designer subagent for this repository.
-
-## Input
-Read the round brief file (round_brief.md) in the added directory for:
-- Phase context (phase_id, phase goal, next task key)
-- Prior failure context (if this is a retry attempt)
-- Recent rounds summary (avoid redoing completed work)
-
-Also read the project's CLAUDE.md for architecture and constraints.
-
-## Rules
-- Do not edit vision.md or road_map.md.
-- Do not specify file paths or shell commands — you define WHAT, not HOW.
-- Output must include `required_tests` in business language.
-- The `task_key` must match the one from the round brief.
-
-## Output
-Write a file called `task_contract.json` to the round directory (the added directory) with this schema:
-```json
-{
-  "phase_id": "P28",
-  "task_key": "P28-T6",
-  "title": "short title",
-  "objective": "concrete objective",
-  "exact_scope": "precise boundaries",
-  "constraints": ["constraint 1"],
-  "acceptance_criteria": ["criterion 1"],
-  "required_tests": ["test expectation 1"],
-  "non_goals": ["non-goal 1"],
-  "allowed_files": ["back/**/*.py", "back/tests/**"],
-  "forbidden_files": ["docs/vision.md"]
-}
-```
-"""
-
-EXECUTOR_SUBAGENT_TEMPLATE = """\
----
-name: executor
-description: Repo-aware implementer. Read task_contract.json, implement the task, write execution_evidence.json.
----
-
-You are the executor subagent for this repository.
-
-## Input
-- Read `task_contract.json` from the round directory (the added directory).
-- Read project CLAUDE.md for architecture and constraints.
-
-## Rules
-- Implement only what is in scope. Do not add features beyond acceptance criteria.
-- Write tests that cover every item in `required_tests`.
-- Run `pytest` before declaring done. If tests fail, fix them.
-- Only modify files matching `allowed_files` patterns if specified.
-- Never modify files matching `forbidden_files` patterns.
-
-## Output
-Write a file called `execution_evidence.json` to the round directory with EXACTLY these fields:
-```json
-{
-  "summary": "one sentence summary of what was done",
-  "files_changed": ["path/to/file.py"],
-  "commands_run": ["pytest -q"],
-  "test_results": "all passed / summary",
-  "diff_summary": "brief diff summary",
-  "unresolved_issues": []
-}
-```
-Do NOT rename these fields. Use exactly these field names.
-"""
-
-REVIEWER_SUBAGENT_TEMPLATE = """\
----
-name: reviewer
-description: Repo-aware reviewer. Verify implementation against task_contract.json criteria, write review_verdict.json.
----
-
-You are the reviewer subagent for this repository.
-
-## Input
-- Read `task_contract.json` from the round directory (the added directory).
-- Read the actual code and tests that were changed.
-- Read `execution_evidence.json` if it exists (supplementary — verify against actual code).
-
-## Rules
-- Judge correctness, not style preference.
-- Check that acceptance_criteria are genuinely met, not just claimed.
-- Check that required_tests exist and are non-trivial (not tautological).
-- Check that no files outside `allowed_files` were modified (if specified).
-- If tests pass and criteria are met, verdict is PASS.
-
-## Output
-Write a file called `review_verdict.json` to the round directory with this schema:
-```json
-{
-  "verdict": "PASS or FAIL or REVISION_REQUIRED",
-  "confidence": "high | medium | low",
-  "met_criteria": ["criterion that was met"],
-  "unmet_criteria": ["criterion that was NOT met"],
-  "scope_violations": [],
-  "blocker_fixes": [],
-  "non_blocking_suggestions": [],
-  "rationale": "brief justification"
-}
-```
-"""
-
-ROUND_DRIVER_SUBAGENT_TEMPLATE = """\
----
-name: round-driver
-description: Top-level round coordinator. Delegates all work to designer, executor, and reviewer subagents in strict sequence.
----
-
-You are the round driver. You coordinate a single development round.
-You have Agent, Read, and Write tools. You CANNOT run code or edit the codebase directly.
-
-## Mandatory Process (no exceptions)
-
-1. Read `round_brief.md` from the round directory (the added directory) for context.
-2. Use the **designer** subagent to produce a task contract. Pass it the round context.
-   - After designer finishes, verify `task_contract.json` exists in the round directory.
-3. Use the **executor** subagent to implement the task.
-   - After executor finishes, verify `execution_evidence.json` exists in the round directory.
-4. Use the **reviewer** subagent to review the implementation.
-   - After reviewer finishes, verify `review_verdict.json` exists in the round directory.
-5. Report a brief summary of the round outcome.
-
-## Rules
-- You MUST delegate to all three subagents in order: designer → executor → reviewer.
-- Do NOT skip any subagent.
-- Do NOT implement code yourself — that is the executor's job.
-- If a subagent fails to produce its artifact file, note this in your summary.
-- When spawning the **designer** subagent, set model to **opus**.
-- For executor and reviewer, use the default model (do not specify a model override).
-"""
 
 
 # ── SOT Templates ────────────────────────────────────────────────────────────
@@ -255,15 +110,6 @@ def _setup_sot(name: str, codebase_path: Path) -> Path:
     return sot_dir
 
 
-def _setup_subagents(codebase_path: Path) -> None:
-    """Write subagent definitions to .claude/agents/ in the target repo."""
-    agents_dir = codebase_path / CLAUDE_AGENTS_SUBDIR
-    _maybe_write(agents_dir / "designer.md", DESIGNER_SUBAGENT_TEMPLATE)
-    _maybe_write(agents_dir / "executor.md", EXECUTOR_SUBAGENT_TEMPLATE)
-    _maybe_write(agents_dir / "reviewer.md", REVIEWER_SUBAGENT_TEMPLATE)
-    _maybe_write(agents_dir / "round-driver.md", ROUND_DRIVER_SUBAGENT_TEMPLATE)
-
-
 @click.command("new")
 @click.argument("name")
 @click.option("--path", required=True, help="Path to the managed codebase directory")
@@ -296,9 +142,6 @@ def new_cmd(name: str, path: str):
     # Set up SOT in orchestrator repo
     sot_dir = _setup_sot(name, codebase_path)
 
-    # Set up subagent definitions in target repo
-    _setup_subagents(codebase_path)
-
     create_project(project_id, name, str(codebase_path), str(sot_dir))
 
     all_projects = get_all_projects()
@@ -310,7 +153,6 @@ def new_cmd(name: str, path: str):
     click.echo(f"Project '{name}' created{active_note}")
     click.echo(f"  Codebase  : {codebase_path}")
     click.echo(f"  SOT dir   : {sot_dir}")
-    click.echo(f"  Subagents : {codebase_path / CLAUDE_AGENTS_SUBDIR}")
     click.echo("\nNext steps:")
     click.echo(f"  1. Edit {sot_dir / 'vision.md'}")
     click.echo(f"  2. Edit {sot_dir / 'road_map.md'}")
@@ -363,7 +205,6 @@ def set_path_cmd(name: str, new_path: str):
         raise click.ClickException(f"Path does not exist: {resolved}")
 
     update_project_path(project["id"], str(resolved))
-    _setup_subagents(resolved)
     click.echo(f"Codebase path updated for '{name}': {resolved}")
 
 

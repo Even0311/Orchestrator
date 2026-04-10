@@ -1,4 +1,16 @@
+import os
+import sys
+
 import click
+
+# Force unbuffered output so orch run progress is visible in real time
+# even when stdout is piped or redirected to a file.
+if os.environ.get("PYTHONUNBUFFERED") != "1":
+    os.environ["PYTHONUNBUFFERED"] = "1"
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)
 
 from orch.config.settings import load_env
 from orch.db.database import init_db

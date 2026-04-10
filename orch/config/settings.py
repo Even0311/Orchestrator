@@ -12,7 +12,6 @@ CONFIG_PATH = ORCH_HOME / "config.yaml"
 REPO_ROOT = Path(__file__).parent.parent.parent
 ENV_PATH = REPO_ROOT / ".env"
 PROJECTS_DIR = REPO_ROOT / "projects"
-CLAUDE_AGENTS_SUBDIR = Path(".claude") / "agents"
 
 VALID_CLAUDE_MODELS = ("sonnet", "opus", "haiku")
 

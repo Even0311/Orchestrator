@@ -1,0 +1,19 @@
+{
+  "can_evaluate": [
+    "Criterion 1: File existence (back/tools/audit_llm_deviation.py) and runnability (python tools/audit_llm_deviation.py from back/) are directly checkable.",
+    "Criterion 2: --days N flag and default-5 behavior are verifiable by inspecting argparse setup and observing output record count.",
+    "Criterion 3: JSON output file existence and schema shape (per-tick records with required fields + aggregate_summary with required sub-keys) are machine-checkable.",
+    "Criterion 4(a): Presence of a ranked table in the markdown report is visually verifiable.",
+    "Criterion 4(c): Presence of a structural-failures / semantic-deviations / passes summary section is visually verifiable.",
+    "Criterion 5: Exception-handling path can be verified by code inspection (try/except around LLM calls) and by checking that LLM_CONNECTION_FAILURE entries appear in the JSON output when a failure occurs.",
+    "Criterion 6: git diff / file mtime checks after running the script confirm no simulation state files, seed data, or engine modules were written.",
+    "Criterion 7: Import statements and call sites in the script are directly inspectable to confirm use of comparison_harness.run_comparison() or shadow_runner + acceptance_rules rather than a reimplementation."
+  ],
+  "cannot_evaluate": [
+    "Criterion 4(b): 'identification of which OUTPUT_FORMAT_SECTION rules correlate with observed deviations' is ambiguous. 'Correlate' could mean (i) any mention of rule names, (ii) a structured mapping table of deviation type → rule ID, or (iii) a statistical correlation. Without knowing what OUTPUT_FORMAT_SECTION rules are named/numbered in the codebase, it is unclear what 'identified' looks like in practice."
+  ],
+  "suggested_changes": [
+    "Criterion 4(b) rewrite: 'The markdown report contains an explicit mapping table listing each observed deviation type alongside the specific OUTPUT_FORMAT_SECTION rule name or instruction text it violates (e.g., \"missing <inventory> block\" → Rule: OUTPUT_FORMAT_SECTION §inventory). At least one OUTPUT_FORMAT_SECTION rule must be named per deviation category recorded in the JSON.'"
+  ],
+  "needs_revision": false
+}

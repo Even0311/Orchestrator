@@ -1,9 +1,11 @@
 """Main orchestration loop — control plane only.
 
-The orchestrator manages SOT, selects work items, invokes Claude Code once
-per round, runs post-round hard gates, and updates state on PASS.
-All internal round coordination (designer/executor/reviewer) is handled
-by Claude Code via subagent definitions.
+The orchestrator manages SOT, selects work items, invokes independent Claude CLI
+sessions for each agent role (designer, executor, evaluator), runs hard gates,
+and updates state on PASS.
+
+Each agent is a cold-started Claude CLI session with role-specific context.
+Agents communicate only through files — no shared context.
 """
 from __future__ import annotations
 
@@ -15,13 +17,32 @@ from pathlib import Path
 
 import click
 
-from orch.briefing import generate_round_brief, read_artifacts
+from orch.briefing import (
+    generate_designer_brief,
+    generate_executor_brief,
+    generate_evaluator_contract_brief,
+    generate_evaluator_review_brief,
+    write_task_contract,
+)
 from orch.config.settings import OrchestratorConfig, load_config, REPO_ROOT, PROJECTS_DIR
 from orch.db.database import get_connection, now_iso, update_round_commits
-from orch.engine.claude_round_driver import run_attempt, subagents_available
-from orch.engine.hard_gates import run_hard_gates, validate_proposed_scope, HardGateResults, snapshot_sot_dir, detect_sot_mutation
+from orch.engine.claude_round_driver import (
+    invoke_designer,
+    invoke_evaluator,
+    invoke_evaluator_contract_review,
+    invoke_executor,
+)
+from orch.engine.hard_gates import (
+    GateResult,
+    HardGateResults,
+    detect_sot_mutation,
+    run_hard_gates,
+    snapshot_sot_dir,
+    validate_proposed_scope,
+)
 from orch.models import (
     AttemptRecord,
+    ContractFeedback,
     ExecutionEvidence,
     ReviewVerdict,
     RoundResult,
@@ -61,17 +82,7 @@ def run_project(project_row, run_once: bool = False) -> None:
     click.echo(f"  Codebase : {codebase_path}")
     click.echo(f"{'='*60}\n")
 
-    if not subagents_available(codebase_path):
-        raise click.ClickException(
-            "Subagent definitions not found in target repo.\n"
-            "Ensure .claude/agents/ contains: designer.md, executor.md, reviewer.md, round-driver.md\n"
-            "Run 'orch new' or manually create them."
-        )
-
     # Ensure target repo has a clean baseline before running rounds.
-    # Subagent files (.claude/agents/*.md) may have been just created by
-    # _setup_subagents() and not yet committed — commit them now so
-    # collect_git_evidence() only sees Claude's actual changes.
     _ensure_clean_baseline(codebase_path)
 
     # Block execution if phase is still in draft
@@ -229,7 +240,21 @@ def _run_round(
     recent_rounds: str = "",
     max_attempts: int = 2,
 ) -> RoundResult:
-    """Execute a complete round with up to max_attempts."""
+    """Execute a complete round with the isolated cold-start agent flow.
+
+    Each attempt runs the full pipeline:
+      1. Designer (cold CLI) → task_contract.json
+      2. Evaluator contract review (cold CLI) → contract_feedback.json
+      3. Designer revision if needed (cold CLI) → final task_contract.json
+      4. Hard gate: forbidden_files validation
+      5. Snapshot SOT + baseline commit
+      6. Executor (cold CLI) → code changes + execution_evidence.json
+      7. Hard gates (SOT mutation, protected files, forbidden files, pytest)
+      8. Evaluator code review (cold CLI) → review_verdict.json
+      9. Adjudicate
+     10. Pass → commit / Fail → problems back to designer
+    """
+    config = load_config()
     placeholder_task = TaskContract(
         phase_id=phase_info.phase_id,
         task_key=phase_info.next_task_key,
@@ -237,6 +262,7 @@ def _run_round(
         objective=phase_info.next_task_desc,
     )
     result = RoundResult(round_id=round_id, task=placeholder_task)
+    total_cost = 0.0
 
     for attempt_num in range(1, max_attempts + 1):
         attempt_dir = round_dir / f"attempt_{attempt_num}"
@@ -244,76 +270,166 @@ def _run_round(
 
         click.echo(f"\n  [{_ts()}] --- Attempt {attempt_num}/{max_attempts} ---")
 
-        # Record baseline commit BEFORE Claude runs — used to detect
-        # committed changes and to roll back if the attempt fails.
-        baseline_commit = get_current_commit(codebase_path)
+        # ── Step 1: Designer ────────────────────────────────────────────
+        click.echo(f"  [{_ts()}] Designer (cold start)...", nl=False)
+        t0 = time.time()
 
-        # Generate briefing
-        generate_round_brief(
+        generate_designer_brief(
             round_dir=attempt_dir,
             sot_dir=sot_dir,
             phase_info=phase_info,
             round_id=round_id,
-            attempt_num=attempt_num,
             prior_failure=prior_failure,
             recent_rounds_summary=recent_rounds,
         )
 
-        # Snapshot canonical SOT state BEFORE Claude runs.
-        # The only allowed write area is the current attempt_dir.
-        sot_snapshot = snapshot_sot_dir(sot_dir, allowed_write_prefix=attempt_dir)
-
-        # Invoke Claude
-        click.echo(f"  [{_ts()}] Claude round driver running...", nl=False)
-        t0 = time.time()
-        attempt = run_attempt(
+        task_contract, designer_result = invoke_designer(
             codebase_path=codebase_path,
             round_dir=attempt_dir,
             round_id=round_id,
-            attempt_num=attempt_num,
-            model=model,
-            baseline_commit=baseline_commit,
+            model=config.agents.designer_model,
         )
         elapsed = time.time() - t0
-        elapsed_str = f"{elapsed:.0f}s" if elapsed < 60 else f"{elapsed / 60:.1f}m"
-        click.echo(f" done ({elapsed_str}, ${attempt.claude_cost_usd:.4f})")
+        total_cost += designer_result.cost_usd
+        click.echo(f" done ({elapsed:.0f}s, ${designer_result.cost_usd:.4f})")
 
-        if attempt.execution_evidence.summary:
-            click.echo(f"           Summary: {attempt.execution_evidence.summary[:120]}")
+        if not task_contract:
+            click.echo(f"  [{_ts()}] Designer failed to produce task_contract.json")
+            task_contract = placeholder_task
 
-        # Update task from what Claude produced
-        if attempt.task.title and attempt.task.title != "(task contract not produced)":
-            result.task = attempt.task
+        result.task = task_contract
+        click.echo(f"           Contract: {task_contract.title[:100]}")
 
-        # Validate Claude-proposed file scope (D: not self-authoritative)
+        # ── Steps 2–3: Contract negotiation loop ──────────────────────
+        max_negotiation_rounds = 3
+        for neg_round in range(1, max_negotiation_rounds + 1):
+            click.echo(f"  [{_ts()}] Evaluator contract review (cold start)...", nl=False)
+            t0 = time.time()
+
+            generate_evaluator_contract_brief(
+                round_dir=attempt_dir,
+                task_contract=task_contract,
+                round_id=round_id,
+            )
+
+            contract_feedback, eval_contract_result = invoke_evaluator_contract_review(
+                round_dir=attempt_dir,
+                round_id=round_id,
+                model=config.agents.executor_model,
+            )
+            elapsed = time.time() - t0
+            total_cost += eval_contract_result.cost_usd
+            click.echo(f" done ({elapsed:.0f}s, ${eval_contract_result.cost_usd:.4f})")
+
+            # Reviewer satisfied or no feedback — proceed
+            if not contract_feedback or not contract_feedback.needs_revision:
+                if contract_feedback:
+                    click.echo(f"  [{_ts()}] Contract accepted by evaluator")
+                else:
+                    click.echo(f"  [{_ts()}] Evaluator contract review produced no feedback (proceeding)")
+                break
+
+            # Reviewer wants revision — run designer again
+            if neg_round == max_negotiation_rounds:
+                click.echo(f"  [{_ts()}] Contract negotiation exhausted ({max_negotiation_rounds} rounds) — proceeding with current contract")
+                break
+
+            click.echo(f"  [{_ts()}] Contract needs revision (negotiation {neg_round}/{max_negotiation_rounds}) — running designer again...", nl=False)
+            t0 = time.time()
+
+            feedback_path = attempt_dir / "contract_feedback.json"
+            feedback_path.write_text(contract_feedback.to_json())
+
+            feedback_summary = "\n".join([
+                "## Evaluator Contract Feedback",
+                "The evaluator could not verify some criteria. Revise them:",
+                *[f"- Cannot evaluate: {c}" for c in contract_feedback.cannot_evaluate],
+                *[f"- Suggested change: {s}" for s in contract_feedback.suggested_changes],
+            ])
+            revised_prior = (prior_failure + "\n\n" + feedback_summary) if prior_failure else feedback_summary
+
+            generate_designer_brief(
+                round_dir=attempt_dir,
+                sot_dir=sot_dir,
+                phase_info=phase_info,
+                round_id=round_id,
+                prior_failure=revised_prior,
+                recent_rounds_summary=recent_rounds,
+            )
+
+            revised_contract, designer_rev_result = invoke_designer(
+                codebase_path=codebase_path,
+                round_dir=attempt_dir,
+                round_id=round_id,
+                model=config.agents.designer_model,
+            )
+            elapsed = time.time() - t0
+            total_cost += designer_rev_result.cost_usd
+            click.echo(f" done ({elapsed:.0f}s, ${designer_rev_result.cost_usd:.4f})")
+
+            if revised_contract:
+                task_contract = revised_contract
+                result.task = task_contract
+
+        # ── Step 4: Hard gate — forbidden_files validation ──────────────
         scope = validate_proposed_scope(
-            proposed_allowed=attempt.task.allowed_files or [],
-            proposed_forbidden=attempt.task.forbidden_files or [],
-            git_evidence=attempt.git_evidence,
+            proposed_forbidden=task_contract.forbidden_files or [],
         )
         if not scope.valid:
-            click.echo(f"  [{_ts()}] Scope policy rejected Claude's proposed file scope:")
+            click.echo(f"  [{_ts()}] Scope policy rejected forbidden_files:")
             for v in scope.violations:
                 click.echo(f"           {v}")
 
-        # Run hard gates with sanitized scope
+        # ── Step 5: Snapshot SOT + baseline commit ──────────────────────
+        baseline_commit = get_current_commit(codebase_path)
+        sot_snapshot = snapshot_sot_dir(sot_dir, allowed_write_prefix=attempt_dir)
+
+        # Write final contract for executor to read
+        write_task_contract(attempt_dir, task_contract)
+
+        # ── Step 6: Executor ────────────────────────────────────────────
+        click.echo(f"  [{_ts()}] Executor (cold start)...", nl=False)
+        t0 = time.time()
+
+        generate_executor_brief(
+            round_dir=attempt_dir,
+            task_contract=task_contract,
+            round_id=round_id,
+        )
+
+        execution_evidence, executor_result = invoke_executor(
+            codebase_path=codebase_path,
+            round_dir=attempt_dir,
+            round_id=round_id,
+            model=config.agents.executor_model,
+        )
+        elapsed = time.time() - t0
+        total_cost += executor_result.cost_usd
+        elapsed_str = f"{elapsed:.0f}s" if elapsed < 60 else f"{elapsed / 60:.1f}m"
+        click.echo(f" done ({elapsed_str}, ${executor_result.cost_usd:.4f})")
+
+        if execution_evidence and execution_evidence.summary:
+            click.echo(f"           Summary: {execution_evidence.summary[:120]}")
+        if not execution_evidence:
+            execution_evidence = ExecutionEvidence(summary=executor_result.output[:300])
+
+        # ── Step 7: Hard gates ──────────────────────────────────────────
+        git_evidence = collect_git_evidence(codebase_path, baseline_commit=baseline_commit)
+
         click.echo(f"  [{_ts()}] Hard gates...", nl=False)
         t0 = time.time()
         gate_results = run_hard_gates(
             codebase_path=codebase_path,
-            git_evidence=attempt.git_evidence,
+            git_evidence=git_evidence,
             round_dir=attempt_dir,
-            allowed_files=scope.sanitized_allowed or None,
             forbidden_files=scope.sanitized_forbidden or None,
             test_cmd=test_cmd,
         )
-        # Canonical SOT mutation detection (before/after comparison)
+        # SOT mutation detection
         sot_gate = detect_sot_mutation(sot_snapshot, sot_dir, allowed_write_prefix=attempt_dir)
         gate_results.gates.append(sot_gate)
 
-        # Merge scope violations into gate results
         if not scope.valid:
-            from orch.engine.hard_gates import GateResult
             gate_results.gates.append(GateResult(
                 name="scope_policy",
                 passed=False,
@@ -329,48 +445,90 @@ def _run_round(
             for g in gate_results.failures:
                 click.echo(f"           {g.name}: {g.detail[:120]}")
 
-        # Adjudicate: hard gates override Claude's internal review
-        hard_gate_verdict = gate_results.to_verdict()
-        if hard_gate_verdict:
-            attempt = AttemptRecord(
-                attempt_number=attempt.attempt_number,
-                task=attempt.task,
-                execution_evidence=attempt.execution_evidence,
-                git_evidence=attempt.git_evidence,
-                review_verdict=hard_gate_verdict,
-                claude_cost_usd=attempt.claude_cost_usd,
-                is_token_exhausted=attempt.is_token_exhausted,
-                claude_output=attempt.claude_output,
+        # ── Step 8: Evaluator code review (only if hard gates pass) ─────
+        review_verdict = None
+        eval_review_cost = 0.0
+        if gate_results.all_passed:
+            click.echo(f"  [{_ts()}] Evaluator code review (cold start)...", nl=False)
+            t0 = time.time()
+
+            # Get git diff for evaluator
+            diff_text = getattr(git_evidence, 'diff_patch_truncated', '') or ''
+            if not diff_text:
+                diff_text = getattr(git_evidence, 'diff_stat', '') or '(no diff available)'
+
+            generate_evaluator_review_brief(
+                round_dir=attempt_dir,
+                task_contract=task_contract,
+                git_diff=diff_text,
+                round_id=round_id,
             )
-            click.echo(f"  [{_ts()}] Hard gate overrides internal review → FAIL")
+
+            review_verdict, eval_review_result = invoke_evaluator(
+                codebase_path=codebase_path,
+                round_dir=attempt_dir,
+                round_id=round_id,
+                model=config.agents.executor_model,
+            )
+            elapsed = time.time() - t0
+            eval_review_cost = eval_review_result.cost_usd
+            total_cost += eval_review_cost
+            click.echo(f" done ({elapsed:.0f}s, ${eval_review_cost:.4f})")
         else:
-            # Hard gates pass — use Claude's internal review
-            verdict_color = "green" if attempt.review_verdict.passed else "red"
-            verdict_text = click.style(attempt.review_verdict.verdict.value, fg=verdict_color, bold=True)
-            click.echo(f"  [{_ts()}] Internal reviewer verdict: {verdict_text}")
+            click.echo(f"  [{_ts()}] Skipping evaluator — hard gates failed")
 
-        # Write attempt artifacts
+        # ── Step 9: Adjudicate ──────────────────────────────────────────
+        hard_gate_verdict = gate_results.to_verdict()
+
+        if hard_gate_verdict:
+            # Hard gates failed — override everything
+            final_verdict = hard_gate_verdict
+            click.echo(f"  [{_ts()}] Hard gate overrides → FAIL")
+        elif review_verdict:
+            final_verdict = review_verdict
+            verdict_color = "green" if review_verdict.passed else "red"
+            verdict_text = click.style(review_verdict.verdict.value, fg=verdict_color, bold=True)
+            click.echo(f"  [{_ts()}] Evaluator verdict: {verdict_text}")
+        else:
+            final_verdict = ReviewVerdict(
+                verdict=Verdict.FAIL,
+                confidence="low",
+                rationale="No review verdict produced.",
+                blocker_fixes=["review_verdict.json not found"],
+            )
+            click.echo(f"  [{_ts()}] No evaluator verdict → FAIL")
+
+        # Build attempt record
+        attempt = AttemptRecord(
+            attempt_number=attempt_num,
+            task=task_contract,
+            execution_evidence=execution_evidence,
+            git_evidence=git_evidence,
+            review_verdict=final_verdict,
+            claude_cost_usd=total_cost,
+            is_token_exhausted=executor_result.is_token_exhausted,
+            claude_output=executor_result.output[:2000],
+        )
+
         _write_attempt_report(attempt_dir, attempt, gate_results)
-
         result.attempts.append(attempt)
 
+        # ── Step 10: Pass or fail ───────────────────────────────────────
         if attempt.passed:
             result.final_passed = True
             break
 
-        # Roll back target repo to the baseline commit — undoes both
-        # uncommitted changes AND any commits Claude made during this
-        # failed attempt.  Applied after every failure (including the last
-        # attempt) so that the repo is always clean for the next round.
-        if not attempt.passed:
-            try:
-                reset_hard(codebase_path, baseline_commit)
-                click.echo(f"  [{_ts()}] Reset target repo to baseline {baseline_commit[:8]}")
-            except Exception as e:
-                click.echo(f"  ⚠ Baseline reset failed: {e}", err=True)
+        # Roll back target repo to baseline
+        try:
+            reset_hard(codebase_path, baseline_commit)
+            click.echo(f"  [{_ts()}] Reset target repo to baseline {baseline_commit[:8]}")
+        except Exception as e:
+            click.echo(f"  ⚠ Baseline reset failed: {e}", err=True)
 
-        # Build prior_failure for next attempt
+        # Build failure context for next attempt (goes back to designer)
         prior_failure = _build_failure_context(attempt, gate_results)
+        total_cost = 0.0  # Reset per-attempt cost tracking
+
         if attempt_num == max_attempts:
             click.echo(f"\n  [{_ts()}] Max attempts reached — escalating")
             result.escalation_reason = _build_escalation_reason(result)

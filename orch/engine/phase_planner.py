@@ -91,10 +91,10 @@ def _invoke_claude(*, prompt: str, model: str) -> dict:
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
         )
     except subprocess.TimeoutExpired:
-        return {"success": False, "output": "Claude timed out after 120s"}
+        return {"success": False, "output": "Claude timed out after 300s"}
 
     if proc.returncode != 0:
         return {"success": False, "output": proc.stderr or proc.stdout}
