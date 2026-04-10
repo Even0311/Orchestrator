@@ -1,0 +1,62 @@
+{
+  "summary": "Implemented rolling degradation-rate tracking with auto-fallback threshold for the LLM appraisal pipeline. Created a new DegradationTracker Pydantic model that accumulates per-tick-type failure/degraded counters by world day, computes a configurable rolling-window rate, and triggers auto-fallback when the rate exceeds a threshold. Integrated the tracker as an optional parameter to simulate_day_bridged: checked before each active tick's route() call, updated after each route() call. Added degradation_rates and auto_fallback_active fields to AppraisalAuditLog for observability. When auto-fallback is active, route() is skipped entirely and forced-fallback outcomes are not recorded so the window slides naturally for recovery. 32 new tests cover all acceptance criteria. Full suite of 987 tests passes.",
+
+  "files_changed": [
+    {
+      "path": "back/app/llm/degradation_tracker.py",
+      "action": "created",
+      "description": "New module: OutcomeClass enum (acceptable/degraded/invalid), DayTickRecord Pydantic model, DegradationTracker Pydantic model with record_outcome/compute_rolling_rate/is_auto_fallback_active methods, classify_outcome() function"
+    },
+    {
+      "path": "back/app/llm/appraisal_audit_log.py",
+      "action": "modified",
+      "description": "Added degradation_rates (dict[str,float]) and auto_fallback_active (dict[str,bool]) fields to AppraisalAuditLog; existing fields and semantics unchanged"
+    },
+    {
+      "path": "back/app/engines/tick_bridge.py",
+      "action": "modified",
+      "description": "Added import of DegradationTracker and classify_outcome; added degradation_tracker: Optional[DegradationTracker] = None parameter to simulate_day_bridged; wrapped T1/T2/T4 route() calls with auto-fallback check (skip route when active) and outcome recording (when not auto-fallback); initialized _t4_auto_fallback=False before T4 branch; added final degradation_rates/auto_fallback_active population into AppraisalAuditLog"
+    },
+    {
+      "path": "back/tests/test_p33_t3_degradation_tracker.py",
+      "action": "created",
+      "description": "32 tests across 4 test classes: TestClassifyOutcome (8 tests), TestRollingRate (10 tests), TestAutoFallbackThreshold (7 tests including integration tests), TestWindowBasedRecovery (4 tests), TestTrackerSerialization (3 tests)"
+    }
+  ],
+
+  "commands_run": [
+    "python3 -m pytest tests/test_p33_t3_degradation_tracker.py -v",
+    "python3 -m pytest tests/ -v"
+  ],
+
+  "test_results": {
+    "new_tests": {
+      "total": 32,
+      "passed": 32,
+      "failed": 0
+    },
+    "full_suite": {
+      "total": 987,
+      "passed": 987,
+      "failed": 0,
+      "duration_seconds": 10.25
+    }
+  },
+
+  "diff_summary": {
+    "back/app/engines/tick_bridge.py": "+155 / -40 lines (136 net additions): added DegradationTracker import, optional parameter, T1/T2/T4 auto-fallback guards, outcome recording, and audit log population",
+    "back/app/llm/appraisal_audit_log.py": "+21 / -0 lines: added two new optional fields to AppraisalAuditLog",
+    "back/app/llm/degradation_tracker.py": "+214 lines (new file)",
+    "back/tests/test_p33_t3_degradation_tracker.py": "+400 lines (new file)"
+  },
+
+  "design_decisions": {
+    "forced_fallback_not_recorded": "When auto-fallback is active, route() is skipped and no outcome is recorded. This allows the rolling window to slide naturally: after enough days elapse without new records, the old bad entries fall out of the window and auto-fallback disengages. Recording forced-fallback as 'invalid' would trap the system in auto-fallback indefinitely.",
+    "window_excludes_current_day": "compute_rolling_rate uses window [current_day - window_days, current_day - 1], excluding the current day. This ensures is_auto_fallback_active is consulted using history from completed days, not partially-completed ones.",
+    "threshold_is_strict": "is_auto_fallback_active returns True only when rate > threshold (strictly greater), so a rate exactly equal to the threshold does not trigger fallback.",
+    "degradation_rates_in_log_include_current_day": "The rates stored in AppraisalAuditLog are computed with window looking at [world_day - window + 1, world_day], including today's newly recorded outcomes. The auto_fallback_active flags capture the pre-tick state (before recording).",
+    "t4_auto_fallback_initialized_false": "Added _t4_auto_fallback = False before the T4 deterministic-output conditional block to handle the case where _t4_deterministic_output is None (no relationship exists), ensuring the variable is always defined for the audit log."
+  },
+
+  "unresolved_issues": []
+}

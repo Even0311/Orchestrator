@@ -1,0 +1,195 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 2.7262328000000005,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P33",
+    "task_key": "P33-T3",
+    "title": "Rolling degradation-rate tracking with auto-fallback threshold",
+    "objective": "Add per-tick-type failure and degradation counters to the appraisal audit infrastructure, compute a rolling-window degradation rate, and define the threshold above which the live LLM path must auto-fallback to deterministic output for that tick type.",
+    "exact_scope": [
+      "Create a degradation tracker that accumulates per-tick-type counters (total attempts, failures, degraded-but-usable outcomes) across days",
+      "Classify each AppraisalAuditEntry into one of three outcome classes: acceptable (llm_used=True, no verdict failures), degraded-but-usable (llm_used=True but verdict has non-severe issues), or invalid/forced-fallback (llm_used=False or severe verdict failures)",
+      "Compute a rolling-window degradation rate per tick type over a configurable window (default: last N days, e.g. 7)",
+      "Define a degradation-rate threshold (configurable constant) above which simulate_day_bridged must auto-fallback to deterministic output for that tick type for the remainder of the window",
+      "Integrate the tracker into simulate_day_bridged so it is updated after each tick's route() call and consulted before each route() call",
+      "Add the per-tick-type rolling degradation rate and auto-fallback-triggered flag to the AppraisalAuditLog output so it is observable",
+      "Write tests that verify: (a) correct classification of the three outcome classes, (b) rolling-window rate computation, (c) auto-fallback triggers when threshold is exceeded, (d) auto-fallback resets when the window slides past the bad entries"
+    ],
+    "acceptance_criteria": [
+      "A degradation tracker model exists that stores per-tick-type counters: total_attempts, failure_count, degraded_count, and a timestamped history sufficient to compute a rolling window rate",
+      "Each route() outcome in simulate_day_bridged is classified into exactly one of: acceptable, degraded, or invalid — classification logic is testable in isolation",
+      "A rolling-window degradation rate is computable per tick type over a configurable number of past days (default 7)",
+      "When the rolling degradation rate for a tick type exceeds the configured threshold, simulate_day_bridged skips the LLM call for that tick type and uses the deterministic path instead",
+      "The auto-fallback-triggered state is recorded in the AppraisalAuditLog (or an attached structure) so that callers can observe when and why auto-fallback was engaged",
+      "When the rolling window slides past the degraded entries (i.e., enough good days pass or enough days elapse), auto-fallback disengages and the LLM path is retried",
+      "The tracker is passable as an optional parameter to simulate_day_bridged — callers that do not pass it get the current behavior (no auto-fallback)",
+      "All existing tests in back/tests/ pass without modification",
+      "New tests cover: outcome classification, rolling rate computation, threshold-triggered fallback, and window-based recovery"
+    ],
+    "non_goals": [
+      "Do not add LLM call retry logic or circuit-breaker patterns — this task only tracks and reacts to degradation rates",
+      "Do not add alerting, notifications, or external reporting — the tracker is data-only, consumed via audit log",
+      "Do not expand bridge coverage to deferred ticks (T3/T5/T6/T7/T8)",
+      "Do not modify the prompt templates or LLM call logic",
+      "Do not add a persistent storage backend — the tracker is in-memory, serializable, passed between days",
+      "Do not add API endpoints or frontend changes",
+      "Do not redesign the existing audit_run.py tool — it may optionally consume the new data but must not be required to change"
+    ],
+    "constraints": [
+      "Do not modify the AppraisalSignal schema (frozen per CLAUDE.md)",
+      "Do not modify the AppraisalAuditEntry schema — add new fields only to AppraisalAuditLog or a new sibling model",
+      "The degradation tracker must be a pure data structure (Pydantic model or dataclass), not a global singleton — it must be passable as a parameter to simulate_day_bridged",
+      "The tracker state must be serializable to JSON so it can be persisted alongside DaySnapshot.pending_residuals in advance_day",
+      "Auto-fallback must use the existing deterministic_fallback.py dispatch table for deferred ticks, and the existing deterministic tick functions (bridge_mode=False path) for T1/T2/T4",
+      "Do not change the existing AppraisalAuditEntry fields or their semantics",
+      "Settlement remains in the engine layer — the tracker only observes outcomes, never modifies state directly",
+      "All existing tests must continue to pass unchanged"
+    ],
+    "forbidden_files": [
+      "back/app/domain/models.py",
+      "back/app/domain/enums.py",
+      "back/app/engines/appraisal_settlement.py",
+      "back/app/engines/day_simulator.py",
+      "back/app/engines/growth_synthesizer.py",
+      "back/app/engines/relationship_synthesizer.py",
+      "back/app/engines/relationship_drift.py",
+      "back/app/engines/growth_stage_evolver.py",
+      "back/app/engines/world_continuity.py",
+      "back/app/engines/influence_action_generator.py",
+      "back/app/engines/deterministic_fallback.py",
+      "back/app/seed/**",
+      "back/app/world/**",
+      "front/**",
+      "docs/**"
+    ],
+    "review_focus": [
+      "Verify the three-class outcome classification is unambiguous — every possible AppraisalAuditEntry state maps to exactly one class",
+      "Verify the rolling window computation is correct at boundary conditions (empty history, exactly at threshold, window shorter than configured)",
+      "Verify auto-fallback does not permanently lock out the LLM path — recovery must be demonstrated in tests",
+      "Verify the tracker does not leak into the settlement layer — it should only observe and gate, never write state",
+      "Verify backward compatibility: simulate_day_bridged without the tracker parameter behaves identically to current behavior",
+      "Verify the tracker is JSON-serializable for cross-day persistence"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Implemented rolling degradation-rate tracking with auto-fallback threshold for the LLM appraisal pipeline. Created a new DegradationTracker Pydantic model that accumulates per-tick-type failure/degraded counters by world day, computes a configurable rolling-window rate, and triggers auto-fallback when the rate exceeds a threshold. Integrated the tracker as an optional parameter to simulate_day_bridged: checked before each active tick's route() call, updated after each route() call. Added degradation_rates and auto_fallback_active fields to AppraisalAuditLog for observability. When auto-fallback is active, route() is skipped entirely and forced-fallback outcomes are not recorded so the window slides naturally for recovery. 32 new tests cover all acceptance criteria. Full suite of 987 tests passes.",
+    "files_changed": [
+      {
+        "path": "back/app/llm/degradation_tracker.py",
+        "action": "created",
+        "description": "New module: OutcomeClass enum (acceptable/degraded/invalid), DayTickRecord Pydantic model, DegradationTracker Pydantic model with record_outcome/compute_rolling_rate/is_auto_fallback_active methods, classify_outcome() function"
+      },
+      {
+        "path": "back/app/llm/appraisal_audit_log.py",
+        "action": "modified",
+        "description": "Added degradation_rates (dict[str,float]) and auto_fallback_active (dict[str,bool]) fields to AppraisalAuditLog; existing fields and semantics unchanged"
+      },
+      {
+        "path": "back/app/engines/tick_bridge.py",
+        "action": "modified",
+        "description": "Added import of DegradationTracker and classify_outcome; added degradation_tracker: Optional[DegradationTracker] = None parameter to simulate_day_bridged; wrapped T1/T2/T4 route() calls with auto-fallback check (skip route when active) and outcome recording (when not auto-fallback); initialized _t4_auto_fallback=False before T4 branch; added final degradation_rates/auto_fallback_active population into AppraisalAuditLog"
+      },
+      {
+        "path": "back/tests/test_p33_t3_degradation_tracker.py",
+        "action": "created",
+        "description": "32 tests across 4 test classes: TestClassifyOutcome (8 tests), TestRollingRate (10 tests), TestAutoFallbackThreshold (7 tests including integration tests), TestWindowBasedRecovery (4 tests), TestTrackerSerialization (3 tests)"
+      }
+    ],
+    "commands_run": [
+      "python3 -m pytest tests/test_p33_t3_degradation_tracker.py -v",
+      "python3 -m pytest tests/ -v"
+    ],
+    "test_results": {
+      "new_tests": {
+        "total": 32,
+        "passed": 32,
+        "failed": 0
+      },
+      "full_suite": {
+        "total": 987,
+        "passed": 987,
+        "failed": 0,
+        "duration_seconds": 10.25
+      }
+    },
+    "diff_summary": {
+      "back/app/engines/tick_bridge.py": "+155 / -40 lines (136 net additions): added DegradationTracker import, optional parameter, T1/T2/T4 auto-fallback guards, outcome recording, and audit log population",
+      "back/app/llm/appraisal_audit_log.py": "+21 / -0 lines: added two new optional fields to AppraisalAuditLog",
+      "back/app/llm/degradation_tracker.py": "+214 lines (new file)",
+      "back/tests/test_p33_t3_degradation_tracker.py": "+400 lines (new file)"
+    },
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "AC1: DayTickRecord stores world_day/total_attempts/failure_count/degraded_count; DegradationTracker.history provides per-tick-type rolling record list",
+      "AC2: classify_outcome() returns exactly one OutcomeClass (acceptable/degraded/invalid) for every possible AppraisalAuditEntry state; it is a pure function testable in isolation",
+      "AC3: compute_rolling_rate() is implemented with configurable window_days (default 7) over range [current_day - window_days, current_day - 1]",
+      "AC4: is_auto_fallback_active() gates route() calls in simulate_day_bridged for T1, T2, and T4 when rate > threshold",
+      "AC5: AppraisalAuditLog extended with degradation_rates (dict[str, float]) and auto_fallback_active (dict[str, bool]) fields populated per-day",
+      "AC6: Forced-fallback outcomes are not recorded (design rule enforced in tick_bridge.py), allowing the window to slide naturally past bad entries; recovery tested explicitly",
+      "AC7: degradation_tracker is Optional[DegradationTracker] = None; all auto-fallback logic is guarded by tracker-not-None checks; backward compatibility test passes",
+      "AC8: 987 tests pass; no existing test files were modified",
+      "AC9: 32 new tests cover outcome classification (TestClassifyOutcome), rolling rate computation (TestRollingRate), threshold-triggered fallback (TestAutoFallbackThreshold), and window-based recovery (TestWindowBasedRecovery)"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "The `_t4_auto_fallback = False` assignment inside the `else: _t4_target_rel is None` branch (tick_bridge.py ~line 1833) is redundant — the variable was already initialized to False at the top of the T4 block. Not a bug, just minor noise.",
+      "degradation_rates in the audit log is computed using `world_day + 1` as current_day (window includes today's records), while is_auto_fallback_active uses `world_day` (window excludes today). The difference is intentional and documented in a comment, but could cause confusion for callers who compare the rates in the audit log to the threshold — the stored rate may not directly correspond to the decision that was made for that day.",
+      "The tracker mutates in place (record_outcome modifies self.history). If callers share a tracker across concurrent simulations this would be unsafe, but given the current single-threaded simulation model this is not a real concern."
+    ],
+    "rationale": "All 9 acceptance criteria are satisfied and all 6 review focus items check out. The three-class classification is exhaustive and mutually exclusive — every AppraisalAuditEntry state (llm_used=False → invalid; llm_used=True+failures → degraded; llm_used=True+clean → acceptable) maps to exactly one class. Rolling window boundary conditions are correctly handled: empty history returns 0.0, threshold check is strictly greater-than (not >=), and window arithmetic is consistent. Recovery is not just asserted but demonstrated by a full simulate_day_bridged call on day 15 after 7 bad records on days 1–7 (TestWindowBasedRecovery.test_recovery_reflected_in_audit_log). The tracker never touches state/growth/relationships/residuals — it only reads AppraisalAuditEntry results and writes to its own history dict. Backward compatibility is clean: the optional parameter with None default leaves the existing code path identical to pre-change behavior, confirmed by test_no_tracker_preserves_existing_behavior. The Pydantic BaseModel structure ensures JSON serializability, confirmed by serialization tests. No existing test files were modified. The full suite of 987 tests passes with no regressions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [
+      "back/app/engines/tick_bridge.py",
+      "back/app/llm/appraisal_audit_log.py"
+    ],
+    "files_added": [
+      "back/app/llm/degradation_tracker.py",
+      "back/tests/test_p33_t3_degradation_tracker.py"
+    ],
+    "files_deleted": [],
+    "diff_stat": "back/app/engines/tick_bridge.py     | 155 +++++++++++++++++++++++++++---------\n back/app/llm/appraisal_audit_log.py |  21 ++++-\n 2 files changed, 136 insertions(+), 40 deletions(-)",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All tasks complete. Here's a summary of what was implemented:\n\n## P33-T3: Rolling Degradation-Rate Tracking\n\n### New files\n- **`back/app/llm/degradation_tracker.py`** — Core module with:\n  - `OutcomeClass` enum: `acceptable` / `degraded` / `invalid`\n  - `DayTickRecord` — per-day counters (total_attempts, failure_count, degraded_count)\n  - `DegradationTracker` — serializable Pydantic model with configurable `window_days` (default 7) and `degradation_threshold` (default 0.5)\n  - `classify_outcome(entry)` — pure classification function\n- **`back/tests/test_p33_t3_degradation_tracker.py`** — 32 tests covering all 4 acceptance criteria\n\n### Modified files\n- **`back/app/llm/appraisal_audit_log.py`** — Added `degradation_rates: dict[str, float]` and `auto_fallback_active: dict[str, bool]` to `AppraisalAuditLog`\n- **`back/app/engines/tick_bridge.py`** — Added `degradation_tracker: Optional[DegradationTracker] = None` parameter to `simulate_day_bridged`; T1/T2/T4 each check for auto-fallback before calling `route()`, record outcomes afterward; audit log populated with degradation data\n\n### Key design choice\nWhen auto-fallback is active, `route()` is skipped and **no outcome is recorded**. This allows the rolling window to slide forward naturally — after `window_days` days of inactivity, the old bad records fall out and auto-fallback disengages automatically. **987/987 tests pass.**"
+}

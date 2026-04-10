@@ -1,0 +1,16 @@
+{
+  "can_evaluate": [
+    "1. Grep for the tracker model class and confirm it has fields: total_attempts, failure_count, degraded_count, and a timestamped history collection.",
+    "2. Confirm a standalone classification function/method exists that maps a single route() outcome to exactly one of {acceptable, degraded, invalid}; verify exhaustiveness by reading the mapping logic.",
+    "3. Confirm the rolling-rate computation accepts a window_days parameter with default=7; verify the return value is per-tick-type and covers boundary conditions (empty history, window shorter than data).",
+    "4. Read simulate_day_bridged: confirm there is a branch that compares rolling rate to threshold and, when exceeded, skips the LLM call and takes the deterministic path.",
+    "5. Confirm AppraisalAuditLog (or an attached field) records auto_fallback_triggered=True and a reason string when fallback fires; verify a test asserts this field is populated.",
+    "6. Confirm recovery logic: when window slides past degraded entries the flag clears; verify a test demonstrates LLM path is retried after a sufficient number of clean days.",
+    "7. Confirm simulate_day_bridged signature has the tracker as an optional parameter (default None); confirm a test calls it without the parameter and verifies identical behavior to current code.",
+    "8. Run pytest back/tests/ with no test file modifications and confirm zero failures.",
+    "9. Confirm new test functions exist covering: outcome classification, rolling rate computation, threshold-triggered fallback, and window-based recovery (four distinct test areas)."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {},
+  "needs_revision": false
+}

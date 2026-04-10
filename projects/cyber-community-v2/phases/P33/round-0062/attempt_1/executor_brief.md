@@ -1,0 +1,69 @@
+# Executor Brief — round-0062
+
+## Task Contract
+**Task Key:** P33-T3
+**Title:** Rolling degradation-rate tracking with auto-fallback threshold
+**Objective:** Add per-tick-type failure and degradation counters to the appraisal audit infrastructure, compute a rolling-window degradation rate, and define the threshold above which the live LLM path must auto-fallback to deterministic output for that tick type.
+
+**Exact Scope:**
+- Create a degradation tracker that accumulates per-tick-type counters (total attempts, failures, degraded-but-usable outcomes) across days
+- Classify each AppraisalAuditEntry into one of three outcome classes: acceptable (llm_used=True, no verdict failures), degraded-but-usable (llm_used=True but verdict has non-severe issues), or invalid/forced-fallback (llm_used=False or severe verdict failures)
+- Compute a rolling-window degradation rate per tick type over a configurable window (default: last N days, e.g. 7)
+- Define a degradation-rate threshold (configurable constant) above which simulate_day_bridged must auto-fallback to deterministic output for that tick type for the remainder of the window
+- Integrate the tracker into simulate_day_bridged so it is updated after each tick's route() call and consulted before each route() call
+- Add the per-tick-type rolling degradation rate and auto-fallback-triggered flag to the AppraisalAuditLog output so it is observable
+- Write tests that verify: (a) correct classification of the three outcome classes, (b) rolling-window rate computation, (c) auto-fallback triggers when threshold is exceeded, (d) auto-fallback resets when the window slides past the bad entries
+
+**Constraints:**
+- Do not modify the AppraisalSignal schema (frozen per CLAUDE.md)
+- Do not modify the AppraisalAuditEntry schema — add new fields only to AppraisalAuditLog or a new sibling model
+- The degradation tracker must be a pure data structure (Pydantic model or dataclass), not a global singleton — it must be passable as a parameter to simulate_day_bridged
+- The tracker state must be serializable to JSON so it can be persisted alongside DaySnapshot.pending_residuals in advance_day
+- Auto-fallback must use the existing deterministic_fallback.py dispatch table for deferred ticks, and the existing deterministic tick functions (bridge_mode=False path) for T1/T2/T4
+- Do not change the existing AppraisalAuditEntry fields or their semantics
+- Settlement remains in the engine layer — the tracker only observes outcomes, never modifies state directly
+- All existing tests must continue to pass unchanged
+
+**Forbidden Files (DO NOT modify):**
+- `back/app/domain/models.py`
+- `back/app/domain/enums.py`
+- `back/app/engines/appraisal_settlement.py`
+- `back/app/engines/day_simulator.py`
+- `back/app/engines/growth_synthesizer.py`
+- `back/app/engines/relationship_synthesizer.py`
+- `back/app/engines/relationship_drift.py`
+- `back/app/engines/growth_stage_evolver.py`
+- `back/app/engines/world_continuity.py`
+- `back/app/engines/influence_action_generator.py`
+- `back/app/engines/deterministic_fallback.py`
+- `back/app/seed/**`
+- `back/app/world/**`
+- `front/**`
+- `docs/**`
+
+**Non-Goals (DO NOT do):**
+- Do not add LLM call retry logic or circuit-breaker patterns — this task only tracks and reacts to degradation rates
+- Do not add alerting, notifications, or external reporting — the tracker is data-only, consumed via audit log
+- Do not expand bridge coverage to deferred ticks (T3/T5/T6/T7/T8)
+- Do not modify the prompt templates or LLM call logic
+- Do not add a persistent storage backend — the tracker is in-memory, serializable, passed between days
+- Do not add API endpoints or frontend changes
+- Do not redesign the existing audit_run.py tool — it may optionally consume the new data but must not be required to change
+
+**Acceptance Criteria:**
+- A degradation tracker model exists that stores per-tick-type counters: total_attempts, failure_count, degraded_count, and a timestamped history sufficient to compute a rolling window rate
+- Each route() outcome in simulate_day_bridged is classified into exactly one of: acceptable, degraded, or invalid — classification logic is testable in isolation
+- A rolling-window degradation rate is computable per tick type over a configurable number of past days (default 7)
+- When the rolling degradation rate for a tick type exceeds the configured threshold, simulate_day_bridged skips the LLM call for that tick type and uses the deterministic path instead
+- The auto-fallback-triggered state is recorded in the AppraisalAuditLog (or an attached structure) so that callers can observe when and why auto-fallback was engaged
+- When the rolling window slides past the degraded entries (i.e., enough good days pass or enough days elapse), auto-fallback disengages and the LLM path is retried
+- The tracker is passable as an optional parameter to simulate_day_bridged — callers that do not pass it get the current behavior (no auto-fallback)
+- All existing tests in back/tests/ pass without modification
+- New tests cover: outcome classification, rolling rate computation, threshold-triggered fallback, and window-based recovery
+
+## Your Task
+1. Read the codebase and understand the relevant code
+2. Implement the changes described in the contract
+3. Write/update tests as needed
+4. Run the test suite to verify no regressions
+5. Write `execution_evidence.json` with: summary, files_changed, commands_run, test_results, diff_summary, unresolved_issues
