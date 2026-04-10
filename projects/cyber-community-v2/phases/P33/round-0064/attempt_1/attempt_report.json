@@ -1,0 +1,189 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.7807297,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P33",
+    "task_key": "P33-T5",
+    "title": "Multi-day drift audit: 30+ day state, growth, residual, and degradation trends",
+    "objective": "Create a drift audit tool that runs a 30+ simulated-day session and systematically detects unbounded, monotonic, or structurally stuck drift patterns across all tracked dimensions — state values, growth-buffer accumulation, residual stacking, and degradation-rate trends — producing a machine-readable report with per-dimension verdicts.",
+    "exact_scope": [
+      "Create a new audit script (e.g. back/tools/audit_drift.py) that runs 30+ simulated days using the existing advance_day pathway and collects per-day snapshots of: (a) all AgentState numeric fields (moodScore, energy, stress, socialDrive, socialFulfillment, learningState, workState), (b) all AgentGrowth numeric fields (curiosity, caution, socialOpenness, expression, trustInOthers, emotionalStability), (c) pending_residuals count and composition per day from DaySnapshot, (d) DegradationTracker rolling rates and auto-fallback state per tick type if a tracker is provided.",
+      "For each tracked dimension, compute and report: (1) monotonic-drift detection — flag any dimension that moves in the same direction for N consecutive days (N configurable, default 10), (2) unbounded-growth detection — flag any dimension whose cumulative delta exceeds a configurable threshold over the run, (3) saturation/floor lock — flag any dimension that stays at its ceiling (>=93) or floor (<=7) for more than M consecutive days (M configurable, default 5), (4) residual stacking — flag if pending_residuals count exceeds a configurable max on any day, or if residual count is monotonically non-decreasing over K consecutive days (K configurable, default 7).",
+      "Output a JSON report file containing: per-dimension trajectory arrays, per-dimension drift verdicts (pass/warn/fail with reason), a residual-stacking section, a degradation-trend section (if tracker provided), and a top-level summary with overall pass/fail.",
+      "Create a corresponding test file (e.g. back/tests/test_p33_t5_drift_audit.py) that verifies: (a) the audit script runs to completion on the deterministic backbone for 30 days without error, (b) each drift-detection rule produces correct verdicts on synthetic (hand-crafted) trajectory data, (c) residual-stacking detection works on synthetic residual histories, (d) the output JSON is well-formed and contains all required sections."
+    ],
+    "acceptance_criteria": [
+      "A new file back/tools/audit_drift.py exists and is executable via `python back/tools/audit_drift.py --days 30`.",
+      "Running `python back/tools/audit_drift.py --days 30` completes without error and produces a JSON file in back/tools/audit_outputs/.",
+      "The output JSON contains a 'trajectories' object with keys for all 7 state fields and all 6 growth fields, each containing an array of per-day values with length equal to the number of simulated days plus the seed day.",
+      "The output JSON contains a 'residual_stacking' object with a per-day array of residual counts and a 'verdicts' sub-object.",
+      "The output JSON contains a 'drift_verdicts' object with one entry per tracked dimension, each having a 'status' field (pass/warn/fail) and a 'reasons' array.",
+      "The output JSON contains a top-level 'summary' object with an 'overall_status' field (pass/warn/fail).",
+      "A new test file back/tests/test_p33_t5_drift_audit.py exists.",
+      "All tests in back/tests/test_p33_t5_drift_audit.py pass via `python -m pytest back/tests/test_p33_t5_drift_audit.py -v`.",
+      "The test file includes at least one test that verifies monotonic-drift detection flags a synthetic trajectory that moves in one direction for 10+ consecutive days.",
+      "The test file includes at least one test that verifies saturation-lock detection flags a synthetic trajectory stuck at ceiling for 5+ consecutive days.",
+      "The test file includes at least one test that verifies residual-stacking detection flags monotonically non-decreasing residual counts over 7+ consecutive days.",
+      "The test file includes at least one end-to-end test that runs the audit for 30 days on the deterministic backbone and verifies the output JSON structure.",
+      "All existing tests pass: `python -m pytest back/tests/ -v` has no regressions."
+    ],
+    "non_goals": [
+      "Do not fix or tune any drift patterns found — this task is observation and reporting only.",
+      "Do not add new fields to any Pydantic domain model.",
+      "Do not extend the bridge to deferred ticks (T3/T5/T6/T7/T8).",
+      "Do not implement LLM-based appraisal or narrative analysis.",
+      "Do not modify the DegradationTracker or any appraisal infrastructure.",
+      "Do not add player-guidance scenarios — the audit runs with guidance=none.",
+      "Do not produce a markdown report — JSON output is sufficient (the existing audit_run.py already covers markdown reporting)."
+    ],
+    "constraints": [
+      "The audit tool must use the existing advance_day / simulate_day pipeline — do not build a parallel simulation loop.",
+      "The audit tool must be a pure observer — it must not modify any engine, domain model, or settlement logic.",
+      "All drift-detection logic must be pure functions operating on collected trajectory arrays — no side effects, no LLM calls.",
+      "The DegradationTracker is optional — the audit must work with or without one. When absent, the degradation-trend section is omitted from the report.",
+      "Residual data must be read from DaySnapshot.pending_residuals — do not invent a new residual tracking mechanism.",
+      "AppraisalSignal v1 is frozen — do not modify its field definitions.",
+      "Do not modify any existing engine files, domain models, or test files.",
+      "Output files go into back/tools/audit_outputs/ consistent with the existing audit_run.py convention."
+    ],
+    "forbidden_files": [
+      "back/app/engines/*.py",
+      "back/app/domain/*.py",
+      "back/app/llm/*.py",
+      "back/app/services/*.py",
+      "back/app/world/*.py",
+      "back/app/api/**",
+      "back/app/seed/**",
+      "front/**",
+      "docs/**",
+      "back/tests/test_residual_*.py",
+      "back/tests/test_tick_bridge.py",
+      "back/tests/test_appraisal_settlement.py",
+      "back/tests/test_world_continuity.py",
+      "back/tests/test_social_event_schema.py",
+      "back/tests/test_p33_t2_*.py",
+      "back/tests/test_p33_t3_*.py",
+      "back/tests/test_p33_t4_*.py"
+    ],
+    "review_focus": [
+      "Verify drift-detection pure functions are correct: monotonic detection should not false-positive on oscillating values, saturation detection should correctly handle values that briefly dip below threshold.",
+      "Verify residual stacking reads from DaySnapshot.pending_residuals correctly and counts are accurate.",
+      "Verify the audit tool does not import or instantiate any LLM client — it should work purely on the deterministic backbone unless an optional tracker is injected.",
+      "Verify no forbidden files were modified.",
+      "Verify test coverage includes edge cases: empty trajectories, single-day runs, exactly-at-threshold values.",
+      "Verify JSON output is self-contained and machine-parseable — no embedded markdown, no prose-only sections."
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Implemented P33-T5: Multi-day drift audit tool. Created back/tools/audit_drift.py as a pure-observer CLI that runs N simulated days via the existing advance_day pathway and detects monotonic drift, unbounded growth, saturation/floor lock, and residual stacking across all 13 tracked dimensions (7 AgentState + 6 AgentGrowth fields). Created back/tests/test_p33_t5_drift_audit.py with 44 tests covering all detection functions (unit), the dimension-verdict builder, the residual-verdict builder, and a class-scoped end-to-end 30-day run that validates JSON structure. All 44 new tests pass; full suite of 1061 tests passes with no regressions.",
+    "files_changed": [
+      "back/tools/audit_drift.py (created — 310 lines)",
+      "back/tests/test_p33_t5_drift_audit.py (created — 330 lines)"
+    ],
+    "commands_run": [
+      "python -m pytest tests/test_p33_t5_drift_audit.py -v",
+      "python -m pytest tests/ -v",
+      "python tools/audit_drift.py --days 30"
+    ],
+    "test_results": {
+      "new_tests": {
+        "file": "back/tests/test_p33_t5_drift_audit.py",
+        "collected": 44,
+        "passed": 44,
+        "failed": 0,
+        "duration_s": 0.1
+      },
+      "full_suite": {
+        "collected": 1061,
+        "passed": 1061,
+        "failed": 0,
+        "duration_s": 9.75
+      }
+    },
+    "diff_summary": {
+      "back/tools/audit_drift.py": {
+        "status": "created",
+        "description": "Drift audit CLI. Key functions: reset_to_seed, extract_state_values, extract_growth_values, extract_residual_info (pure data extraction), detect_monotonic_drift, detect_unbounded_growth, detect_saturation_lock, detect_residual_stacking (pure drift-detection), build_dimension_verdict, build_residual_verdict (verdict builders), run_drift_audit (simulation + detection loop, callable from tests), main (CLI entry point). Output goes to back/tools/audit_outputs/drift_{label}.json. Accepts --days, --label, --monotonic-window, --unbounded-threshold, --saturation-ceiling, --saturation-floor, --saturation-lock-window, --residual-max-count, --residual-monotone-window."
+      },
+      "back/tests/test_p33_t5_drift_audit.py": {
+        "status": "created",
+        "description": "Test classes: TestDetectMonotonicDrift (8 tests), TestDetectUnboundedGrowth (6 tests), TestDetectSaturationLock (6 tests), TestDetectResidualStacking (8 tests), TestBuildDimensionVerdict (4 tests), TestEndToEndAudit (8 tests, class-scoped fixture runs 30-day backbone simulation once), TestBuildResidualVerdict (3 tests). Covers all acceptance criteria including synthetic trajectory checks and full JSON-structure validation."
+      }
+    },
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "1. back/tools/audit_drift.py exists and runs via `python back/tools/audit_drift.py --days 30`",
+      "2. Tool completes without error and produces drift_*.json in back/tools/audit_outputs/",
+      "3. 'trajectories' contains all 7 state fields + 6 growth fields, each with 31 data points (seed + 30 days)",
+      "4. 'residual_stacking' contains 'per_day_counts' array and 'verdicts' sub-object",
+      "5. 'drift_verdicts' has one entry per dimension, each with 'status' (pass/warn/fail) and 'reasons' list",
+      "6. 'summary' contains 'overall_status' (pass/warn/fail)",
+      "7. back/tests/test_p33_t5_drift_audit.py exists",
+      "8. All 44 tests in test_p33_t5_drift_audit.py pass",
+      "9. test_rising_10_consecutive_days_flagged and test_falling_10_consecutive_days_flagged verify 10+ day monotonic detection",
+      "10. test_ceiling_lock_5_consecutive_days_flagged and test_floor_lock_5_consecutive_days_flagged verify saturation-lock detection",
+      "11. test_monotone_nondecreasing_7_days_flagged verifies residual stacking over 7+ consecutive days",
+      "12. TestEndToEndAudit class (9 tests) runs full 30-day backbone audit and verifies JSON structure",
+      "13. Full test suite passes: 1061 tests, no regressions"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "test_all_zeros_not_flagged is misleadingly named — the test body correctly asserts flagged_monotone=True (zeros ARE flagged), but the test name implies no flags. Rename to test_all_zeros_flagged_monotone_but_not_max_exceeded for clarity.",
+      "detect_monotonic_drift sets streak_start = i-1 when a new direction begins, which can cause reported start_idx to be off by one when preceded by a flat value. This does not affect detection correctness but can produce slightly inaccurate span boundaries in the JSON report.",
+      "The saturation_lock window parameter in build_dimension_verdict defaults to saturation_lock_window=5, which matches the default ceiling/floor thresholds. Consider adding a note that the defaults were chosen against the known [7, 93] model value range."
+    ],
+    "rationale": "All 13 acceptance criteria are satisfied. The new files (audit_drift.py, test_p33_t5_drift_audit.py) are the only changes — no existing files were modified. The drift-detection pure functions are algorithmically correct: monotonic detection uses sign-of-delta and correctly breaks streaks on oscillations or flat steps (no false positives on oscillating trajectories confirmed). Saturation-lock detection correctly resets streak count on any dip below threshold (strict consecutive behavior). Residual stacking reads from DaySnapshot.pending_residuals with correct count extraction. No LLM imports or clients are present. Test coverage includes edge cases: empty inputs, single-value inputs, exactly-at-threshold values (|30| is NOT > 30), and exact-window-length streaks. The JSON output is pure machine-readable JSON with no embedded markdown. The full test suite (1061 tests) passes with zero regressions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "back/tests/test_p33_t5_drift_audit.py",
+      "back/tools/audit_drift.py",
+      "back/tools/audit_outputs/drift_20260411_010413.json"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "All tasks complete. Here's what was implemented:\n\n**`back/tools/audit_drift.py`** — pure-observer CLI (310 lines):\n- Uses existing `advance_day` pathway — no parallel simulation loop\n- Collects per-day snapshots of all 7 `AgentState` fields + all 6 `AgentGrowth` fields + `pending_residuals` count\n- Four pure drift-detection functions: `detect_monotonic_drift`, `detect_unbounded_growth`, `detect_saturation_lock`, `detect_residual_stacking`\n- Outputs JSON with `trajectories`, `drift_verdicts` (per-dimension `pass/warn/fail`), `residual_stacking`, and `summary.overall_status`\n- All thresholds configurable via CLI flags\n- `run_drift_audit()` extracted as a standalone callable for test access\n\n**`back/tests/test_p33_t5_drift_audit.py`** — 44 tests across 7 classes:\n- Unit tests for each detection function on synthetic data\n- End-to-end `TestEndToEndAudit` (class-scoped fixture runs 30 days once, 8 structural checks)\n- Covers all acceptance criteria: monotonic flagging, saturation-lock flagging, residual-monotone flagging, JSON schema\n\n**Results**: 44/44 new tests pass, 1061/1061 total suite passes, zero regressions."
+}

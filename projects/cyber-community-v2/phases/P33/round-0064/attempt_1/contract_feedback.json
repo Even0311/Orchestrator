@@ -1,0 +1,23 @@
+{
+  "can_evaluate": [
+    "1. File back/tools/audit_drift.py exists and `python back/tools/audit_drift.py --days 30` exits without error — file existence + subprocess exit code check.",
+    "2. Command completes without error and a JSON file is produced in back/tools/audit_outputs/ — subprocess exit code + glob for output file.",
+    "3. Output JSON has a 'trajectories' object whose keys cover all 7 state fields and all 6 growth fields, each value an array of length (days + 1) — verifiable by reading the canonical field list from the existing DaySnapshot/model definition before evaluation, then asserting keys and array lengths.",
+    "4. Output JSON has a 'residual_stacking' object with a per-day array and a 'verdicts' sub-object — direct JSON key/type inspection.",
+    "5. Output JSON has a 'drift_verdicts' object with one entry per tracked dimension, each containing 'status' (pass/warn/fail) and a 'reasons' array — verifiable by reading the audit tool after it is written to determine the canonical dimension list, then asserting structure.",
+    "6. Output JSON has a top-level 'summary' object with an 'overall_status' field whose value is one of pass/warn/fail — direct key + value-set check.",
+    "7. File back/tests/test_p33_t5_drift_audit.py exists — file existence check.",
+    "8. `python -m pytest back/tests/test_p33_t5_drift_audit.py -v` exits 0 with no failures — run pytest, check return code.",
+    "9. Test file contains at least one test that constructs a synthetic monotonic trajectory of 10+ consecutive days in one direction and asserts the drift detector flags it — inspect test source for the synthetic data pattern and assertion.",
+    "10. Test file contains at least one test that constructs a synthetic trajectory stuck at ceiling for 5+ consecutive days and asserts saturation-lock detection flags it — same inspection approach.",
+    "11. Test file contains at least one test that constructs monotonically non-decreasing residual counts over 7+ consecutive days and asserts residual-stacking detection flags it — same inspection approach.",
+    "12. Test file contains at least one end-to-end test that runs the audit for 30 days on the deterministic backbone and asserts the output JSON structure — inspect test source; covered by criterion 8's pytest run.",
+    "13. `python -m pytest back/tests/ -v` passes with no regressions — run pytest against full suite, compare pass count before and after."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "criterion_3_note": "The field list ('7 state fields', '6 growth fields') is not enumerated in the contract. Before evaluating, read the canonical DaySnapshot or equivalent model from the target repo to obtain the authoritative field names. If those definitions do not exist, the executor must document the expected field names in a comment or docstring inside audit_drift.py, which then becomes the evaluation reference.",
+    "criterion_5_note": "The 'tracked dimensions' count is not specified. After the tool is written, derive the expected dimension set from audit_drift.py itself (e.g. from a TRACKED_DIMENSIONS constant), then assert all dimensions have the required structure. No revision needed — this is self-documenting once the file exists."
+  },
+  "needs_revision": false
+}
