@@ -461,10 +461,11 @@ Move from “LLM has entered the loop safely” to “Agent interior life become
 # Stage 2 Global Sequencing Principles
 
 1. Phase 33 must complete before any deferred-tick live-authority expansion begins.
-2. Phase 34 must complete before any identity-growth implementation or selective recall behavior is approved.
-3. Phase 35 must define the post-P32 T4 expressivity path before T4 is treated as fully expressive.
-4. Phase 36 must explicitly decide deferred-tick admission policy before any specific deferred tick enters live authority.
-5. Phase 37 implements only the first approved deferred-tick candidate set; broad rollout is prohibited.
+2. Phase 34 must complete before any memory, identity, or deferred-tick work begins — live LLM validation is a prerequisite.
+3. Phase 35 must complete before any identity-growth implementation or selective recall behavior is approved.
+4. Phase 36 must define the post-P32 T4 expressivity path before T4 is treated as fully expressive.
+5. Phase 37 must explicitly decide deferred-tick admission policy before any specific deferred tick enters live authority.
+6. Phase 38 implements only the first approved deferred-tick candidate set; broad rollout is prohibited.
 6. Stage 2 may introduce only the minimum world-input enablement needed for deeper appraisal and bounded T4 progression; broad world-generator deepening remains out of scope for Stage 2.
 7. Stage 2 preserves the current player loop and does not redesign player influence surfaces; Stage 3 owns player-influence maturation.
 8. Engine remains authoritative for settlement / bookkeeping throughout Stage 2.
@@ -512,7 +513,53 @@ Stage 2 cannot responsibly deepen memory, identity, or live-intake breadth until
 
 ---
 
-## Phase 34 — Memory Scope and Authority Contract
+## Phase 34 — LLM Live Validation
+
+### Goal
+在真实 LLM API 调用下，验证已建立的 appraisal discipline（prompt schema、acceptance rules、validation gate、fallback path）是否在 live 条件下仍然成立。
+
+### Why Now
+Phase 33 在 deterministic / mock 环境下 harden 了 appraisal discipline，但 deterministic 测试无法暴露真实 LLM 的两类核心风险：
+1. prompt 与 schema 的实际 compliance rate（真实模型是否能稳定产出 contract-compliant AppraisalOutput）
+2. validation gate 和 acceptance rules 在面对真实 LLM variance 时的 rejection/fallback 行为是否符合预期
+
+这两个问题只能通过真实 API 调用回答。如果跳过这一步直接进入 Phase 35（Memory Scope），后续所有依赖 live appraisal 质量的 phase 都建立在未经验证的假设上。
+
+### In Scope
+- 编写 `@pytest.mark.live` 标记的测试，手动触发，不进 CI
+- 对 T1 / T2 / T4 的真实 AppraisalInput 场景调用真实 LLM API，收集 raw response
+- 验证 LLM 返回能否被 `response_parser` 成功解析为 AppraisalOutput
+- 验证解析后的 AppraisalOutput 能否通过 `validation_gate.evaluate()` 和 `acceptance_rules` 的所有 contract-bearing 约束
+- 验证 fallback path 在 LLM 返回 invalid / unparseable / timeout 时能否正确触发
+- 收集 compliance rate、failure mode distribution、rejection reason 统计
+- 记录观察到的 deviation pattern（例如：LLM 是否倾向于某些 field 的系统性偏移）
+- 测试结果以 audit 数据形式输出，不写入 production 代码路径
+
+### Out of Scope
+- 不修改 AppraisalOutput schema 或 AppraisalSignal v1
+- 不修改 settlement engine
+- 不修改 validation gate / acceptance rules 的逻辑（如果发现问题，记录为 finding，留待后续 phase 处理）
+- 不引入 prompt tuning / prompt engineering 迭代循环
+- 不扩展 live authority 到 deferred ticks（T3/T5/T6/T7/T8）
+- 不建立 LLM 调用的 production runtime 基础设施（API key 管理、rate limiting、cost tracking 等）
+- 不修改 deterministic fallback 行为
+
+### Exit Condition
+- 至少覆盖 T1 / T2 / T4 各一个代表性场景的 live 测试存在且可运行
+- compliance rate 和 failure mode distribution 有明确的数据记录
+- 如果 compliance rate 不足以支撑后续 phase，该事实被显式记录为 blocking finding
+- 如果 compliance rate 足够，该事实被显式记录为 Phase 33 discipline 的 live confirmation
+- 所有测试标记为 `@pytest.mark.live`，不在 CI 中运行
+
+### Unlocks
+- 对 Phase 33 appraisal discipline 的 live-condition 信心确认（或显式否定）
+- 如果 compliance rate 不足，产生明确的 prompt/schema 改进需求列表，可在后续 phase 处理
+- 为 Phase 35 及之后的 memory / identity / deferred-tick 工作提供真实 LLM 行为的经验数据
+- 减少"deterministic 测试全通过但 live 部署时大面积 fallback"的风险
+
+---
+
+## Phase 35 — Memory Scope and Authority Contract
 
 ### Goal
 Define what memory already exists, what is still missing, and what authority boundaries memory is allowed to have.
@@ -559,7 +606,7 @@ Stage 2 cannot safely deepen continuity until memory scope and authority are cle
 
 ---
 
-## Phase 35 — T4 Expressivity Path and World-Input Enablement
+## Phase 36 — T4 Expressivity Path and World-Input Enablement
 
 ### Goal
 Define the bounded post-P32 path for T4 expressivity and the minimum world-side input enrichment required to support it.
@@ -599,7 +646,7 @@ Stage 2 must explicitly define the next bounded path, or T4 will either stagnate
 
 ---
 
-## Phase 36 — Deferred-Tick Admission Contract
+## Phase 37 — Deferred-Tick Admission Contract
 
 ### Goal
 Make deferred-tick live-intake expansion an explicit Stage 2 decision rather than an implicit future guess.
@@ -643,7 +690,7 @@ If it does not, the system will either stall or drift into accidental breadth-fi
 
 ---
 
-## Phase 37 — Selective Deferred-Tick Live Intake I
+## Phase 38 — Selective Deferred-Tick Live Intake I
 
 ### Goal
 Implement the first approved deferred-tick candidate set under explicit Stage 2 constraints.
@@ -678,7 +725,7 @@ Otherwise the roadmap would define a policy but never test whether selective liv
 
 ---
 
-## Phase 38 — Identity Continuity Contract
+## Phase 39 — Identity Continuity Contract
 
 ### Goal
 Define what counts as short-term drift, long-term growth, regression, and merely contextual behavior.
@@ -718,7 +765,7 @@ Stage 2 needs a principled basis for selfhood before it can claim real interior 
 
 ---
 
-## Phase 39 — Cross-Tick Continuity and Consequence Shaping
+## Phase 40 — Cross-Tick Continuity and Consequence Shaping
 
 ### Goal
 Strengthen the connection between events, appraisal, memory, identity, and later behavior across multiple days.
@@ -755,7 +802,7 @@ After Stage 2 has stronger appraisal discipline, memory scope, T4 pathing, and a
 
 ---
 
-## Phase 40 — Stage 2 / Stage 3 Player Boundary Freeze
+## Phase 41 — Stage 2 / Stage 3 Player Boundary Freeze
 
 ### Goal
 Explicitly define what Stage 2 preserves about the player loop and what Stage 3 will own about player influence maturation.

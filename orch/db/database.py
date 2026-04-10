@@ -59,7 +59,7 @@ def init_db() -> None:
                 FOREIGN KEY (phase_id)   REFERENCES phases(id)
             );
         """)
-        for col in ("orchestrator_commit", "target_commit", "resolution_action", "resolution_note", "resolved_by"):
+        for col in ("orchestrator_commit", "target_commit", "resolution_action", "resolution_note", "resolved_by", "task_key"):
             try:
                 conn.execute(f"ALTER TABLE rounds ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:

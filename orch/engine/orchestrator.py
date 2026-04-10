@@ -105,8 +105,15 @@ def run_project(project_row, run_once: bool = False) -> None:
             click.echo(f"[{_ts()}] Applying human acceptance for {resolution['id']}")
 
             # Mark task complete in SOT if we know the task key
-            task_desc = resolution["task_description"] or ""
-            _try_mark_task_complete(sot_dir, task_desc, "accepted by human")
+            task_key = resolution["task_key"] or ""
+            if task_key:
+                marked = mark_task_complete(sot_dir, task_key, "accepted by human")
+                if marked:
+                    click.echo(f"  [{_ts()}] Marked {task_key} complete in current_phase.md")
+            else:
+                # Fallback for old rounds without task_key column
+                task_desc = resolution["task_description"] or ""
+                _try_mark_task_complete(sot_dir, task_desc, "accepted by human")
 
             orch_hash, target_hash = _commit_both(
                 codebase_path,
@@ -772,8 +779,8 @@ def _save_round(project_id: str, phase_id: str, round_id: str, result: RoundResu
             """INSERT OR REPLACE INTO rounds
                (id, project_id, phase_id, status, attempt_count,
                 task_description, executor_result, reviewer_verdict,
-                escalation_reason, cost_usd, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                escalation_reason, cost_usd, task_key, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 round_id, project_id, phase_id, status,
                 len(result.attempts),
@@ -782,6 +789,7 @@ def _save_round(project_id: str, phase_id: str, round_id: str, result: RoundResu
                 last_attempt.review_verdict.verdict.value if last_attempt else "FAIL",
                 result.escalation_reason or None,
                 result.total_cost_usd,
+                result.task.task_key,
                 now_iso(), now_iso(),
             ),
         )
