@@ -70,8 +70,9 @@ def _build_planning_prompt(
         f"- [ ] {phase_id}-T{{n}}: {{concise task description}}\n\n"
         f"Rules:\n"
         f"- Order tasks by logical dependency (earlier tasks enable later ones)\n"
-        f"- Aim for 4-8 tasks\n"
-        f"- Each task should be completable in a single round (~1 hour of Claude work)\n"
+        f"- Aim for 3-6 tasks per phase — prefer fewer, larger tasks over many small ones\n"
+        f"- Group related work into a single task: e.g. a feature implementation + its tests + its docs = one task, not three\n"
+        f"- Only split tasks when there is a true sequential dependency (task B needs task A's output to start)\n"
         f"- Tasks define WHAT, not HOW — no file paths or implementation details\n"
         f"- Do not include any text besides the task list\n"
     )
