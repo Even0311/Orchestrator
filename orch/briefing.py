@@ -119,6 +119,7 @@ def generate_executor_brief(
     round_dir: Path,
     task_contract: TaskContract,
     round_id: str,
+    is_retry: bool = False,
 ) -> Path:
     """Generate executor_brief.md — task contract only.
 
@@ -180,6 +181,15 @@ def generate_executor_brief(
         "5. Write `execution_evidence.json` with: summary, files_changed, commands_run, test_results, diff_summary, unresolved_issues",
         "",
     ])
+
+    if is_retry:
+        parts.extend([
+            "## Important: This is a retry",
+            "A previous attempt at this task failed review. After applying the required fixes,",
+            "do NOT stop — review your entire output for the same class of error in other locations.",
+            "A fix in one place often means the same mistake exists elsewhere.",
+            "",
+        ])
 
     brief_path = round_dir / "executor_brief.md"
     brief_path.write_text("\n".join(parts))

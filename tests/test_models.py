@@ -21,7 +21,6 @@ class TestTaskContract:
             "title": "Calibrate ranges",
             "objective": "Calibrate signal intensity",
             "acceptance_criteria": ["tests pass"],
-            "allowed_files": ["back/**/*.py"],
             "forbidden_files": ["docs/vision.md"],
         }
         tc = TaskContract.from_dict(data)
@@ -29,7 +28,7 @@ class TestTaskContract:
         assert tc.task_key == "P28-T6"
         assert tc.task_id == "P28-T6"  # backward compat property
         assert tc.description == "Calibrate signal intensity"
-        assert tc.allowed_files == ["back/**/*.py"]
+        assert tc.forbidden_files == ["docs/vision.md"]
 
     def test_to_json_roundtrip(self):
         tc = TaskContract(

@@ -402,6 +402,7 @@ def _run_round(
             round_dir=attempt_dir,
             task_contract=task_contract,
             round_id=round_id,
+            is_retry=attempt_num > 1,
         )
 
         execution_evidence, executor_result = invoke_executor(
@@ -571,6 +572,10 @@ def _build_failure_context(attempt: AttemptRecord, gate_results: HardGateResults
         lines.append(f"Unmet: {c}")
     for f in attempt.review_verdict.blocker_fixes:
         lines.append(f"Fix required: {f}")
+    if attempt.review_verdict.non_blocking_suggestions:
+        lines.append("Non-blocking suggestions from previous review (address if possible):")
+        for s in attempt.review_verdict.non_blocking_suggestions:
+            lines.append(f"  - {s}")
     for g in gate_results.failures:
         lines.append(f"Hard gate {g.name}: {g.detail}")
     lines.append("All code changes from the previous attempt have been rolled back. "

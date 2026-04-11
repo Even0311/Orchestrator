@@ -6,7 +6,6 @@ from orch.engine.hard_gates import (
     run_hard_gates,
     _gate_has_changes,
     _gate_target_protected_files,
-    _gate_allowed_files,
     _gate_forbidden_files,
     _gate_round_dir_boundary,
     validate_proposed_scope,
@@ -128,25 +127,7 @@ class TestGateRoundDirBoundary:
         assert result.passed is True
 
 
-# ── Gate: allowed / forbidden files ──────────────────────────────────────────
-
-class TestGateAllowedFiles:
-    def test_pass_all_within_pattern(self):
-        ev = GitEvidence(
-            files_modified=["back/app/engine.py"],
-            files_added=["back/tests/test_new.py"],
-        )
-        result = _gate_allowed_files(ev, ["back/**/*.py"])
-        assert result.passed is True
-
-    def test_fail_file_outside_pattern(self):
-        ev = GitEvidence(
-            files_modified=["back/app/engine.py", "frontend/index.js"],
-        )
-        result = _gate_allowed_files(ev, ["back/**/*.py"])
-        assert result.passed is False
-        assert "frontend/index.js" in result.detail
-
+# ── Gate: forbidden files ────────────────────────────────────────────────────
 
 class TestGateForbiddenFiles:
     def test_pass_no_forbidden_touched(self):
@@ -186,81 +167,25 @@ class TestHardGateResults:
 # ── Scope policy validation (D) ─────────────────────────────────────────────
 
 class TestValidateProposedScope:
-    def test_reject_wildcard_star_star(self):
-        """allowed_files ['**'] must be rejected."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["**"], [], ev)
-        assert result.valid is False
-        assert any("too broad" in v for v in result.violations)
-        assert "**" not in result.sanitized_allowed
-
-    def test_reject_star(self):
-        """allowed_files ['*'] must be rejected."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["*"], [], ev)
-        assert result.valid is False
-
-    def test_reject_star_star_slash_star(self):
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["**/*"], [], ev)
-        assert result.valid is False
-
-    def test_reject_control_plane_overlap(self):
-        """Patterns matching CLAUDE.md must be rejected."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["*.md"], [], ev)
-        assert result.valid is False
-        assert any("control-plane" in v for v in result.violations)
-
-    def test_reject_claude_agents_pattern(self):
-        """Patterns matching .claude/agents/ must be rejected."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope([".claude/**"], [], ev)
-        assert result.valid is False
-
-    def test_accept_narrow_valid_scope(self):
-        """Narrow, valid scope should pass."""
-        ev = GitEvidence(has_changes=True, files_modified=["back/app/engine.py"])
-        result = validate_proposed_scope(["back/**/*.py", "back/tests/**"], [], ev)
-        assert result.valid is True
-        assert "back/**/*.py" in result.sanitized_allowed
-        assert "back/tests/**" in result.sanitized_allowed
-
     def test_forbidden_always_includes_control_plane(self):
         """Sanitized forbidden must always include control-plane patterns."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["src/**/*.py"], [], ev)
+        result = validate_proposed_scope(proposed_forbidden=["docs/vision.md"])
         assert "CLAUDE.md" in result.sanitized_forbidden
         assert ".claude/agents/**" in result.sanitized_forbidden
 
-    def test_empty_proposal_is_valid(self):
-        """No allowed_files proposed — gate simply won't run."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope([], [], ev)
+    def test_empty_forbidden_still_adds_control_plane(self):
+        """No forbidden_files proposed — control-plane patterns still added."""
+        result = validate_proposed_scope(proposed_forbidden=[])
         assert result.valid is True
-        assert result.sanitized_allowed == []
+        assert "CLAUDE.md" in result.sanitized_forbidden
+        assert ".claude/agents/**" in result.sanitized_forbidden
 
-    def test_mixed_valid_and_invalid(self):
-        """Valid patterns kept, invalid rejected."""
-        ev = GitEvidence(has_changes=True, files_modified=["src/app.py"])
-        result = validate_proposed_scope(["back/**/*.py", "**", "*.md"], [], ev)
-        assert result.valid is False
-        assert "back/**/*.py" in result.sanitized_allowed
-        assert "**" not in result.sanitized_allowed
-        assert "*.md" not in result.sanitized_allowed
-
-    def test_out_of_scope_changed_files_still_fail(self):
-        """Even with valid allowed_files, files outside scope should fail the gate."""
-        ev = GitEvidence(
-            has_changes=True,
-            files_modified=["back/app/engine.py", "frontend/index.js"],
-        )
-        scope = validate_proposed_scope(["back/**/*.py"], [], ev)
-        assert scope.valid is True
-        # Now run the actual gate
-        gate = _gate_allowed_files(ev, scope.sanitized_allowed)
-        assert gate.passed is False
-        assert "frontend/index.js" in gate.detail
+    def test_user_forbidden_preserved(self):
+        """User-specified forbidden patterns are kept alongside control-plane."""
+        result = validate_proposed_scope(proposed_forbidden=["docs/vision.md", "*.env"])
+        assert result.valid is True
+        assert "docs/vision.md" in result.sanitized_forbidden
+        assert "*.env" in result.sanitized_forbidden
 
 
 # ── Canonical SOT mutation detection ────────────────────────────────────────

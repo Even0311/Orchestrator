@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 from orch.briefing import (
-    generate_round_brief,
+    generate_designer_brief,
     read_artifacts,
     write_task_contract,
     _extract_vision_summary,
@@ -90,12 +90,12 @@ class TestGenerateRoundBrief:
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
         )
         assert path.exists()
         content = path.read_text()
@@ -108,12 +108,12 @@ class TestGenerateRoundBrief:
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
         )
         content = path.read_text()
         assert "Project Vision Context" in content
@@ -126,12 +126,12 @@ class TestGenerateRoundBrief:
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
         )
         content = path.read_text()
         assert "Roadmap / Phase Context" in content
@@ -162,28 +162,28 @@ class TestGenerateRoundBrief:
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=2,
+
             prior_failure="pytest failed: 3 errors",
         )
         content = path.read_text()
         assert "pytest failed" in content
-        assert "Prior Attempt Failed" in content
+        assert "Prior Round Failed" in content
 
     def test_includes_recent_rounds(self, tmp_path):
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
             recent_rounds_summary="round-0026 PASSED",
         )
         content = path.read_text()
@@ -194,12 +194,12 @@ class TestGenerateRoundBrief:
         round_dir = tmp_path / "round-0001"
         sot_dir = self._make_sot_dir(tmp_path)
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
         )
         content = path.read_text()
         assert "Recently Completed Tasks" in content
@@ -213,12 +213,12 @@ class TestGenerateRoundBrief:
         phase_info = self._make_phase_info()
         phase_info.recent_completed = []
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=phase_info,
             round_id="round-0001",
-            attempt_num=1,
+
         )
         content = path.read_text()
         assert "Recently Completed Tasks" not in content
@@ -229,12 +229,12 @@ class TestGenerateRoundBrief:
         sot_dir = tmp_path / "sot"
         sot_dir.mkdir()
 
-        path = generate_round_brief(
+        path = generate_designer_brief(
             round_dir=round_dir,
             sot_dir=sot_dir,
             phase_info=self._make_phase_info(),
             round_id="round-0001",
-            attempt_num=1,
+
         )
         content = path.read_text()
         assert "P28-T6" in content
@@ -276,11 +276,11 @@ class TestWriteTaskContract:
         tc = TaskContract(
             phase_id="P28", task_key="P28-T6",
             title="Calibrate", objective="Do calibration",
-            allowed_files=["back/**"],
+            forbidden_files=["docs/vision.md"],
         )
         path = write_task_contract(tmp_path, tc)
         assert path.exists()
 
         data = json.loads(path.read_text())
         assert data["task_key"] == "P28-T6"
-        assert data["allowed_files"] == ["back/**"]
+        assert data["forbidden_files"] == ["docs/vision.md"]
