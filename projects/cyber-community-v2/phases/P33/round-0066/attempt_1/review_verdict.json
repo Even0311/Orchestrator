@@ -1,0 +1,25 @@
+{
+  "verdict": "PASS",
+  "confidence": "high",
+  "met_criteria": [
+    "AC1: docs/stage2_appraisal_safety_contract.md exists with 7 clearly numbered sections and well-structured markdown hierarchy",
+    "AC2: Section 2 defines 'Safe Appraisal Deepening' with 5 criteria (exceeds minimum 3), each with explicit Safe/Unsafe examples covering settlement authority, monotonic drift, degradation rate, AppraisalSignal freeze, and residual stacking",
+    "AC3: Per-tick authority table covers all 8 ticks (T1-T8). T3/T5/T6/T7/T8 each have 4 individually specified activation preconditions. T4 is explicitly described as 'Positive path active; negative path frozen (Phase 26B required)'",
+    "AC4: 6 monitoring gates defined with concrete numeric thresholds — no TBD values. Gates cover monotonic drift (window=10, fail=20), unbounded growth (threshold=30.0), saturation lock (ceiling=93, floor=7, window=5), residual stacking (max_count=10, monotone_window=7), degradation rate (threshold=0.5), and probe backoff (base=1, multiplier=2, max=14)",
+    "AC5: Gate 1 correctly states warn at >=10 consecutive days and fail at >=20 consecutive days (monotonic_window * 2). Verified against code at audit_drift.py line 336: 'status = \"fail\" if longest[\"length\"] >= monotonic_window * 2 else \"warn\"'. Thresholds are consistent in Section 4 Gate 1 and Section 5 Levels 1 and 2",
+    "AC6: No escalation level references spans shorter than 10 days. Level 1 trigger starts at >=10 days. AP-6 explicitly documents that detect_monotonic_drift(window=10) cannot flag spans below 10 days",
+    "AC7: Degradation threshold stated as 0.5 matching DegradationTracker.degradation_threshold default (confirmed at degradation_tracker.py line 139). Document explicitly notes 'There is no 0.35 warn threshold in the current implementation. Any advisory pre-warn threshold below 0.5 is a Stage 2 requirement — not yet implemented'",
+    "AC8: Unbounded growth correctly uses |cumulative_delta| (absolute value). Document states 'fail: unbounded growth alone cannot produce a fail verdict from build_dimension_verdict'. Confirmed against code: detect_unbounded_growth uses abs(cumulative), and build_dimension_verdict Rule 2 only sets 'warn' when unbounded growth fires (if status != 'fail': status = 'warn'). AP-8 reinforces this",
+    "AC9: Three escalation levels defined (Level 1 Advisory/Warn, Level 2 Auto-Fallback/Degraded, Level 3 Freeze and Audit/Critical). All trigger conditions reference correct thresholds from monitoring gates: Level 1 uses >=10 days / <20 (Gate 1 warn), Level 2 uses 20+ days (Gate 1 fail), unbounded growth warn, saturation lock fail, degradation rate >0.5",
+    "AC10: Anti-patterns section (AP-1 to AP-8) maps each forbidden pattern to a specific CLAUDE.md hard rule or decisions_summary.md decision. Covers LLM ledger writes, AppraisalSignal freeze, T4 negative path freeze, deferred tick expansion without approval, chatbot prohibition, monotonic drift misrepresentation, max_cooldown misinterpretation, and unbounded growth fail verdict misrepresentation",
+    "AC11: 1061 tests pass with zero regressions. Change is document-only — no source code modified"
+  ],
+  "unmet_criteria": [],
+  "blocker_fixes": [],
+  "non_blocking_suggestions": [
+    "Gate 2 description says 'it can only escalate to fail if a saturation lock is also triggered' — this is technically correct but slightly imprecise: a monotonic drift span >=20 could also already set fail before unbounded growth fires. The current phrasing focuses on unbounded growth as the sole triggering rule, which is accurate for the 'unbounded growth alone' case. No change required but worth noting.",
+    "The document has 6 monitoring gates but AC4 only required 4. No issue, but the document is richer than required.",
+    "AP-5 (chatbot prohibition) is valid but tangential to Stage 2 appraisal safety specifically — it reads more like a general project anti-pattern. Not a problem, just an observation."
+  ],
+  "rationale": "All 11 acceptance criteria are met. Every numeric threshold in the document was verified against actual source code: monotonic drift warn/fail thresholds match audit_drift.py build_dimension_verdict (line 336), degradation_threshold=0.5 matches degradation_tracker.py (line 139), backoff parameters (base_cooldown=1, multiplier=2, max_cooldown=14) match degradation_tracker.py (lines 143-145), unbounded growth uses abs(cumulative) and correctly produces warn-only (audit_drift.py lines 186, 347-348). The critical review axis — threshold accuracy — passes completely. T4 split status is correctly documented. No deferred threshold is presented as current behavior without explicit labeling. All 1061 tests pass. This is a clean document-only change with no regressions."
+}

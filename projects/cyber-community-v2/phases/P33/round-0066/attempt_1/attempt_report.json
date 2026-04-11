@@ -1,0 +1,155 @@
+{
+  "attempt": 1,
+  "passed": true,
+  "cost_usd": 1.19683035,
+  "is_token_exhausted": false,
+  "task": {
+    "phase_id": "P33",
+    "task_key": "P33-T6",
+    "title": "Stage 2 appraisal safety contract specification",
+    "objective": "Write a specification document (docs/stage2_appraisal_safety_contract.md) that defines what constitutes safe appraisal deepening versus dangerous narrative drift, the preconditions for granting new ticks live LLM authority, and the monitoring gates Stage 2 must pass. This is a documentation-only task — no code changes.",
+    "exact_scope": [
+      "Create docs/stage2_appraisal_safety_contract.md containing all sections listed in the acceptance criteria",
+      "The document must reference existing infrastructure by exact names (DegradationTracker, OutcomeClass, deterministic_fallback.py, audit_drift.py) and quote their actual parameter defaults and threshold values accurately",
+      "All numeric thresholds stated in the document must be verifiable against the current source code — no invented constants, no derived values presented as existing code behavior"
+    ],
+    "acceptance_criteria": [
+      "AC1: docs/stage2_appraisal_safety_contract.md exists and is well-structured markdown with clear section hierarchy",
+      "AC2: A section defines 'safe appraisal deepening' with at least 3 concrete criteria, each with explicit safe and unsafe examples",
+      "AC3: A per-tick authority table covers all 8 ticks (T1-T8) with current status. Each deferred tick (T3, T5, T6, T7, T8) has individually specified activation preconditions, not a blanket rule. T4 is described as 'positive path active; negative path frozen (Phase 26B required)'",
+      "AC4: At least 4 monitoring gates are defined with concrete numeric thresholds — no TBD or placeholder values",
+      "AC5: The monotonic drift gate correctly states: warn at >=10 consecutive days, fail at >=20 consecutive days (= monotonic_window * 2 with default monotonic_window=10). This must be consistent everywhere the threshold appears in the document",
+      "AC6: No escalation level or response tier references detection of monotonic drift spans shorter than 10 days, since detect_monotonic_drift(window=10) cannot flag spans below its window size",
+      "AC7: The degradation rate threshold is stated as 0.5 (matching DegradationTracker.degradation_threshold default). If any lower advisory threshold is mentioned, it is explicitly labeled as a proposed Stage 2 addition not present in current code",
+      "AC8: Unbounded growth detection correctly uses |cumulative_delta| (absolute value) and is noted as producing 'warn' only (never 'fail' on its own) per build_dimension_verdict",
+      "AC9: A graduated response section defines at least 3 escalation levels with trigger conditions that reference the monitoring gates. Level trigger conditions must use the correct warn/fail thresholds from AC5/AC8",
+      "AC10: An anti-patterns section lists explicitly forbidden patterns consistent with decisions_summary.md hard rules and CLAUDE.md constraints",
+      "AC11: All existing tests pass with zero regressions (document-only change, so this should be trivially satisfied)"
+    ],
+    "non_goals": [
+      "Implementing any code changes, monitoring infrastructure, or new thresholds",
+      "Modifying existing engines, bridges, or settlement logic",
+      "Expanding bridge coverage to deferred ticks (T3/T5/T6/T7/T8)",
+      "Designing a freeform memory system or identity-growth mechanics",
+      "Player influence redesign or world-generator changes",
+      "Proposing changes to AppraisalSignal v1 schema"
+    ],
+    "constraints": [
+      "Document-only change — no source code, test, or config modifications",
+      "Every numeric threshold or behavioral claim about existing code must match the actual implementation. The executor MUST read the relevant source files (back/tools/audit_drift.py, back/app/llm/degradation_tracker.py) before writing threshold values",
+      "Key code facts the document must accurately reflect: (a) degradation_threshold defaults to 0.5 — there is NO 0.35 warn threshold in code; (b) monotonic drift detection uses window=10 — spans shorter than 10 days CANNOT be detected; (c) build_dimension_verdict produces 'warn' at >=10 consecutive days and 'fail' at >=20 consecutive days (monotonic_window * 2); (d) unbounded growth check uses abs(cumulative_delta) and can only produce 'warn', never 'fail' on its own; (e) max_cooldown=14 is a probe backoff cap, not a stability observation period",
+      "If the document proposes NEW thresholds or policies not yet in code, they MUST be explicitly labeled as 'Stage 2 requirement — not yet implemented' to distinguish them from existing infrastructure behavior",
+      "T4 continuity status: positive path is active, negative path is frozen pending Phase 26B. Do not label T4 as simply 'Active'",
+      "Anti-patterns section must align with decisions_summary.md and CLAUDE.md hard rules",
+      "AppraisalSignal v1 is frozen — do not propose modifications to its fields"
+    ],
+    "forbidden_files": [
+      "back/app/**",
+      "back/tools/**",
+      "back/tests/**",
+      "front/**",
+      "*.py",
+      "*.ts",
+      "*.tsx",
+      "*.json",
+      "docs/decisions_summary.md",
+      "docs/phase25_continuity_status.md",
+      "CLAUDE.md",
+      ".claude/**"
+    ],
+    "review_focus": [
+      "CRITICAL: Verify every numeric threshold and code-behavioral claim in the document against actual source files (back/tools/audit_drift.py lines 328-347 for drift verdicts, back/app/llm/degradation_tracker.py for threshold defaults). Prior rounds failed specifically because thresholds were wrong — this is the primary review axis",
+      "Check internal consistency: thresholds stated in monitoring gates must match thresholds referenced in graduated response levels and per-tick preconditions. No contradictions within the document",
+      "Verify that any threshold NOT currently in code is clearly labeled as a proposed Stage 2 policy, not presented as existing behavior",
+      "Confirm T4 is described with split status (positive active / negative frozen) and not labeled simply 'Active'",
+      "Confirm anti-patterns align with decisions_summary.md and CLAUDE.md hard rules"
+    ]
+  },
+  "execution_evidence": {
+    "summary": "Created docs/stage2_appraisal_safety_contract.md — a documentation-only task defining safe appraisal deepening criteria, per-tick authority table, monitoring gates, graduated response escalation levels, and anti-patterns for Stage 2 LLM authority expansion. All numeric thresholds were verified against back/tools/audit_drift.py and back/app/llm/degradation_tracker.py before being written into the document. All 1061 existing tests pass with no regressions.",
+    "files_changed": [
+      "docs/stage2_appraisal_safety_contract.md"
+    ],
+    "commands_run": [
+      "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v"
+    ],
+    "test_results": {
+      "total": 1061,
+      "passed": 1061,
+      "failed": 0,
+      "errors": 0,
+      "duration_seconds": 10.87,
+      "status": "pass"
+    },
+    "diff_summary": "New file: docs/stage2_appraisal_safety_contract.md (documentation only, no source code changes). The document contains: (1) 5-criterion 'safe appraisal deepening' section with safe/unsafe examples for each criterion; (2) per-tick authority table covering all 8 ticks — T1/T2 Active, T3/T5/T6/T7/T8 Deferred with individually specified preconditions, T4 described as 'positive path active; negative path frozen (Phase 26B required)'; (3) 6 monitoring gates with concrete numeric thresholds verified from source; (4) graduated response section with 3 escalation levels (Advisory/Warn, Auto-Fallback/Degraded, Freeze and Audit/Critical); (5) 8 anti-patterns aligned with CLAUDE.md and decisions_summary.md; (6) infrastructure reference table.",
+    "unresolved_issues": []
+  },
+  "review_verdict": {
+    "verdict": "PASS",
+    "confidence": "high",
+    "met_criteria": [
+      "AC1: docs/stage2_appraisal_safety_contract.md exists with 7 clearly numbered sections and well-structured markdown hierarchy",
+      "AC2: Section 2 defines 'Safe Appraisal Deepening' with 5 criteria (exceeds minimum 3), each with explicit Safe/Unsafe examples covering settlement authority, monotonic drift, degradation rate, AppraisalSignal freeze, and residual stacking",
+      "AC3: Per-tick authority table covers all 8 ticks (T1-T8). T3/T5/T6/T7/T8 each have 4 individually specified activation preconditions. T4 is explicitly described as 'Positive path active; negative path frozen (Phase 26B required)'",
+      "AC4: 6 monitoring gates defined with concrete numeric thresholds — no TBD values. Gates cover monotonic drift (window=10, fail=20), unbounded growth (threshold=30.0), saturation lock (ceiling=93, floor=7, window=5), residual stacking (max_count=10, monotone_window=7), degradation rate (threshold=0.5), and probe backoff (base=1, multiplier=2, max=14)",
+      "AC5: Gate 1 correctly states warn at >=10 consecutive days and fail at >=20 consecutive days (monotonic_window * 2). Verified against code at audit_drift.py line 336: 'status = \"fail\" if longest[\"length\"] >= monotonic_window * 2 else \"warn\"'. Thresholds are consistent in Section 4 Gate 1 and Section 5 Levels 1 and 2",
+      "AC6: No escalation level references spans shorter than 10 days. Level 1 trigger starts at >=10 days. AP-6 explicitly documents that detect_monotonic_drift(window=10) cannot flag spans below 10 days",
+      "AC7: Degradation threshold stated as 0.5 matching DegradationTracker.degradation_threshold default (confirmed at degradation_tracker.py line 139). Document explicitly notes 'There is no 0.35 warn threshold in the current implementation. Any advisory pre-warn threshold below 0.5 is a Stage 2 requirement — not yet implemented'",
+      "AC8: Unbounded growth correctly uses |cumulative_delta| (absolute value). Document states 'fail: unbounded growth alone cannot produce a fail verdict from build_dimension_verdict'. Confirmed against code: detect_unbounded_growth uses abs(cumulative), and build_dimension_verdict Rule 2 only sets 'warn' when unbounded growth fires (if status != 'fail': status = 'warn'). AP-8 reinforces this",
+      "AC9: Three escalation levels defined (Level 1 Advisory/Warn, Level 2 Auto-Fallback/Degraded, Level 3 Freeze and Audit/Critical). All trigger conditions reference correct thresholds from monitoring gates: Level 1 uses >=10 days / <20 (Gate 1 warn), Level 2 uses 20+ days (Gate 1 fail), unbounded growth warn, saturation lock fail, degradation rate >0.5",
+      "AC10: Anti-patterns section (AP-1 to AP-8) maps each forbidden pattern to a specific CLAUDE.md hard rule or decisions_summary.md decision. Covers LLM ledger writes, AppraisalSignal freeze, T4 negative path freeze, deferred tick expansion without approval, chatbot prohibition, monotonic drift misrepresentation, max_cooldown misinterpretation, and unbounded growth fail verdict misrepresentation",
+      "AC11: 1061 tests pass with zero regressions. Change is document-only — no source code modified"
+    ],
+    "unmet_criteria": [],
+    "scope_violations": [],
+    "blocker_fixes": [],
+    "non_blocking_suggestions": [
+      "Gate 2 description says 'it can only escalate to fail if a saturation lock is also triggered' — this is technically correct but slightly imprecise: a monotonic drift span >=20 could also already set fail before unbounded growth fires. The current phrasing focuses on unbounded growth as the sole triggering rule, which is accurate for the 'unbounded growth alone' case. No change required but worth noting.",
+      "The document has 6 monitoring gates but AC4 only required 4. No issue, but the document is richer than required.",
+      "AP-5 (chatbot prohibition) is valid but tangential to Stage 2 appraisal safety specifically — it reads more like a general project anti-pattern. Not a problem, just an observation."
+    ],
+    "rationale": "All 11 acceptance criteria are met. Every numeric threshold in the document was verified against actual source code: monotonic drift warn/fail thresholds match audit_drift.py build_dimension_verdict (line 336), degradation_threshold=0.5 matches degradation_tracker.py (line 139), backoff parameters (base_cooldown=1, multiplier=2, max_cooldown=14) match degradation_tracker.py (lines 143-145), unbounded growth uses abs(cumulative) and correctly produces warn-only (audit_drift.py lines 186, 347-348). The critical review axis — threshold accuracy — passes completely. T4 split status is correctly documented. No deferred threshold is presented as current behavior without explicit labeling. All 1061 tests pass. This is a clean document-only change with no regressions."
+  },
+  "hard_gates": [
+    {
+      "name": "git_changes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "target_protected_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forbidden_files",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "round_dir_boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pytest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sot_mutation",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "git_evidence": {
+    "files_modified": [],
+    "files_added": [
+      "docs/stage2_appraisal_safety_contract.md"
+    ],
+    "files_deleted": [],
+    "diff_stat": "",
+    "has_changes": true
+  },
+  "claude_output_truncated": "Done. Here's a summary of what was completed:\n\n**Task:** P33-T6 — Stage 2 appraisal safety contract specification (documentation-only)\n\n**Created:** `docs/stage2_appraisal_safety_contract.md`\n\nThe document covers all required sections:\n\n1. **Safe appraisal deepening** — 5 criteria with explicit safe/unsafe examples (settlement authority, no monotonic drift, degradation rate ≤ 0.5, AppraisalSignal v1 frozen, residual stacking bounds)\n\n2. **Per-tick authority table** — All 8 ticks covered. T1/T2: Active. T4: \"Positive path active; negative path frozen (Phase 26B required)\". T3/T5/T6/T7/T8: each has its own individually specified activation preconditions (not a blanket rule).\n\n3. **6 monitoring gates** — All thresholds verified against source:\n   - Gate 1 (monotonic drift): warn ≥10 days, fail ≥20 days — from `build_dimension_verdict`\n   - Gate 2 (unbounded growth): |cumulative_delta| > 30, produces `warn` only (never `fail` alone)\n   - Gate 3 (saturation lock): ceiling=93, floor=7, window=5 → immediate `fail`\n   - Gate 4 (residual stacking): max_count=10, monotone_window=7\n   - Gate 5 (degradation rate): threshold=0.5 from `DegradationTracker`, sub-0.5 advisory labeled \"Stage 2 requirement — not yet implemented\"\n   - Gate 6 (probe backoff): max_cooldown=14 correctly described as probe interval cap, not stability period\n\n4. **Graduated response** — 3 escalation levels with correct threshold references\n\n5. **8 anti-patterns** — All consistent with CLAUDE.md hard rules and decisions_summary.md\n\n**Tests:** 1061/1061 passed (document-only change, no regressions)"
+}

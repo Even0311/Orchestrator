@@ -1,0 +1,23 @@
+{
+  "summary": "Created/updated docs/stage2_appraisal_safety_contract.md — the Stage 2 Appraisal Safety Contract specification document. The document was already present as an untracked file from a prior attempt but contained two acceptance-criteria violations: (1) G3 monotonic drift gate lacked the warn/fail split (warn: 10–19 days, fail: ≥20 days) as required by audit_drift.py::build_dimension_verdict, and (2) Level 1 Warning incorrectly referenced '7–9 day' monotonic spans that detect_monotonic_drift(window=10) cannot detect. Both issues were corrected. All other sections (5 monitoring gates, 8-tick authority table with per-tick preconditions, 4 graduated response levels, 8 anti-pattern items) were already compliant.",
+  "files_changed": [
+    "docs/stage2_appraisal_safety_contract.md"
+  ],
+  "commands_run": [
+    "cd back && python -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "total": 1061,
+    "passed": 1061,
+    "failed": 0,
+    "errors": 0,
+    "duration_seconds": 9.70
+  },
+  "diff_summary": {
+    "docs/stage2_appraisal_safety_contract.md": [
+      "G3 monitoring gate threshold clarified: warn at ≥10 consecutive days (detected by detect_monotonic_drift(window=10)); fail at ≥20 consecutive days (build_dimension_verdict: status='fail' if longest >= monotonic_window*2=20). Explicit note added that spans <10 days are invisible to the tool.",
+      "Level 1 Warning condition corrected: removed reference to '7–9 day' monotonic spans (undetectable with window=10); replaced with accurate description — warn fires when audit_drift.py reports a 'warn' verdict, meaning a detected span of 10–19 consecutive days."
+    ]
+  },
+  "unresolved_issues": []
+}

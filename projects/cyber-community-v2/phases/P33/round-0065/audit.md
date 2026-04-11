@@ -1,0 +1,31 @@
+# Audit — Round round-0065
+
+**Status:** ESCALATED  
+**Completed:** 2026-04-10 15:26 UTC  
+**Total cost:** $2.5403  
+**Attempts:** 2
+
+## Task
+**P33-T6** — Stage 2 appraisal safety contract document
+Write a specification document (docs/stage2_appraisal_safety_contract.md) that explicitly defines what constitutes safe appraisal deepening versus dangerous narrative drift, the preconditions for granting any new tick live LLM authority, and the monitoring gates Stage 2 must continuously pass.
+
+## Escalation Reason
+```
+Round round-0065 failed after 2 attempt(s).
+
+Attempt 1:
+  Task: Stage 2 appraisal safety contract document
+  Verdict: REVISION_REQUIRED (confidence: high)
+  Rationale: The document meets all 8 acceptance criteria — it exists, is well-structured, defines 3 concrete safe/unsafe criteria with examples, has an 8-tick authority table with individual deferred-tick preconditions, provides 7 numeric monitoring gates, specifies a 4-level graduated response referencing the correct infrastructure, forbids known anti-patterns consistent with decisions_summary.md, and uses concrete (non-TBD) threshold values throughout. All 1061 tests pass with no regressions.
+
+However, two blocker-level factual inaccuracies exist in the monitoring gate specifications. First, Gate G3's fail threshold is stated as >=10 consecutive days of monotonic drift, but audit_drift.py only generates 'fail' at >=20 days (= monotonic_window * 2); 10 days produces a 'warn'. This error propagates into three per-tick precondition sections (T3, T5 implicitly, T6). Second, the Level 1 graduated response describes a warn condition for 7-9 day monotonic spans that audit_drift.py cannot detect with window=10. Both errors are verifiable against the actual code (back/tools/audit_drift.py, build_dimension_verdict, line 336). Since this document is a safety specification intended to guide Stage 2 implementation, having wrong fail thresholds for a critical monitoring gate is a meaningful defect — not a stylistic issue. These two items require correction before the document can serve as an authoritative contract.
+  Fix required: G3 fail threshold is factually wrong: Section 5 Gate G3 states 'No single dimension rising or falling for >=10 consecutive days' as the failure gate. But audit_drift.py::build_dimension_verdict (line 336) uses: `status = 'fail' if longest['length'] >= monotonic_window * 2 else 'warn'`. With the default monotonic_window=10, a span of >=10 days produces 'warn', not 'fail'. Failure only triggers at >=20 consecutive days. The same wrong threshold appears in §3.1 item 4, §3.2 item 4, §3.3 item 4. A Stage 2 implementer following this spec would wire G3 monitoring to fail at 10 days when the referenced tool only fails at 20 — creating a phantom gate breach signal. Fix: correct G3 to state 'warn at >=10 consecutive days; fail at >=20 consecutive days (= monotonic_window * 2)'.
+  Fix required: Level 1 monotonic drift warn condition is factually impossible: Section 6 Level 1 states 'a monotonic drift span of 7-9 days is detected by audit_drift.py (warn range: below the 10-day fail threshold)'. But detect_monotonic_drift(window=10) only flags spans where streak_len >= window (i.e., >=10). Spans of 7-9 days are not flagged at all by the tool with its default window. Fix: remove or correct this — Level 1 monotonic warn should reference >=10-day spans (which generate 'warn' from build_dimension_verdict), not 7-9-day spans which audit_drift.py cannot detect.
+
+Attempt 2:
+  Task: Stage 2 appraisal safety contract document
+  Verdict: REVISION_REQUIRED (confidence: high)
+  Rationale: The document is substantially correct and well-constructed. Criteria 1–8 and 10 are all satisfied: structure is clean, the three safe/unsafe criteria each have concrete examples, all 8 ticks are covered with specific (not vague) preconditions for deferred ticks, 7 monitoring gates have exact numeric values, G3 correctly represents the warn/fail boundary for monotonic drift, no level claims detection below the 10-day minimum window, 4 escalation levels are defined, and the anti-patterns section aligns faithfully with the project's frozen contracts. All 1061 tests pass. However, criterion 9 fails on two counts: (a) Level 1 asserts a 0.35 warn threshold (70% of degradation_threshold) that has no basis in degradation_tracker.py, and (b) Level 4 claims audit_drift.py issues a 'fail' verdict for monotonic drift ≥ 10 days when the actual code (build_dimension_verdict line 336) only reaches 'fail' at ≥ 20 consecutive days (monotonic_window * 2). Both errors are contradicted by the very source files the document cites and one directly contradicts G3's own correct description earlier in the same document. Both are straightforward text fixes with no code changes required.
+  Fix required: Fix 1 — Level 1 introduces a 0.35 warn threshold that does not exist anywhere in degradation_tracker.py. The code has exactly one threshold: degradation_threshold=0.5. There is no '70% of degradation_threshold' concept, no 0.35 constant, and no warn-band activation below the main threshold. Either (a) remove the 0.35 value entirely and describe Level 1 as 'rate is rising but has not yet crossed 0.50', or (b) state explicitly that 0.35 is a recommended operator-observable guideline not enforced by the current code. As written, the sentence 'Rolling degradation rate crosses 0.35 (warn threshold = 70% of degradation_threshold)' asserts a code constant that does not exist, directly failing criterion 9.
+  Fix required: Fix 2 — Level 4 lists as one of its trigger conditions: 'audit_drift.py reports a fail verdict (saturation lock detected, or cumulative delta > 30 on any dimension, or monotonic drift >= 10 days)'. This is incorrect. Per build_dimension_verdict (line 336 of audit_drift.py): status = 'fail' if longest['length'] >= monotonic_window * 2 else 'warn'. With the default monotonic_window=10, a span of 10–19 consecutive days produces status='warn', not 'fail'. A 'fail' verdict for monotonic drift requires a span of >=20 consecutive days. The Level 4 condition must read '>=20 consecutive days' (or 'monotonic_window * 2 days with default monotonic_window=10'), consistent with G3 in §5 which already states this correctly. This internal inconsistency within the document also violates criterion 9.
+```

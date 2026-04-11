@@ -1,0 +1,17 @@
+{
+  "can_evaluate": [
+    "1. docs/stage2_appraisal_safety_contract.md exists and is well-structured markdown — file existence is trivially checkable; section presence and markdown syntax are mechanically verifiable.",
+    "2. Section on safe vs unsafe defines at least 3 concrete criteria with examples — count criteria (>=3) and confirm each has an accompanying example; 'concrete' means each criterion is a specific, falsifiable condition, which is judgeable.",
+    "3. Per-tick authority table covers all 8 ticks (T1–T8) with current status and, for each deferred tick, specific preconditions — count all 8 ticks in the table; 'specific' means the precondition names a concrete system state or event (not 'when appropriate'), which is judgeable.",
+    "4. At least 5 monitoring gates with concrete numeric thresholds and no TBD/placeholder values — count gates (>=5), scan for literal TBD/placeholder tokens, verify each gate has a numeric threshold.",
+    "5. Monotonic drift gate correctly states warn at >=10 consecutive days, fail at >=20 — verified against source: detect_monotonic_drift(window=10) flags spans >=10; build_dimension_verdict sets warn when mono_flags non-empty (length >=10) and fail when length >= monotonic_window*2 (>=20). Document claim is checkable against these exact values.",
+    "6. No graduated response level references detection of monotonic spans shorter than 10 days — scan graduated response section text for any span threshold < 10; detect_monotonic_drift cannot produce flags for spans below window=10, so any such reference is definitionally wrong.",
+    "7. Graduated response defines at least 3 escalation levels with trigger conditions tied to the defined monitoring gates — count levels (>=3); verify each trigger cites a gate name or threshold defined in criterion 4.",
+    "8. Anti-patterns section is consistent with decisions_summary.md — decisions_summary.md is accessible at /home/even/projects/cyber-community-v2/docs/decisions_summary.md; can cross-check specific factual claims (LLM cannot write ledger, AppraisalSignal v1 frozen, T4 frozen except via 26B).",
+    "9. All threshold values verifiable against back/tools/audit_drift.py and back/app/llm/degradation_tracker.py — both files are accessible; can enumerate every numeric threshold in the document and grep for matching constants/defaults in the source.",
+    "10. All existing tests pass with no regressions (python -m pytest tests/ -v from back/) — standard pytest pass/fail; this is a doc-only task so regressions are unlikely but the check is unambiguous."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {},
+  "needs_revision": false
+}

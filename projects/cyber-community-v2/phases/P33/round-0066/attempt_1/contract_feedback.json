@@ -1,0 +1,21 @@
+{
+  "can_evaluate": [
+    "AC1: File existence is a binary check. 'Well-structured markdown with clear section hierarchy' is imprecise but evaluable as: document has a top-level H1 title, multiple H2 section headers, and at least one H3 sub-section. I will apply this interpretation.",
+    "AC2: Count of named criteria in the 'safe appraisal deepening' section >= 3, each accompanied by labeled safe/unsafe examples — fully enumerable.",
+    "AC3: Table or structured list with exactly 8 rows (T1–T8); T3/T5/T6/T7/T8 each have distinct, individually stated activation preconditions (not a shared catch-all rule); T4 row contains both 'positive path active' and 'negative path frozen (Phase 26B required)' language — all literal-text checks.",
+    "AC4: Count of named monitoring gates >= 4; scan for the strings 'TBD', 'TBC', 'placeholder', '??', and confirm none appear adjacent to threshold values — mechanical text scan.",
+    "AC5: Locate every occurrence of the monotonic drift threshold in the document; verify each states warn >= 10 days AND fail >= 20 days. Cross-check against back/tools/audit_drift.py lines 328-347 for ground truth. Internal consistency is a simple multi-occurrence comparison.",
+    "AC6: Search document for any numeric value less than 10 appearing in a monotonic-drift context (e.g., 'X consecutive days' where X < 10). Absence of such references is verifiable.",
+    "AC7: Locate degradation rate threshold value in document; confirm it equals 0.5. Cross-check against back/app/llm/degradation_tracker.py for the default. Any lower advisory threshold must carry an explicit 'proposed Stage 2 / not in current code' label — text-presence check.",
+    "AC8: Document must state that unbounded growth detection uses |cumulative_delta| (absolute value) AND that this gate produces only 'warn', never 'fail', on its own. Cross-check build_dimension_verdict in source for correctness. Both are literal-text + code-comparison checks.",
+    "AC9: Count escalation levels >= 3; each must contain a trigger condition that names at least one defined monitoring gate; trigger conditions must reference warn threshold of 10 days / fail threshold of 20 days for drift, and warn-only for unbounded growth — all traceable to AC5/AC8.",
+    "AC10: Anti-patterns section must exist and list explicitly forbidden items. I will read decisions_summary.md and CLAUDE.md to confirm each listed anti-pattern is consistent with hard rules there and no required hard rule is omitted. Verifiable by text comparison.",
+    "AC11: Run the existing test suite; zero failures is a binary outcome. Document-only change makes regression trivially unlikely, but the criterion is still objectively decidable."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": {
+    "AC1_note": "AC1's 'well-structured' and 'clear hierarchy' are somewhat subjective. They do not warrant revision since I can apply a reasonable structural interpretation (H1 + multiple H2s + at least one H3), but a tighter rewrite would be: 'document has an H1 title, at least 5 H2 section headings, and uses H3 for sub-sections where applicable'. Consider tightening in a future iteration.",
+    "AC10_note": "AC10 depends on decisions_summary.md being readable in the target repo. If that file does not exist or is inaccessible at review time, AC10 becomes unevaluable. The criterion should add a fallback: 'If decisions_summary.md is absent, verify against CLAUDE.md constraints only and note the gap'. Not blocking for now since the file is expected to exist."
+  },
+  "needs_revision": false
+}

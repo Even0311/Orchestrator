@@ -1,0 +1,18 @@
+{
+  "can_evaluate": [
+    "1. docs/stage2_appraisal_safety_contract.md exists and is well-structured markdown — file existence is trivially verifiable; 'well-structured' is interpretable as having a clear heading hierarchy and distinct named sections (not a wall of prose).",
+    "2. Section defining 'safe appraisal deepening' with at least 3 concrete criteria distinguishing it from 'dangerous narrative drift', with examples of each — verifiable by locating the section, counting criteria items, and confirming at least one example per criterion is present.",
+    "3. Per-tick authority table covering all 8 ticks (T1-T8) with current status and specific preconditions — verifiable by checking table exists, all 8 tick rows are present, each row has a status value and at least one non-trivial precondition.",
+    "4. At least 4 numeric monitoring gates that a tick must continuously pass to retain live authority — verifiable by counting monitoring gates that carry explicit numeric values (numbers, percentages, day counts, etc.).",
+    "5. Graduated response protocol (warning → throttle → fallback → freeze) referencing DegradationTracker and auto-fallback mechanisms — verifiable by confirming all four stages are named in order and that 'DegradationTracker' appears in the protocol description.",
+    "6. Section on what Stage 2 must NOT do — anti-patterns and forbidden expansions, consistent with decisions_summary.md — verifiable by (a) confirming the section exists with explicit prohibitions and (b) cross-referencing /home/even/projects/cyber-community-v2/docs/decisions_summary.md for contradictions.",
+    "7. Document references DegradationTracker, OutcomeClass (acceptable/degraded/invalid), deterministic_fallback.py, audit_drift.py by name — trivially verifiable via text search for each name.",
+    "8. All numeric thresholds are concrete values (not TBD or placeholders) — verifiable by scanning the document for strings like 'TBD', 'TODO', 'placeholder', 'N/A', 'X%', '??', and confirming all threshold fields carry actual numbers."
+  ],
+  "cannot_evaluate": [],
+  "suggested_changes": [
+    "Criterion 1 — optional tightening: replace 'well-structured markdown' with 'markdown with at least 5 named top-level (##) sections' to remove any residual subjectivity, though current wording is still judgeable.",
+    "Criterion 6 — clarify the cross-reference scope: 'no statement in the anti-pattern section contradicts a frozen decision in decisions_summary.md' is easier to verify than the open-ended 'consistent with'. Suggested rewrite: 'Document contains a \"Must NOT\" section with at least 4 explicit prohibitions; none contradict decisions recorded in docs/decisions_summary.md.'"
+  ],
+  "needs_revision": false
+}

@@ -1,0 +1,32 @@
+{
+  "summary": "Created docs/stage2_appraisal_safety_contract.md — a documentation-only task defining safe appraisal deepening criteria, per-tick authority table, monitoring gates, graduated response escalation levels, and anti-patterns for Stage 2 LLM authority expansion. All numeric thresholds were verified against back/tools/audit_drift.py and back/app/llm/degradation_tracker.py before being written into the document. All 1061 existing tests pass with no regressions.",
+  "files_changed": [
+    "docs/stage2_appraisal_safety_contract.md"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python3 -m pytest tests/ -v"
+  ],
+  "test_results": {
+    "total": 1061,
+    "passed": 1061,
+    "failed": 0,
+    "errors": 0,
+    "duration_seconds": 10.87,
+    "status": "pass"
+  },
+  "diff_summary": "New file: docs/stage2_appraisal_safety_contract.md (documentation only, no source code changes). The document contains: (1) 5-criterion 'safe appraisal deepening' section with safe/unsafe examples for each criterion; (2) per-tick authority table covering all 8 ticks — T1/T2 Active, T3/T5/T6/T7/T8 Deferred with individually specified preconditions, T4 described as 'positive path active; negative path frozen (Phase 26B required)'; (3) 6 monitoring gates with concrete numeric thresholds verified from source; (4) graduated response section with 3 escalation levels (Advisory/Warn, Auto-Fallback/Degraded, Freeze and Audit/Critical); (5) 8 anti-patterns aligned with CLAUDE.md and decisions_summary.md; (6) infrastructure reference table.",
+  "unresolved_issues": [],
+  "ac_verification": {
+    "AC1": "PASS — docs/stage2_appraisal_safety_contract.md exists with clear section hierarchy (sections 1-7, subsections with H3 headers)",
+    "AC2": "PASS — Section 2 defines 5 criteria for safe appraisal deepening, each with explicit Safe/Unsafe examples",
+    "AC3": "PASS — Section 3 table covers all 8 ticks. Deferred ticks T3/T5/T6/T7/T8 each have individually specified activation preconditions. T4 described as 'Positive path active; negative path frozen (Phase 26B required)'",
+    "AC4": "PASS — 6 monitoring gates defined with concrete numeric thresholds (Gate 1: warn>=10/fail>=20 days; Gate 2: |delta|>30; Gate 3: ceiling=93/floor=7/window=5; Gate 4: max_count=10/monotone_window=7; Gate 5: rate>0.5; Gate 6: max_cooldown=14)",
+    "AC5": "PASS — Gate 1 correctly states warn at >=10 consecutive days, fail at >=20 consecutive days (monotonic_window * 2), verified against build_dimension_verdict source",
+    "AC6": "PASS — No escalation level claims detection of spans shorter than 10 days; Gate 1 explicitly notes detection limit: 'detect_monotonic_drift(window=10) cannot flag any span shorter than 10 days'",
+    "AC7": "PASS — Gate 5 states threshold is 0.5 (matching DegradationTracker.degradation_threshold default). Sub-0.5 advisory threshold is explicitly labeled 'Stage 2 requirement — not yet implemented'",
+    "AC8": "PASS — Gate 2 correctly states detection uses |cumulative_delta| (absolute value) and notes 'fail' verdict from unbounded growth alone is impossible; builds only 'warn'. Anti-pattern AP-8 reinforces this",
+    "AC9": "PASS — Section 5 defines 3 escalation levels. Level 1 (Advisory/Warn) triggers on Gate 1 warn (>=10 days) or Gate 2 warn (|delta|>30) or Gate 4 warn (7+ monotone days). Level 2 (Auto-Fallback) triggers on rate>0.5 or Gate 1 fail (>=20 days) or Gate 3 fail or Gate 4 fail. Level 3 (Freeze and Audit) triggers on two simultaneous fail dimensions",
+    "AC10": "PASS — Section 6 defines 8 anti-patterns consistent with CLAUDE.md hard rules and decisions_summary.md (AP-1: no LLM ledger writes; AP-2: AppraisalSignal frozen; AP-3: T4 negative path frozen; AP-4: no unauthorized bridge expansion; AP-5: no chatbot/dashboard; AP-6: no sub-10-day drift claims; AP-7: max_cooldown not a stability period; AP-8: unbounded growth cannot produce fail alone)",
+    "AC11": "PASS — 1061 tests passed, 0 failures"
+  }
+}

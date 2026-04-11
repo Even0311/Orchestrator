@@ -1,0 +1,62 @@
+# Executor Brief — round-0065
+
+## Task Contract
+**Task Key:** P33-T6
+**Title:** Stage 2 appraisal safety contract document
+**Objective:** Write a specification document (docs/stage2_appraisal_safety_contract.md) that explicitly defines what constitutes safe appraisal deepening versus dangerous narrative drift, the preconditions for granting any new tick live LLM authority, and the monitoring gates Stage 2 must continuously pass.
+
+**Exact Scope:**
+- Create docs/stage2_appraisal_safety_contract.md with the following sections:
+- 1. Safe vs Unsafe appraisal deepening: define at least 3 concrete criteria distinguishing safe appraisal deepening from dangerous narrative drift, with examples of each
+- 2. Per-tick authority preconditions: for each of the 8 ticks (T1–T8), specify whether it currently has live authority and, for each deferred tick, list the concrete preconditions that must hold before it can gain live LLM authority
+- 3. Monitoring gates: define numeric thresholds for at least 5 monitoring gates that Stage 2 must continuously satisfy, referencing actual infrastructure (audit_drift.py, degradation_tracker.py, appraisal_audit_log.py)
+- 4. Graduated response: define escalation levels (warn → fallback → halt) with specific trigger conditions tied to the monitoring gates
+- 5. Anti-patterns / forbidden approaches: list known anti-patterns that Stage 2 must not adopt, consistent with decisions_summary.md
+
+**Constraints:**
+- All numeric thresholds in monitoring gates MUST be verified against the actual source code — in particular: audit_drift.py::build_dimension_verdict uses `status = 'fail' if longest['length'] >= monotonic_window * 2 else 'warn'` with default monotonic_window=10, meaning: spans >=10 days = warn, spans >=20 days = fail. detect_monotonic_drift only flags spans where streak_len >= window (>=10 days); spans shorter than 10 days are invisible to the tool.
+- The graduated response levels must only reference detection capabilities that actually exist in the current tooling — do not invent warn ranges for span lengths the tools cannot detect
+- AppraisalSignal v1 is frozen — the document must not propose changes to its field definitions
+- LLM does not write ledger — this principle must be preserved in all safety criteria
+- T4 relational residual activation is frozen — the only approved unfreeze path is Phase 26B via social event-aware activation
+- Stage 1 bridge scope is T1/T2/T4 only — document must not grant deferred ticks (T3/T5/T6/T7/T8) live authority; it defines what preconditions they must meet first
+- The document is a specification, not implementation — it defines WHAT must hold, not code to enforce it
+
+**Forbidden Files (DO NOT modify):**
+- `back/app/**`
+- `back/tests/**`
+- `back/tools/**`
+- `front/**`
+- `*.py`
+- `*.ts`
+- `*.tsx`
+- `*.js`
+- `*.jsx`
+
+**Non-Goals (DO NOT do):**
+- No source code changes — this task produces only a markdown document
+- No implementation of monitoring gates or enforcement logic
+- No changes to the degradation tracker, audit tools, or any engine code
+- No expansion of live LLM authority to any currently deferred tick
+- No redesign of the appraisal pipeline or settlement architecture
+- No freeform memory system design
+- No player influence or world-generator changes
+
+**Acceptance Criteria:**
+- docs/stage2_appraisal_safety_contract.md exists and is well-structured markdown
+- Section on safe vs unsafe defines at least 3 concrete criteria with examples distinguishing safe appraisal deepening from dangerous narrative drift
+- Per-tick authority table covers all 8 ticks (T1–T8) with current status and, for each deferred tick, specific preconditions for gaining live authority
+- At least 5 monitoring gates are defined with concrete numeric thresholds (no TBD or placeholder values)
+- Monotonic drift gate correctly states: warn at >=10 consecutive days, fail at >=20 consecutive days (matching audit_drift.py build_dimension_verdict with default monotonic_window=10)
+- No graduated response level references detection of monotonic spans shorter than 10 days, since detect_monotonic_drift(window=10) cannot flag spans below 10 days
+- Graduated response defines at least 3 escalation levels with trigger conditions tied to the defined monitoring gates
+- Anti-patterns section is consistent with decisions_summary.md (LLM cannot write ledger, AppraisalSignal v1 frozen, T4 frozen except via 26B, etc.)
+- All threshold values referenced in the document are verifiable against actual source code in back/tools/audit_drift.py and back/app/llm/degradation_tracker.py
+- All existing tests pass with no regressions (python -m pytest tests/ -v from back/)
+
+## Your Task
+1. Read the codebase and understand the relevant code
+2. Implement the changes described in the contract
+3. Write/update tests as needed
+4. Run the test suite to verify no regressions
+5. Write `execution_evidence.json` with: summary, files_changed, commands_run, test_results, diff_summary, unresolved_issues

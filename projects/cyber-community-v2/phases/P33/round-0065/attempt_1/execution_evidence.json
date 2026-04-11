@@ -1,0 +1,19 @@
+{
+  "summary": "Created docs/stage2_appraisal_safety_contract.md — a definitive reference document specifying safe appraisal deepening vs. dangerous narrative drift, per-tick authority status and preconditions for all 8 ticks (T1–T8), 7 numeric monitoring gates grounded in DegradationTracker and audit_drift.py, a 4-level graduated response protocol (warning → throttle → fallback → freeze), and explicit anti-patterns forbidden in Stage 2. All references are to existing infrastructure by name. No source code was modified.",
+  "files_changed": [
+    "docs/stage2_appraisal_safety_contract.md"
+  ],
+  "commands_run": [
+    "cd /home/even/projects/cyber-community-v2/back && python -m pytest tests/ -v --tb=short"
+  ],
+  "test_results": {
+    "total": 1061,
+    "passed": 1061,
+    "failed": 0,
+    "errors": 0,
+    "duration_seconds": 9.58,
+    "verdict": "PASS"
+  },
+  "diff_summary": "New file: docs/stage2_appraisal_safety_contract.md (approx. 450 lines). No existing files modified.",
+  "unresolved_issues": []
+}
