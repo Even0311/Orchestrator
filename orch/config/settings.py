@@ -28,7 +28,7 @@ class NotificationConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    executor_model: str = "sonnet"     # Model for round-driver/executor/reviewer
+    executor_model: str = "opus"        # Model for round-driver/executor/reviewer
     designer_model: str = "opus"       # Model for designer and phase planning
 
 
